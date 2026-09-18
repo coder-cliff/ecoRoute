@@ -1,0 +1,9 @@
+- [x] Verify that the copilot-instructions.md file in the .github directory is created.
+- [x] Clarify project requirements: Flutter and Dart waste-management dashboard.
+- [x] Scaffold the Flutter application.
+- [x] Customize the project with the WasteWise dashboard.
+- [x] Install required extensions: none needed.
+- [x] Compile and analyze the project without errors.
+- [x] Create and run task: skipped; direct Flutter launch is sufficient.
+- [x] Launch the project on Chrome.
+- [x] Keep README.md and this file current.
