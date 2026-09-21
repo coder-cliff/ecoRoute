@@ -1,7 +1,7 @@
 - [x] Verify that the copilot-instructions.md file in the .github directory is created.
 - [x] Clarify project requirements: Flutter and Dart waste-management dashboard.
 - [x] Scaffold the Flutter application.
-- [x] Customize the project with the WasteWise dashboard.
+- [x] Customize the project with the EcoRoute Weeks 1–6 offline MVP.
 - [x] Install required extensions: none needed.
 - [x] Compile and analyze the project without errors.
 - [x] Create and run task: skipped; direct Flutter launch is sufficient.

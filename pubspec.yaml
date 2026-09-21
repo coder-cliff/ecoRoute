@@ -1,5 +1,5 @@
-name: waste_management
-description: "A new Flutter project."
+name: ecoroute
+description: "EcoRoute waste collection app."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -51,6 +51,9 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+
+  assets:
+    - assets/EcoRoute_logo.png
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

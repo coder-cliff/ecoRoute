@@ -1,11 +1,17 @@
-# waste_management
+# EcoRoute
 
-A simple Flutter waste-management dashboard for tracking collection schedules,
-diverted waste, and category breakdowns.
+EcoRoute is an offline-first waste collection app prototype. Anyone can browse
+collection information, while signed-in residents can submit a waste collection
+order and view their recent orders.
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+The current Weeks 1–6 MVP includes:
+
+- EcoRoute branding and public browsing
+- sign in and create-account flow before ordering
+- waste type and collection details form validation
+- in-memory recent order state
 
 A few resources to get you started if this is your first Flutter project:
 
@@ -29,4 +35,3 @@ Run the widget tests with:
 ```bash
 flutter test
 ```
-samples, guidance on mobile development, and a full API reference.
