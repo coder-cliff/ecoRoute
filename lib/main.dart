@@ -15,6 +15,11 @@ class EcoRouteApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: green),
         scaffoldBackgroundColor: const Color(0xFFF7FAF5),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFFF7FAF5),
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+        ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
@@ -99,13 +104,13 @@ class _EcoRouteHomeState extends State<EcoRouteHome> {
 
   Widget _buildBrowse() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('A cleaner route\nstarts with you.', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800, color: const Color(0xFF123B1A), height: 1.08)),
-        const SizedBox(height: 10),
-        const Text('Simple, reliable waste collection for homes, businesses, and the communities around them.', style: TextStyle(color: Color(0xFF5D7160), fontSize: 16, height: 1.45)),
-        const SizedBox(height: 24),
+        _buildHero(),
+        const SizedBox(height: 8),
         _buildOrderBanner(),
+        const SizedBox(height: 18),
+        _buildImpactRow(),
         const SizedBox(height: 28),
         Text('Explore EcoRoute', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, color: const Color(0xFF183B20))),
         const SizedBox(height: 12),
@@ -124,10 +129,49 @@ class _EcoRouteHomeState extends State<EcoRouteHome> {
     );
   }
 
+  Widget _buildHero() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 18, 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE3F1E1),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0xFFD1E6CF)),
+      ),
+      child: Stack(
+        children: [
+          Positioned(right: -18, bottom: -20, child: Icon(Icons.eco, size: 150, color: const Color(0xFFBFDDBA).withValues(alpha: 0.7))),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(color: const Color(0xFF123B1A), borderRadius: BorderRadius.circular(30)),
+              child: const Text('KEEP YOUR CITY MOVING', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+            ),
+            const SizedBox(height: 12),
+            Text('A cleaner route\nstarts with you.', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800, color: const Color(0xFF123B1A), height: 1.05)),
+            const SizedBox(height: 8),
+            const SizedBox(width: 270, child: Text('Simple, reliable waste collection for homes, businesses, and the communities around them.', style: TextStyle(color: Color(0xFF4D6652), fontSize: 15, height: 1.4))),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImpactRow() {
+    return Row(children: const [
+      _ImpactStat(value: '24h', label: 'response time'),
+      _ImpactStat(value: '3x', label: 'cleaner routes'),
+      _ImpactStat(value: '100%', label: 'local focus'),
+    ]);
+  }
+
   Widget _buildOrderBanner() {
     return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(color: const Color(0xFF246B2B), borderRadius: BorderRadius.circular(24)),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF246B2B),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [BoxShadow(color: Color(0x30246B2B), blurRadius: 18, offset: Offset(0, 8))],
+      ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Icon(Icons.local_shipping_outlined, color: Color(0xFFD8F0D6), size: 34),
         const SizedBox(height: 14),
@@ -140,7 +184,19 @@ class _EcoRouteHomeState extends State<EcoRouteHome> {
     );
   }
 
-  Widget _infoTile(IconData icon, String title, String text) => Card(color: Colors.white, elevation: 0, margin: const EdgeInsets.only(bottom: 10), child: ListTile(leading: CircleAvatar(backgroundColor: const Color(0xFFE3F1E1), foregroundColor: const Color(0xFF2E7D32), child: Icon(icon)), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)), subtitle: Text(text)));
+  Widget _infoTile(IconData icon, String title, String text) => Card(
+    color: Colors.white,
+    elevation: 0,
+    margin: const EdgeInsets.only(bottom: 10),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: const BorderSide(color: Color(0xFFE5EEE3))),
+    child: ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+      leading: CircleAvatar(backgroundColor: const Color(0xFFE3F1E1), foregroundColor: const Color(0xFF2E7D32), child: Icon(icon)),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: Text(text),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF91A391)),
+    ),
+  );
 
   Widget _buildOrders() {
     return _orders.isEmpty
@@ -210,6 +266,24 @@ class BrandLockup extends StatelessWidget {
   final bool compact;
   @override
   Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [Image.asset('assets/EcoRoute_logo.png', width: compact ? 44 : 120, height: compact ? 44 : 120, fit: BoxFit.contain), const SizedBox(width: 10), Text('EcoRoute', style: TextStyle(fontSize: compact ? 20 : 40, fontWeight: FontWeight.w800, color: const Color(0xFF123B1A)))]);
+}
+
+class _ImpactStat extends StatelessWidget {
+  const _ImpactStat({required this.value, required this.label});
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(value, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: Color(0xFF123B1A))),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF617264))),
+      ],
+    ),
+  );
 }
 
 class _Step extends StatelessWidget {
