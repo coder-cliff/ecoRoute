@@ -1,37 +1,33 @@
 # EcoRoute
 
-EcoRoute is an offline-first waste collection app prototype. Anyone can browse
-collection information, while signed-in residents can submit a waste collection
-order and view their recent orders.
+EcoRoute is an offline-first waste collection app for Arua homes and small trading centers. The project is being reshaped around the MVP plan in the design brief: domain-first business rules, feature-based folders, and a local-first data model.
 
-## Getting Started
+## App status
 
-The current Weeks 1–6 MVP includes:
+The codebase now follows a more maintainable structure:
 
-- EcoRoute branding and public browsing
-- sign in and create-account flow before ordering
-- waste type and collection details form validation
-- in-memory recent order state
+- app shell and theme under `lib/app`
+- domain entities, enums, and rules under `lib/domain`
+- screens under `lib/features`
+- shared support code under `lib/core`
+- domain rule tests in `test/domain_rules_test.dart`
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on how to get started, and a full API reference.
-
-## Run
+## Run locally
 
 ```bash
 flutter pub get
 flutter run
 ```
 
-Run the widget tests with:
+## Test
 
 ```bash
 flutter test
 ```
+
+## MVP architecture notes
+
+- Zone logic lives in `lib/domain/rules/zone_resolver.dart`
+- Request lifecycle rules live in `lib/domain/rules/status_machine.dart`
+- Price calculation is isolated in `lib/domain/rules/price_calculator.dart`
+- The dashboard remains a working prototype while the project moves toward the full Week 8–10 architecture
