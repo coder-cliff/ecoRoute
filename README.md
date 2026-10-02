@@ -1,4 +1,3 @@
-# EcoRoute
 
 EcoRoute is an offline-first waste collection app for Arua homes and small trading centers. The project is being reshaped around the MVP plan in the design brief: domain-first business rules, feature-based folders, and a local-first data model.
 
