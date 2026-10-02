@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../app/config/app_config.dart';
 import '../../core/pickup_request_repository.dart';
 import '../../domain/entities/pickup_request.dart';
 import '../../domain/enums/request_status.dart';
@@ -144,9 +145,9 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.stars_outlined),
-            selectedIcon: Icon(Icons.stars),
-            label: 'My Points',
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long),
+            label: 'Requests',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
@@ -174,7 +175,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Nearby reports',
+                'Arua collection schedule',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -188,15 +189,27 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             ],
           ),
           _reportTile(
-            'Overflowing bin',
-            '2 min ago',
-            Icons.delete_outline,
+            'North zone',
+            AppConfig.collectionSchedule['north'] ?? 'Wednesdays',
+            Icons.north_rounded,
             const Color(0xFFE7F3E8),
           ),
           _reportTile(
-            'Litter on sidewalk',
-            '18 min ago',
-            Icons.warning_amber_rounded,
+            'South zone',
+            AppConfig.collectionSchedule['south'] ?? 'Thursdays',
+            Icons.south_rounded,
+            const Color(0xFFF2F7E8),
+          ),
+          _reportTile(
+            'East zone',
+            AppConfig.collectionSchedule['east'] ?? 'Fridays',
+            Icons.east_rounded,
+            const Color(0xFFEAF4FF),
+          ),
+          _reportTile(
+            'West zone',
+            AppConfig.collectionSchedule['west'] ?? 'Saturdays',
+            Icons.west_rounded,
             const Color(0xFFFFF2D8),
           ),
         ],
@@ -206,21 +219,27 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
   Widget _buildWelcome() => LayoutBuilder(
     builder: (context, constraints) {
-      final greeting = const Column(
+      final subtitle = constraints.maxWidth < 340
+          ? 'Service area: 12 km'
+          : 'Service area: within 12 km of the Arua centre.';
+
+      final greeting = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Good morning, Alex',
+          const Text(
+            'Arua waste pickup',
             style: TextStyle(
               fontSize: 19,
               fontWeight: FontWeight.w800,
               color: Color(0xFF183B20),
             ),
           ),
-          SizedBox(height: 3),
+          const SizedBox(height: 3),
           Text(
-            'Let’s keep your neighborhood clean.',
-            style: TextStyle(color: Color(0xFF647568)),
+            subtitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Color(0xFF647568)),
           ),
         ],
       );
@@ -301,7 +320,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '4 collection points within 1 km',
+                    'Arua centre service radius: 12 km',
                     style: TextStyle(fontWeight: FontWeight.w700),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -439,11 +458,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               subtitle: Text(order.description),
-              trailing: Text(
-                order.status == RequestStatus.requested
-                    ? 'Pending'
-                    : order.status.name,
-              ),
+              trailing: Text(order.status.label),
             ),
           ),
       ],

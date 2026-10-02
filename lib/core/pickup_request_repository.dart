@@ -10,6 +10,10 @@ abstract interface class PickupRequestRepository {
   Future<List<PickupRequest>> loadAll();
 
   Future<void> save(PickupRequest request);
+
+  Future<void> updateStatus(String id, RequestStatus status);
+
+  Future<void> delete(String id);
 }
 
 class MemoryPickupRequestRepository implements PickupRequestRepository {
@@ -24,6 +28,19 @@ class MemoryPickupRequestRepository implements PickupRequestRepository {
   Future<void> save(PickupRequest request) async {
     _requests.removeWhere((existing) => existing.id == request.id);
     _requests.insert(0, request);
+  }
+
+  @override
+  Future<void> updateStatus(String id, RequestStatus status) async {
+    final index = _requests.indexWhere((request) => request.id == id);
+    if (index == -1) return;
+
+    _requests[index] = _requests[index].copyWith(status: status);
+  }
+
+  @override
+  Future<void> delete(String id) async {
+    _requests.removeWhere((request) => request.id == id);
   }
 }
 
@@ -56,6 +73,29 @@ class SharedPreferencesPickupRequestRepository
     final requests = await loadAll();
     requests.removeWhere((existing) => existing.id == request.id);
     requests.insert(0, request);
+    await _preferences.setString(
+      _storageKey,
+      jsonEncode(requests.map(_requestToJson).toList()),
+    );
+  }
+
+  @override
+  Future<void> updateStatus(String id, RequestStatus status) async {
+    final requests = await loadAll();
+    final index = requests.indexWhere((request) => request.id == id);
+    if (index == -1) return;
+
+    requests[index] = requests[index].copyWith(status: status);
+    await _preferences.setString(
+      _storageKey,
+      jsonEncode(requests.map(_requestToJson).toList()),
+    );
+  }
+
+  @override
+  Future<void> delete(String id) async {
+    final requests = await loadAll();
+    requests.removeWhere((request) => request.id == id);
     await _preferences.setString(
       _storageKey,
       jsonEncode(requests.map(_requestToJson).toList()),

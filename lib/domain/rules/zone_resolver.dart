@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../../app/config/app_config.dart';
 import '../enums/zone.dart';
 
 Zone resolveZone(
@@ -18,6 +19,15 @@ Zone resolveZone(
   return dLng >= 0 ? Zone.east : Zone.west;
 }
 
+Zone resolveAruaZone(double lat, double lng) {
+  return resolveZone(
+    lat,
+    lng,
+    centerLat: AppConfig.zoneCenterLat,
+    centerLng: AppConfig.zoneCenterLng,
+  );
+}
+
 bool isWithinServiceArea(
   double lat,
   double lng, {
@@ -33,4 +43,14 @@ bool isWithinServiceArea(
   );
 
   return distanceKm <= radiusKm;
+}
+
+bool isWithinAruaServiceArea(double lat, double lng) {
+  return isWithinServiceArea(
+    lat,
+    lng,
+    centerLat: AppConfig.zoneCenterLat,
+    centerLng: AppConfig.zoneCenterLng,
+    radiusKm: AppConfig.serviceRadiusKm,
+  );
 }

@@ -1,5 +1,7 @@
 import 'package:ecoroute/domain/enums/request_status.dart';
 import 'package:ecoroute/domain/enums/zone.dart';
+import 'package:ecoroute/domain/rules/price_calculator.dart';
+import 'package:ecoroute/domain/rules/reminder_policy.dart';
 import 'package:ecoroute/domain/rules/status_machine.dart';
 import 'package:ecoroute/domain/rules/zone_resolver.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -77,6 +79,64 @@ void main() {
         );
       },
     );
+  });
+
+  group('pricing', () {
+    test('price is computed from sack count and price snapshot', () {
+      expect(calculateAmount(sackCount: 4, pricePerSackUgx: 1500), 6000);
+    });
+
+    test('sack count validation rejects impossible values', () {
+      expect(
+        () => calculateAmount(sackCount: 0, pricePerSackUgx: 1500),
+        throwsA(isA<ArgumentError>()),
+      );
+
+      expect(
+        () => calculateAmount(sackCount: -1, pricePerSackUgx: 1500),
+        throwsA(isA<ArgumentError>()),
+      );
+
+      expect(
+        () => calculateAmount(sackCount: 51, pricePerSackUgx: 1500),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+  });
+
+  group('reminders', () {
+    test('reminders are sent only while a resident has fewer than five paid requests', () {
+      const policy = ReminderPolicy();
+
+      expect(
+        policy.shouldSendReminder(
+          successfulRequests: 0,
+          remindersEnabled: true,
+        ),
+        isTrue,
+      );
+      expect(
+        policy.shouldSendReminder(
+          successfulRequests: 4,
+          remindersEnabled: true,
+        ),
+        isTrue,
+      );
+      expect(
+        policy.shouldSendReminder(
+          successfulRequests: 5,
+          remindersEnabled: true,
+        ),
+        isFalse,
+      );
+      expect(
+        policy.shouldSendReminder(
+          successfulRequests: 3,
+          remindersEnabled: false,
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('status transitions', () {
