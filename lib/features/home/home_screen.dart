@@ -119,7 +119,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const BrandLockup(compact: true),
+        title: const Flexible(child: BrandLockup(compact: true)),
         actions: [
           IconButton(
             onPressed: _showAuth,
@@ -228,6 +228,8 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         children: [
           const Text(
             'Arua waste pickup',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 19,
               fontWeight: FontWeight.w800,
@@ -252,7 +254,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                 children: [
                   const _WelcomeIcon(),
                   const SizedBox(width: 12),
-                  Flexible(child: greeting),
+                  Expanded(child: greeting),
                 ],
               ),
       );
@@ -314,20 +316,26 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                 BoxShadow(color: Color(0x18000000), blurRadius: 10),
               ],
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.location_on_outlined, color: Color(0xFF2E7D32)),
-                SizedBox(width: 8),
+                const Icon(
+                  Icons.location_on_outlined,
+                  color: Color(0xFF2E7D32),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    'Arua centre service radius: 12 km',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: const Text(
+                      'Arua centre service radius: 12 km',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                      maxLines: 1,
+                    ),
                   ),
                 ),
-                SizedBox(width: 8),
-                Icon(Icons.chevron_right, color: Color(0xFF718273)),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right, color: Color(0xFF718273)),
               ],
             ),
           ),
