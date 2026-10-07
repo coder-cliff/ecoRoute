@@ -1,31 +1,71 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/enums/role.dart';
+
+class DemoAccount {
+  const DemoAccount({required this.email, required this.password});
+
+  final String email;
+  final String password;
+}
+
 class AuthSheet extends StatefulWidget {
   const AuthSheet({required this.onAuthenticated, super.key});
 
-  final VoidCallback onAuthenticated;
+  final void Function(AppRole role) onAuthenticated;
 
   @override
   State<AuthSheet> createState() => _AuthSheetState();
 }
 
 class _AuthSheetState extends State<AuthSheet> {
+  static const Map<AppRole, DemoAccount> demoAccounts = {
+    AppRole.resident: DemoAccount(
+      email: 'resident@ecoroute.demo',
+      password: 'demo123',
+    ),
+    AppRole.rider: DemoAccount(
+      email: 'rider@ecoroute.demo',
+      password: 'demo123',
+    ),
+    AppRole.admin: DemoAccount(
+      email: 'admin@ecoroute.demo',
+      password: 'demo123',
+    ),
+  };
+
   bool _createAccount = false;
+  AppRole _selectedRole = AppRole.resident;
   final _formKey = GlobalKey<FormState>();
+  final _fullName = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _applyDemoAccount();
+  }
+
+  @override
   void dispose() {
+    _fullName.dispose();
     _email.dispose();
     _password.dispose();
     super.dispose();
   }
 
+  void _applyDemoAccount() {
+    final account = demoAccounts[_selectedRole];
+    if (account == null) return;
+    _email.text = account.email;
+    _password.text = account.password;
+  }
+
   void _submit() {
     if (_formKey.currentState!.validate()) {
       Navigator.pop(context);
-      widget.onAuthenticated();
+      widget.onAuthenticated(_selectedRole);
     }
   }
 
@@ -57,9 +97,33 @@ class _AuthSheetState extends State<AuthSheet> {
                   ? 'Create an account to request waste collection.'
                   : 'Sign in to request a collection for your waste.',
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: AppRole.values
+                  .where((role) => role != AppRole.guest)
+                  .map(
+                    (role) => ChoiceChip(
+                      label: Text(role.label),
+                      selected: _selectedRole == role,
+                      onSelected: (_) {
+                        setState(() => _selectedRole = role);
+                        _applyDemoAccount();
+                      },
+                    ),
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Demo access: resident@ecoroute.demo • rider@ecoroute.demo • admin@ecoroute.demo',
+              style: const TextStyle(fontSize: 12, color: Color(0xFF647568)),
+            ),
+            const SizedBox(height: 12),
             if (_createAccount) ...[
               TextFormField(
+                controller: _fullName,
                 decoration: const InputDecoration(labelText: 'Full name'),
                 validator: (value) => value == null || value.trim().isEmpty
                     ? 'Enter your name'
