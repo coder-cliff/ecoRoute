@@ -6,12 +6,18 @@ import '../../domain/entities/pickup_request.dart';
 import '../../domain/enums/waste_type.dart';
 import '../../domain/enums/zone.dart';
 import '../../domain/rules/price_calculator.dart';
+import '../database/waste_database_sheet.dart';
 import 'widgets/waste_camera_scanner.dart';
 
 class OrderPage extends StatefulWidget {
-  const OrderPage({required this.onSubmitted, super.key});
+  const OrderPage({
+    required this.onSubmitted,
+    this.autoTriggerCamera = false,
+    super.key,
+  });
 
   final Future<void> Function(PickupRequest request) onSubmitted;
+  final bool autoTriggerCamera;
 
   @override
   State<OrderPage> createState() => _OrderPageState();
@@ -35,6 +41,18 @@ class _OrderPageState extends State<OrderPage> {
   double? _latitude;
   double? _longitude;
   String? _capturedPhotoLabel;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autoTriggerCamera) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _capturedPhotoLabel == null) {
+          _openCameraScanner();
+        }
+      });
+    }
+  }
 
   int get _sackCount {
     final parsed = int.tryParse(_sackCountController.text.trim());
@@ -73,6 +91,7 @@ class _OrderPageState extends State<OrderPage> {
       barrierDismissible: false,
       builder: (_) => WasteCameraScanner(
         locationService: _locationService,
+        autoCompleteOnAutoCapture: widget.autoTriggerCamera,
         onCaptured: (result) {
           setState(() {
             _capturedPhotoLabel = result.imageLabel;
@@ -168,6 +187,18 @@ class _OrderPageState extends State<OrderPage> {
       appBar: AppBar(
         title: const Text('Order a collection'),
         actions: [
+          IconButton(
+            tooltip: 'Waste Database & Rates',
+            icon: const Icon(Icons.dataset_outlined),
+            onPressed: () {
+              showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => const WasteDatabaseSheet(),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Waste Photo Scanner',
             icon: Icon(

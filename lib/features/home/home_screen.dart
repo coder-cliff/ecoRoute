@@ -19,6 +19,7 @@ import '../../domain/rules/status_machine.dart';
 import '../admin/widgets/analytics_breakdown.dart';
 import '../admin/widgets/approval_item_tile.dart';
 import '../auth/auth_sheet.dart';
+import '../database/waste_database_sheet.dart';
 import '../payment/momo_payment_dialog.dart';
 import '../request/order_page.dart';
 import '../rider/widgets/route_stop_tile.dart';
@@ -192,6 +193,30 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     );
   }
 
+  void _openAutoScanOrder() {
+    if (!_signedIn) {
+      _showAuth();
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OrderPage(
+          onSubmitted: _addOrder,
+          autoTriggerCamera: true,
+        ),
+      ),
+    );
+  }
+
+  void _showWasteDatabase() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const WasteDatabaseSheet(),
+    );
+  }
+
   Future<void> _addOrder(PickupRequest request) async {
     final requestWithUser = request.copyWith(
       residentId: _currentUser?.id ?? 'resident-1',
@@ -331,6 +356,11 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
               child: BrandLockup(compact: true),
             ),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.dataset_outlined),
+                tooltip: 'Waste Database & Rates',
+                onPressed: _showWasteDatabase,
+              ),
               // Language Selector Menu
               PopupMenuButton<AppLanguage>(
                 icon: const Icon(Icons.language_rounded),
@@ -799,23 +829,23 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   Widget _buildQuickActions() {
     final actions = [
       _QuickActionCard(
-        icon: Icons.add_road_rounded,
-        title: 'Schedule pickup',
-        subtitle: 'Create a new collection request',
+        icon: Icons.camera_alt_outlined,
+        title: 'Auto-scan waste',
+        subtitle: 'Auto-proximity & GPS',
         accent: const Color(0xFF2E8B57),
-        onTap: _openOrder,
+        onTap: _openAutoScanOrder,
       ),
       _QuickActionCard(
-        icon: Icons.bar_chart_rounded,
-        title: 'Service overview',
-        subtitle: 'Review local request activity',
-        accent: const Color(0xFF3A5A9F),
-        onTap: () => setState(() => _tab = 2),
+        icon: Icons.dataset_outlined,
+        title: 'Waste database',
+        subtitle: 'Pricing & Lugbara terms',
+        accent: const Color(0xFF1E88E5),
+        onTap: _showWasteDatabase,
       ),
       _QuickActionCard(
         icon: Icons.manage_accounts_outlined,
         title: 'Account & role',
-        subtitle: 'Manage your demo session',
+        subtitle: 'Manage demo session',
         accent: const Color(0xFFF0A62A),
         onTap: _showAuth,
       ),
@@ -880,19 +910,81 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     },
   );
 
-  Widget _buildReportButton() => SizedBox(
-    width: double.infinity,
-    height: 54,
-    child: FilledButton.icon(
-      onPressed: _openOrder,
-      icon: const Icon(Icons.add_a_photo_outlined),
-      label: const ResponsiveButtonLabel('REPORT AN ISSUE'),
-      style: FilledButton.styleFrom(
-        backgroundColor: const Color(0xFF2E8B57),
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+  Widget _buildReportButton() => Column(
+    children: [
+      SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: FilledButton.icon(
+          onPressed: _openAutoScanOrder,
+          icon: const Icon(Icons.camera_alt_rounded),
+          label: const ResponsiveButtonLabel('AUTO-SCAN RUBBISH (SMART CAMERA)'),
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF1B5E3B),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+        ),
       ),
-    ),
+      const SizedBox(height: 10),
+      SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: OutlinedButton.icon(
+          onPressed: _openOrder,
+          icon: const Icon(Icons.edit_note_rounded),
+          label: const ResponsiveButtonLabel('REPORT AN ISSUE'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF2E8B57),
+            side: const BorderSide(color: Color(0xFF2E8B57), width: 1.5),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+        ),
+      ),
+      const SizedBox(height: 10),
+      InkWell(
+        onTap: _showWasteDatabase,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8F5E9),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFC8E6C9)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.dataset_outlined, color: Color(0xFF2E7D32), size: 24),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Municipal Waste & Recycling Database',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1B5E20),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'World Bank benchmarks, Lugbara terms & UGX/kg resale rates',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF388E3C),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF2E7D32)),
+            ],
+          ),
+        ),
+      ),
+    ],
   );
 
   Widget _buildOrders() {
@@ -1230,6 +1322,25 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 14),
+                ListTile(
+                  tileColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: const BorderSide(color: Color(0xFFE2EAE1)),
+                  ),
+                  leading: const Icon(Icons.dataset_outlined, color: Color(0xFF2E7D32)),
+                  title: const Text(
+                    'Municipal Solid Waste & Recycling Data',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: const Text(
+                    'World Bank benchmarks, Lugbara terms & scrap rates',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: _showWasteDatabase,
                 ),
                 const SizedBox(height: 18),
                 Row(

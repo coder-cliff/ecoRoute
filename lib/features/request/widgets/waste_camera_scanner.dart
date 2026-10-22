@@ -21,11 +21,13 @@ class WasteCameraScanner extends StatefulWidget {
   const WasteCameraScanner({
     required this.onCaptured,
     this.locationService = const LocationService(),
+    this.autoCompleteOnAutoCapture = false,
     super.key,
   });
 
   final void Function(WastePhotoCaptureResult result) onCaptured;
   final LocationService locationService;
+  final bool autoCompleteOnAutoCapture;
 
   @override
   State<WasteCameraScanner> createState() => _WasteCameraScannerState();
@@ -97,6 +99,12 @@ class _WasteCameraScannerState extends State<WasteCameraScanner>
       _locatingGps = false;
       _locationResult = loc;
     });
+
+    if (auto && widget.autoCompleteOnAutoCapture) {
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      if (!mounted) return;
+      _confirm();
+    }
   }
 
   void _confirm() {
