@@ -26,6 +26,16 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    packaging {
+        jniLibs {
+            keepDebugSymbols.add("**/*")
+        }
+    }
+}
+
+tasks.matching { it.name.contains("Strip") && it.name.contains("DebugSymbols") }.configureEach {
+    enabled = false
 }
 
 kotlin {
