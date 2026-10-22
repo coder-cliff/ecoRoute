@@ -6,6 +6,7 @@ import '../../domain/entities/pickup_request.dart';
 import '../../domain/enums/waste_type.dart';
 import '../../domain/enums/zone.dart';
 import '../../domain/rules/price_calculator.dart';
+import 'widgets/waste_camera_scanner.dart';
 
 class OrderPage extends StatefulWidget {
   const OrderPage({required this.onSubmitted, super.key});
@@ -28,10 +29,12 @@ class _OrderPageState extends State<OrderPage> {
   final _description = TextEditingController();
   final _sackCountController = TextEditingController(text: '2');
   final _addressController = TextEditingController(text: 'Arua Municipality');
-  final _phoneController = TextEditingController(text: '+256 772 100 200');
+  // Requested default mobile number
+  final _phoneController = TextEditingController(text: '+256394880352');
 
   double? _latitude;
   double? _longitude;
+  String? _capturedPhotoLabel;
 
   int get _sackCount {
     final parsed = int.tryParse(_sackCountController.text.trim());
@@ -62,6 +65,36 @@ class _OrderPageState extends State<OrderPage> {
     _addressController.dispose();
     _phoneController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openCameraScanner() async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => WasteCameraScanner(
+        locationService: _locationService,
+        onCaptured: (result) {
+          setState(() {
+            _capturedPhotoLabel = result.imageLabel;
+            _latitude = result.locationResult.latitude;
+            _longitude = result.locationResult.longitude;
+            if (result.locationResult.resolvedZone != null) {
+              _zone = result.locationResult.resolvedZone!;
+            }
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Photo captured! GPS automatically locked: '
+                '${result.locationResult.isWithinServiceArea ? '${_zone.label} Zone verified' : 'Outside boundary'}',
+              ),
+              backgroundColor: const Color(0xFF2E7D32),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _detectLocation() async {
@@ -132,26 +165,64 @@ class _OrderPageState extends State<OrderPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Order a collection')),
+      appBar: AppBar(
+        title: const Text('Order a collection'),
+        actions: [
+          IconButton(
+            tooltip: 'Waste Photo Scanner',
+            icon: Icon(
+              _capturedPhotoLabel != null
+                  ? Icons.check_circle_rounded
+                  : Icons.camera_alt_outlined,
+              color: _capturedPhotoLabel != null ? const Color(0xFF2E7D32) : null,
+            ),
+            onPressed: _openCameraScanner,
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           children: [
-            const Text(
-              'Tell us what to collect',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF183B20),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Tell us what to collect',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF183B20),
+                        ),
+                      ),
+                      Text(
+                        _capturedPhotoLabel != null
+                            ? 'Photo attached • GPS locked'
+                            : 'Give details or use camera scanner',
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF556958)),
+                      ),
+                    ],
+                  ),
+                ),
+                ActionChip(
+                  avatar: Icon(
+                    _capturedPhotoLabel != null
+                        ? Icons.check_circle_rounded
+                        : Icons.camera_alt_rounded,
+                    size: 16,
+                    color: const Color(0xFF2E7D32),
+                  ),
+                  label: Text(_capturedPhotoLabel != null ? 'Retake' : 'Scan Rubbish'),
+                  onPressed: _openCameraScanner,
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            const Text(
-              'Give us a few details and our collection team will take it from there.',
-              style: TextStyle(fontSize: 13),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             // Waste type dropdown
             DropdownButtonFormField<WasteType>(
@@ -174,7 +245,7 @@ class _OrderPageState extends State<OrderPage> {
             // Collection details
             TextFormField(
               controller: _description,
-              maxLines: 3,
+              maxLines: 2,
               decoration: const InputDecoration(
                 labelText: 'Collection details',
                 hintText: 'Describe the waste and where it can be collected.',
@@ -280,7 +351,7 @@ class _OrderPageState extends State<OrderPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
             // Submit Button
             SizedBox(

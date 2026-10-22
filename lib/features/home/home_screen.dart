@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../app/config/app_config.dart';
 import '../../core/pickup_request_repository.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/language_service.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/waste_api_service.dart';
 import '../../core/utils/formatters.dart';
@@ -16,8 +17,32 @@ import '../../domain/enums/waste_type.dart';
 import '../../domain/enums/zone.dart';
 import '../../domain/rules/reminder_policy.dart';
 import '../../domain/rules/status_machine.dart';
+import '../admin/widgets/analytics_breakdown.dart';
+import '../admin/widgets/approval_item_tile.dart';
 import '../auth/auth_sheet.dart';
+import '../payment/momo_payment_dialog.dart';
 import '../request/order_page.dart';
+import '../rider/widgets/route_stop_tile.dart';
+import 'widgets/brand_lockup.dart';
+import 'widgets/interactive_map_panel.dart';
+import 'widgets/metric_cards.dart';
+import 'widgets/status_selector.dart';
+
+export 'widgets/brand_lockup.dart';
+export 'widgets/interactive_map_panel.dart';
+export 'widgets/metric_cards.dart';
+export 'widgets/status_selector.dart';
+
+// Backward compatibility aliases
+typedef _RouteStop = RouteStopTile;
+typedef _ApprovalItem = ApprovalItemTile;
+typedef _AnalyticsRow = AnalyticsRow;
+typedef _MetricCard = MetricCard;
+typedef _QuickActionCard = QuickActionCard;
+typedef _ProfileMetric = ProfileMetric;
+typedef _DashboardPanel = DashboardPanel;
+typedef _EmptyPanelMessage = EmptyPanelMessage;
+typedef _StatusSelector = StatusSelector;
 
 class EcoRouteSplashScreen extends StatefulWidget {
   const EcoRouteSplashScreen({
@@ -97,22 +122,24 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   bool _loadingOrders = true;
   final List<PickupRequest> _orders = [];
 
-  // Week 9: External API Data
+  // REST API Weather
   late final WasteApiService _apiService;
   AruaWeatherReport? _weatherReport;
   bool _loadingWeather = false;
 
-  // Week 11: Device Location state
+  // GPS State
   UserLocationResult? _lastGpsResult;
   bool _locatingGps = false;
 
-  // Week 6: State filtering
+  // Filter & Search
   RequestStatus? _statusFilter;
   String _searchQuery = '';
 
-  // Week 11: Reminders policy
+  // Reminders
   bool _remindersEnabled = true;
   static const _reminderPolicy = ReminderPolicy();
+
+  final LanguageService _langService = LanguageService.instance;
 
   @override
   void initState() {
@@ -170,7 +197,9 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     final requestWithUser = request.copyWith(
       residentId: _currentUser?.id ?? 'resident-1',
       residentName: _currentUser?.fullName ?? 'Amina Dranzoa',
-      residentPhone: _currentUser?.phone ?? request.residentPhone,
+      residentPhone: request.residentPhone.isNotEmpty
+          ? request.residentPhone
+          : (_currentUser?.phone ?? '+256394880352'),
     );
 
     await widget.repository.save(requestWithUser);
@@ -218,6 +247,26 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Request updated to ${status.label}.')),
+    );
+  }
+
+  void _openMoMoPayment(PickupRequest request) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => MoMoPaymentDialog(
+        request: request,
+        initialPhone: request.residentPhone.isNotEmpty
+            ? request.residentPhone
+            : '+256394880352',
+        onPaymentSuccess: (paid) async {
+          await widget.repository.updateStatus(paid.id, RequestStatus.paid);
+          if (!mounted) return;
+          setState(() {
+            final idx = _orders.indexWhere((o) => o.id == paid.id);
+            if (idx != -1) _orders[idx] = paid;
+          });
+        },
+      ),
     );
   }
 
@@ -273,48 +322,75 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const FittedBox(
-          fit: BoxFit.scaleDown,
-          child: BrandLockup(compact: true),
-        ),
-        actions: [
-          IconButton(
-            onPressed: _showAuth,
-            icon: const Icon(Icons.notifications_none_rounded),
+    return ListenableBuilder(
+      listenable: _langService,
+      builder: (context, _) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const FittedBox(
+              fit: BoxFit.scaleDown,
+              child: BrandLockup(compact: true),
+            ),
+            actions: [
+              // Language Selector Menu
+              PopupMenuButton<AppLanguage>(
+                icon: const Icon(Icons.language_rounded),
+                tooltip: 'Select Language',
+                onSelected: (lang) => _langService.setLanguage(lang),
+                itemBuilder: (_) => AppLanguage.values
+                    .map(
+                      (l) => PopupMenuItem(
+                        value: l,
+                        child: Row(
+                          children: [
+                            Text(l.label),
+                            if (_langService.currentLanguage == l) ...[
+                              const Spacer(),
+                              const Icon(Icons.check, size: 16, color: Color(0xFF2E7D32)),
+                            ],
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+              IconButton(
+                onPressed: _showAuth,
+                icon: const Icon(Icons.notifications_none_rounded),
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: IndexedStack(
-        index: _tab,
-        children: [_buildBrowse(), _buildOrders(), _buildProfile()],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        labelBehavior: MediaQuery.sizeOf(context).width < 360
-            ? NavigationDestinationLabelBehavior.onlyShowSelected
-            : NavigationDestinationLabelBehavior.alwaysShow,
-        onDestinationSelected: (value) => setState(() => _tab = value),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
+          body: IndexedStack(
+            index: _tab,
+            children: [_buildBrowse(), _buildOrders(), _buildProfile()],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long),
-            label: 'Requests',
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _tab,
+            labelBehavior: MediaQuery.sizeOf(context).width < 360
+                ? NavigationDestinationLabelBehavior.onlyShowSelected
+                : NavigationDestinationLabelBehavior.alwaysShow,
+            onDestinationSelected: (value) => setState(() => _tab = value),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
+                label: 'Home',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.receipt_long_outlined),
+                selectedIcon: Icon(Icons.receipt_long),
+                label: 'Requests',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.person_outline),
+                selectedIcon: Icon(Icons.person),
+                label: 'Profile',
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -386,7 +462,6 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           _buildWelcome(),
           const SizedBox(height: 16),
 
-          // Weather & Route Safety Card (Week 9 REST API integration)
           _buildWeatherSafetyCard(),
           const SizedBox(height: 16),
 
@@ -480,7 +555,15 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             _buildAnalytics(),
           ],
           const SizedBox(height: 18),
-          _buildMapPanel(),
+
+          // Interactive Arua Map View
+          InteractiveAruaMapPanel(
+            requestsCount: _orders.length,
+            locationResult: _lastGpsResult,
+            isLocating: _locatingGps,
+            onLocateGps: _checkGpsLocation,
+          ),
+
           if (_role == AppRole.resident) ...[
             const SizedBox(height: 16),
             _buildReportButton(),
@@ -832,7 +915,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             ? greeting
             : Row(
                 children: [
-                  const _WelcomeIcon(),
+                  const WelcomeIcon(),
                   const SizedBox(width: 12),
                   Expanded(child: greeting),
                 ],
@@ -841,143 +924,13 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     },
   );
 
-  Widget _buildMapPanel() => Container(
-    height: 320,
-    clipBehavior: Clip.antiAlias,
-    decoration: BoxDecoration(
-      color: const Color(0xFFE7F0E6),
-      borderRadius: BorderRadius.circular(22),
-      border: Border.all(color: const Color(0xFFD2E1D1)),
-    ),
-    child: Stack(
-      children: [
-        CustomPaint(size: Size.infinite, painter: _MapPainter()),
-        Positioned(
-          left: 18,
-          top: 18,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _lastGpsResult != null && _lastGpsResult!.resolvedZone != null
-                    ? 'Arua service map (${_lastGpsResult!.resolvedZone!.label} zone)'
-                    : 'Arua service map',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF21452A),
-                ),
-              ),
-              SizedBox(height: 3),
-              Text(
-                'Illustrative zones · demo locations',
-                style: TextStyle(fontSize: 11, color: Color(0xFF647568)),
-              ),
-            ],
-          ),
-        ),
-        Positioned(
-          left: 16,
-          top: 68,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.9),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              '${_orders.length} ${_orders.length == 1 ? 'request' : 'requests'} on the local board',
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF45604A),
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          right: 14,
-          top: 14,
-          child: GestureDetector(
-            onTap: _locatingGps ? null : _checkGpsLocation,
-            child: _mapControl(
-              _locatingGps ? Icons.hourglass_top : Icons.my_location_rounded,
-            ),
-          ),
-        ),
-        Positioned(
-          right: 14,
-          bottom: 74,
-          child: Column(
-            children: [
-              _mapControl(Icons.add),
-              const SizedBox(height: 8),
-              _mapControl(Icons.remove),
-            ],
-          ),
-        ),
-        const Positioned(left: 80, top: 92, child: _MapPin()),
-        const Positioned(left: 188, top: 150, child: _MapPin()),
-        const Positioned(right: 72, top: 102, child: _MapPin()),
-        const Positioned(left: 132, bottom: 84, child: _MapPin()),
-        Positioned(
-          left: 16,
-          right: 16,
-          bottom: 14,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: const [
-                BoxShadow(color: Color(0x18000000), blurRadius: 10),
-              ],
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.location_on_outlined,
-                  color: Color(0xFF2E7D32),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: const Text(
-                      'Arua service radius: 12 km',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                      maxLines: 1,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, color: Color(0xFF718273)),
-              ],
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _mapControl(IconData icon) => Container(
-    width: 38,
-    height: 38,
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      boxShadow: const [BoxShadow(color: Color(0x18000000), blurRadius: 8)],
-    ),
-    child: Icon(icon, size: 20, color: const Color(0xFF45604A)),
-  );
-
   Widget _buildReportButton() => SizedBox(
     width: double.infinity,
     height: 54,
     child: FilledButton.icon(
       onPressed: _openOrder,
       icon: const Icon(Icons.add_a_photo_outlined),
-      label: const _ResponsiveButtonLabel('REPORT AN ISSUE'),
+      label: const ResponsiveButtonLabel('REPORT AN ISSUE'),
       style: FilledButton.styleFrom(
         backgroundColor: const Color(0xFF2E8B57),
         foregroundColor: Colors.white,
@@ -1079,7 +1032,6 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
     return Column(
       children: [
-        // Search & Filter header
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: TextField(
@@ -1190,6 +1142,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                                     Wrap(
                                       spacing: 8,
                                       runSpacing: 8,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
                                       children: [
                                         Chip(
                                           label: Text(order.status.label),
@@ -1204,6 +1157,14 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                                                 _updateOrderStatus(order, status);
                                               }
                                             },
+                                          ),
+                                        // MoMo Pay Button for unpaid orders
+                                        if (order.status != RequestStatus.paid &&
+                                            order.status != RequestStatus.cancelled)
+                                          ActionChip(
+                                            avatar: const Icon(Icons.payment, size: 16, color: Color(0xFF2E7D32)),
+                                            label: const Text('Pay MoMo'),
+                                            onPressed: () => _openMoMoPayment(order),
                                           ),
                                         if (order.status ==
                                             RequestStatus.requested)
@@ -1316,7 +1277,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Week 11 Reminder Policy toggle
+                // Reminder Policy toggle
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
@@ -1388,613 +1349,4 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             label: const Text('Sign in or create account'),
           ),
   );
-}
-
-class _StatusSelector extends StatelessWidget {
-  const _StatusSelector({required this.currentStatus, required this.onChanged});
-
-  final RequestStatus currentStatus;
-  final ValueChanged<RequestStatus?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final statuses = <RequestStatus>{
-      currentStatus,
-      ...RequestStatus.values.where(
-        (status) => isValidTransition(currentStatus, status),
-      ),
-    }.toList();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F7F2),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<RequestStatus>(
-          value: currentStatus,
-          isDense: true,
-          items: statuses
-              .map(
-                (status) =>
-                    DropdownMenuItem(value: status, child: Text(status.label)),
-              )
-              .toList(),
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-}
-
-class _DashboardPanel extends StatelessWidget {
-  const _DashboardPanel({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.child,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2EAE1)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEAF4EC),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: const Color(0xFF2E8B57)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Color(0xFF183B20),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: Color(0xFF71877D),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyPanelMessage extends StatelessWidget {
-  const _EmptyPanelMessage({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: const Color(0xFF78917C), size: 20),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(color: Color(0xFF647568), fontSize: 13),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RouteStop extends StatelessWidget {
-  const _RouteStop({
-    required this.index,
-    required this.request,
-    required this.onAdvance,
-  });
-
-  final int index;
-  final PickupRequest request;
-  final VoidCallback onAdvance;
-
-  @override
-  Widget build(BuildContext context) {
-    final isRequested = request.status == RequestStatus.requested;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            color: Color(0xFFEAF4EC),
-            shape: BoxShape.circle,
-          ),
-          child: Text(
-            '$index',
-            style: const TextStyle(
-              color: Color(0xFF2E7D4F),
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                request.wasteType.label,
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                request.description,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Color(0xFF71877D), fontSize: 12),
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton.icon(
-                  onPressed: onAdvance,
-                  icon: Icon(
-                    isRequested
-                        ? Icons.check_circle_outline_rounded
-                        : Icons.fact_check_outlined,
-                    size: 17,
-                  ),
-                  label: Text(
-                    isRequested ? 'Mark collected' : 'Send for verification',
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ApprovalItem extends StatelessWidget {
-  const _ApprovalItem({
-    required this.request,
-    required this.onApprove,
-    required this.onReturn,
-  });
-
-  final PickupRequest request;
-  final VoidCallback onApprove;
-  final VoidCallback onReturn;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          request.wasteType.label,
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          request.description,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: Color(0xFF71877D), fontSize: 12),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            FilledButton.icon(
-              onPressed: onApprove,
-              icon: const Icon(Icons.verified_outlined, size: 17),
-              label: const Text('Approve payment'),
-            ),
-            OutlinedButton.icon(
-              onPressed: onReturn,
-              icon: const Icon(Icons.undo_rounded, size: 17),
-              label: const Text('Return to rider'),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _AnalyticsRow extends StatelessWidget {
-  const _AnalyticsRow({
-    required this.status,
-    required this.count,
-    required this.total,
-  });
-
-  final RequestStatus status;
-  final int count;
-  final int total;
-
-  @override
-  Widget build(BuildContext context) {
-    final proportion = total == 0 ? 0.0 : (count / total);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 114,
-            child: Text(
-              status.label,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF647568)),
-            ),
-          ),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: SizedBox(
-                height: 8,
-                child: Stack(
-                  children: [
-                    const ColoredBox(
-                      color: Color(0xFFEAF0E9),
-                      child: SizedBox.expand(),
-                    ),
-                    FractionallySizedBox(
-                      widthFactor: proportion,
-                      child: const ColoredBox(color: Color(0xFF2E8B57)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 22,
-            child: Text(
-              '$count',
-              textAlign: TextAlign.end,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProfileMetric extends StatelessWidget {
-  const _ProfileMetric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
-      ],
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.label,
-    required this.value,
-    required this.hint,
-  });
-
-  final String label;
-  final String value;
-  final String hint;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E7E2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(color: Color(0xFF6F8477), fontSize: 12),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF183B20),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            hint,
-            style: const TextStyle(fontSize: 11, color: Color(0xFF839389)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickActionCard extends StatelessWidget {
-  const _QuickActionCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.accent,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color accent;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE3E6E1)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: accent),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF183B20),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF71877D)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class BrandLockup extends StatelessWidget {
-  const BrandLockup({this.compact = false, this.splash = false, super.key});
-
-  final bool compact;
-  final bool splash;
-
-  @override
-  Widget build(BuildContext context) {
-    if (splash) {
-      return const Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.recycling_rounded, size: 126, color: Colors.white),
-          SizedBox(height: 14),
-          Text(
-            'EcoRoute',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 34,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          Icons.recycling_rounded,
-          size: compact ? 44 : 120,
-          color: const Color(0xFF123B1A),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          'EcoRoute',
-          style: TextStyle(
-            fontSize: compact ? 20 : 40,
-            fontWeight: FontWeight.w800,
-            color: const Color(0xFF123B1A),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ResponsiveButtonLabel extends StatelessWidget {
-  const _ResponsiveButtonLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
-    );
-  }
-}
-
-class _WelcomeIcon extends StatelessWidget {
-  const _WelcomeIcon();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: const Color(0xFFDCEFE0),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: const Icon(Icons.waving_hand_rounded, color: Color(0xFF2E7D32)),
-    );
-  }
-}
-
-class _MapPin extends StatelessWidget {
-  const _MapPin();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 34,
-      height: 34,
-      decoration: BoxDecoration(
-        color: const Color(0xFF3D8B5A),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 3),
-        boxShadow: const [BoxShadow(color: Color(0x30000000), blurRadius: 6)],
-      ),
-      child: const Icon(Icons.recycling_rounded, size: 18, color: Colors.white),
-    );
-  }
-}
-
-class _MapPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final road = Paint()
-      ..color = const Color(0xFFD2E1D0)
-      ..strokeWidth = 18
-      ..style = PaintingStyle.stroke;
-    final smallRoad = Paint()
-      ..color = const Color(0xFFDCE8DA)
-      ..strokeWidth = 9
-      ..style = PaintingStyle.stroke;
-    final river = Paint()
-      ..color = const Color(0xFFB9DDE2)
-      ..strokeWidth = 24
-      ..style = PaintingStyle.stroke;
-    final mainRoad = Path()
-      ..moveTo(-20, size.height * .72)
-      ..quadraticBezierTo(
-        size.width * .35,
-        size.height * .52,
-        size.width + 20,
-        size.height * .62,
-      );
-    final crossRoad = Path()
-      ..moveTo(size.width * .22, -10)
-      ..quadraticBezierTo(
-        size.width * .5,
-        size.height * .42,
-        size.width * .72,
-        size.height + 10,
-      );
-    final sideRoad = Path()
-      ..moveTo(-10, size.height * .22)
-      ..quadraticBezierTo(
-        size.width * .45,
-        size.height * .1,
-        size.width + 10,
-        size.height * .28,
-      );
-    canvas.drawPath(mainRoad, road);
-    canvas.drawPath(crossRoad, road);
-    canvas.drawPath(sideRoad, smallRoad);
-    final waterPath = Path()
-      ..moveTo(size.width * .84, -10)
-      ..quadraticBezierTo(
-        size.width * .65,
-        size.height * .32,
-        size.width * .92,
-        size.height + 10,
-      );
-    canvas.drawPath(waterPath, river);
-    for (var index = 0; index < 7; index++) {
-      final x = 28.0 + (index * 61) % size.width;
-      final y = 70.0 + (index * 47) % (size.height - 95);
-      canvas.drawCircle(
-        Offset(x, y),
-        2.5,
-        Paint()..color = const Color(0xFFB8CFB4),
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
