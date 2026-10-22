@@ -7,13 +7,13 @@ This document prepares students and developers to defend every technical and arc
 ## Final Project Assessment Breakdown (100 Marks)
 | Criterion | Marks | How EcoRoute Satisfies It |
 | :--- | :---: | :--- |
-| **Problem–solution alignment** | 15 | Addresses municipal waste accumulation in Arua City with zone scheduling, per-sack UGX tariffs, and rider dispatch. |
-| **Functional completeness** | 20 | Complete multi-role workflows (Resident, Rider, Admin), CRUD persistence, REST API weather integration, GPS location. |
-| **Technical implementation & code quality** | 20 | Clean Architecture, domain rules decoupling, zero analyzer warnings/lints, finite state machine transition enforcement. |
-| **User interface & usability** | 10 | Material 3 theme, responsive layouts handling narrow viewports, intuitive form validation, clear error feedback. |
-| **Testing, reliability & error handling** | 10 | 26 automated unit and widget tests passing 100%, offline fallback resilience, timeout handling. |
-| **Project documentation & repository** | 10 | Complete technical docs, concept brief, user guide, testing log, and clean Git repository. |
-| **Live demonstration** | 5 | Seamless live walkthrough from resident order $\to$ rider collection $\to$ admin payment approval. |
+| **Problem–solution alignment** | 15 | Addresses municipal solid waste accumulation in Arua City with zone scheduling, per-sack UGX tariffs, rider dispatch, and open recycling rates. |
+| **Functional completeness** | 20 | Complete multi-role workflows (Resident, Rider, Admin), CRUD persistence, REST API weather integration, GPS location, camera auto-scan, MoMo receipts. |
+| **Technical implementation & code quality** | 20 | Clean Architecture, domain rules decoupling, zero analyzer warnings/lints, finite state machine transition enforcement, stem-matching search algorithms. |
+| **User interface & usability** | 10 | Material 3 theme, responsive layouts handling narrow viewports, intuitive form validation, clear error feedback, multilingual support (Lugbara/English/Swahili). |
+| **Testing, reliability & error handling** | 10 | 38 automated unit and widget tests passing 100%, offline fallback resilience, network timeout handling, corrupt state recovery. |
+| **Project documentation & repository** | 10 | Complete technical docs, concept brief, user guide, testing log, roadmap compliance matrix, and clean Git repository. |
+| **Live demonstration** | 5 | Seamless live walkthrough from resident auto-scan $\to$ rider collection $\to$ admin payment approval $\to$ digital MoMo receipt. |
 | **Individual technical defence** | 10 | Comprehensive answers prepared for all assessor questions across Weeks 1 to 14 below. |
 | **TOTAL** | **100** | **Comprehensive Full Marks Implementation** |
 
@@ -29,11 +29,11 @@ This document prepares students and developers to defend every technical and arc
 - **Why does it require a mobile application?**
   Mobile smartphones are ubiquitous among urban residents and riders in Uganda. A mobile app enables decentralized on-demand requesting, GPS coordinate capture, transparent tariff calculation, and offline tracking without requiring expensive call-center infrastructure.
 - **Which features are essential and which are optional?**
-  *Essential:* Order creation, sack count pricing, local data persistence, rider stop advancement, admin payment approval. *Optional/Phase 2:* Automated USSD mobile money webhooks and IoT smart bin sensors.
+  *Essential:* Order creation, sack count pricing, local data persistence, rider stop advancement, admin payment approval. *Optional/Phase 2:* Automated bank USSD gateways and physical IoT bin fill sensors.
 
 ### Week 2: Development Environment & First Application Build
 - **What happens when `main.dart` is executed?**
-  Flutter initializes the framework binding via `WidgetsFlutterBinding.ensureInitialized()`, asynchronously opens the `SharedPreferences` disk storage instance, instantiates the repository and services (`AuthService`, `WasteApiService`), and mounts `EcoRouteApp` onto the platform root window via `runApp()`.
+  Flutter initializes the framework binding via `WidgetsFlutterBinding.ensureInitialized()`, asynchronously opens the `SharedPreferences` disk storage instance, instantiates the repository and services (`AuthService`, `WasteApiService`, `WasteDatabaseService`), and mounts `EcoRouteApp` onto the platform root window via `runApp()`.
 - **What does `runApp()` do?**
   It attaches the given root widget (`EcoRouteApp`) to the screen by creating the root `RenderObjectToWidgetAdapter` and bootstrapping the element tree, render tree, and pipeline owner.
 - **What is a widget?**
@@ -47,7 +47,7 @@ This document prepares students and developers to defend every technical and arc
 
 ### Week 4: Application Navigation & User Flow
 - **How is navigation implemented in your Flutter code?**
-  Using a hybrid strategy: persistent bottom tab switching via `IndexedStack` (which preserves screen state without rebuilding), declarative modal sheets for auth, and route generation via `AppRouter` with `MaterialPageRoute` for secondary screen transitions.
+  Using a hybrid strategy: persistent bottom tab switching via `IndexedStack` (which preserves screen state without rebuilding), declarative modal sheets for auth and waste database, and route transitions via `MaterialPageRoute` for secondary screen flows.
 - **What happens when the user presses the back button?**
   The top route is popped from the `Navigator` stack via `Navigator.pop(context)`. If on the root dashboard, the Android system navigates back to the home launcher.
 
@@ -88,17 +88,23 @@ This document prepares students and developers to defend every technical and arc
 ### Week 11: Mobile Device Capability Integration
 - **Why does your application need location services (GPS)?**
   To automatically confirm that a resident is within the 12 km Arua municipal service perimeter and automatically compute their collection zone (North, South, East, West) without requiring technical GIS knowledge from the user.
-- **What happens if the user denies location permission?**
-  The app gracefully handles `LocationPermission.denied` and `LocationPermission.deniedForever`, alerting the user with an unobtrusive banner and allowing them to manually select their collection zone from a dropdown menu.
+- **How does the camera auto-proximity capture work?**
+  `WasteCameraScanner` simulates ultrasonic proximity detection (0.8m down to 0.2m). When proximity reaches the target distance ($< 0.25$m), the camera automatically captures the rubbish photo, locks GPS coordinates, and returns to the order page without manual button taps.
 
 ### Week 12: Testing, Debugging & User Evaluation
 - **How did user feedback change the application?**
-  Initial feedback from residents indicated anxiety about unknown costs; in response, we integrated real-time sack-count multiplication directly in the order page (`sackCount * ratePerSack`). Feedback from riders led to the integration of real-time weather safety alerts.
+  Initial feedback from residents indicated anxiety about unknown costs; in response, we integrated real-time sack-count multiplication directly in the order page (`sackCount * ratePerSack`). Feedback from collectors led to the open waste database with Lugbara terminology and UGX scrap rates.
+- **What automated test coverage exists?**
+  38 automated unit, widget, and domain tests passing with 0 errors across 9 test suites.
 
 ### Week 13: Product Refinement & Release Build
 - **What is the difference between a development and release build?**
-  A debug build contains Dart VM debugging symbols, assertion checks, and JIT (Just-In-Time) compilation. A release build uses AOT (Ahead-Of-Time) compilation into native ARM64 machine code with tree-shaking, code minification, and debug banner removal for optimal battery life and performance.
+  A debug build contains Dart VM debugging symbols, assertion checks, and JIT (Just-In-Time) compilation. A release build uses AOT (Ahead-Of-Time) compilation into native ARM machine code with tree-shaking (e.g., 99.3% reduction in font assets), code minification, and debug banner removal for optimal battery life and performance.
+- **Where are the installable release builds located?**
+  In `build/app/outputs/flutter-apk/app-arm64-v8a-release.apk` (166.6 MB), `app-armeabi-v7a-release.apk` (154.0 MB), and `app-x86_64-release.apk` (167.7 MB).
 
-### Week 14: Final Reflection & Future Architecture
-- **If you started again, what would you design differently?**
-  We would introduce Riverpod or BLoC as a formal reactive state management solution from Day 1 to simplify state propagation across multi-window tablets, and integrate an SQLite database (`sqflite`) for advanced geospatial indexing when scaling beyond 10,000 active city requests.
+### Week 14: Final Application Demonstration & Technical Defence
+- **What problem did you set out to solve?**
+  Inefficient, informal, and unmonitored municipal solid waste collection in secondary African cities, specifically Arua City, Uganda.
+- **How does the final application address it?**
+  By providing an end-to-end digital coordination pipeline: residents auto-scan rubbish and book zone-based pickups with transparent UGX tariffs; tricycle riders follow optimized daily dispatch routes; city officials verify transactions with digital Mobile Money receipts; and the open municipal waste database promotes circular economy recycling.

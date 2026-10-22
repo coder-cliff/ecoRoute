@@ -5,8 +5,8 @@ EcoRoute is engineered using Clean Architecture principles, ensuring strict sepa
 
 ```mermaid
 graph TD
-    UI["Presentation Layer (Features & UI)<br/>Home, OrderPage, AuthSheet, CameraScanner, MoMoDialog"] --> Domain["Domain Layer (Rules & Entities)<br/>PickupRequest, AppUser, PriceCalculator, StatusMachine, ZoneResolver"]
-    UI --> Core["Core & Service Layer<br/>PickupRequestRepository, AuthService, WasteApiService, LocationService, LanguageService"]
+    UI["Presentation Layer (Features & UI)<br/>Home, OrderPage, AuthSheet, CameraScanner, WasteDatabaseSheet, MoMoDialog"] --> Domain["Domain Layer (Rules & Entities)<br/>PickupRequest, AppUser, PriceCalculator, StatusMachine, ZoneResolver"]
+    UI --> Core["Core & Service Layer<br/>PickupRequestRepository, AuthService, WasteApiService, WasteDatabaseService, LocationService, LanguageService"]
     Core --> Storage["Data & Platform Services<br/>SharedPreferences, HTTP REST Client, Geolocator GPS"]
 ```
 
@@ -20,7 +20,7 @@ ecoRoute/
 │   │   ├── app.dart            # EcoRouteApp entry widget
 │   │   └── router.dart         # Named routing and navigation generator
 │   ├── core/                   # Infrastructure, services, and repositories
-│   │   ├── services/           # WasteApiService (REST), AuthService, LocationService, LanguageService
+│   │   ├── services/           # WasteApiService, WasteDatabaseService, AuthService, LocationService, LanguageService
 │   │   ├── utils/              # UGX and DateTime formatters
 │   │   ├── pickup_request_repository.dart # Local storage CRUD
 │   │   └── result.dart         # Sealed Result monad for error handling
@@ -31,13 +31,14 @@ ecoRoute/
 │   ├── features/               # Presentation screens & modular components
 │   │   ├── admin/              # Approval queues, transaction analytics
 │   │   ├── auth/               # Role switcher and registration bottom sheet
+│   │   ├── database/           # Municipal waste taxonomy & recycling sheet
 │   │   ├── home/               # Dashboard, interactive map, schedule, weather safety
 │   │   ├── payment/            # Mobile Money dialog & digital audit receipts
-│   │   ├── request/            # Order creation with camera scanner & GPS autofill
+│   │   ├── request/            # Order creation with auto-camera scanner & GPS autofill
 │   │   └── rider/              # Route stop tiles and status progression
 │   └── main.dart               # App entrypoint with async dependency initialization
-├── test/                       # 29 automated unit, mock, and widget tests across 8 suites
-└── docs/                       # Complete project, test, and defence documentation
+├── test/                       # 38 automated unit, mock, and widget tests across 9 suites
+└── docs/                       # Complete 14-week project, test, user, and defence documentation
 ```
 
 ---
@@ -58,6 +59,22 @@ ecoRoute/
 | `residentName` / `residentPhone` | `String` | Contact details for pickup coordination (Default: `+256394880352`) |
 | `status` | `RequestStatus` | `requested`, `collected`, `awaitingVerification`, `paid`, `cancelled` |
 
+### Open Waste Database Models (`WasteDatabaseService`):
+1. **`WasteMaterial`:**
+   - `id`: Unique identifier (e.g., `mat-pet`, `mat-hdpe`, `mat-battery`).
+   - `name`: English descriptive title (e.g., *PET Beverage Bottles*).
+   - `lugbaraName`: Indigenous Lugbara translation (*Kopo kopo kabi kabi*).
+   - `category`: `WasteCategory` enum (*organic, plastic, paper, metal, glass, hazardous*).
+   - `decompositionTime`: Estimated biodegradation period (*2 weeks to 1,000,000 years*).
+   - `valuePerKgUgx`: Open market recycling resale rate in Uganda Shillings (e.g., 800 UGX/kg for PET, 4,500 UGX/kg for e-waste).
+   - `co2SavedPerKg`: Carbon emission reduction achieved per kilogram recycled.
+   - `sortingTip` & `recyclingTip`: Actionable municipal sorting instructions.
+   - `isHazardous`: Boolean flag designating dangerous items requiring controlled drop-off.
+2. **`RecyclingFacility`:**
+   - 6 certified Arua recovery hubs (*Arua Central Market, River Oli, Arua Hill, Referral Hospital, Muni University, Ediofe*) with geographic coordinates, accepted streams, and operating hours.
+3. **`MunicipalWasteBenchmark`:**
+   - Official World Bank / NEMA open benchmarks: 0.44 kg/day/capita generation, 125 daily tons, 68.2% organic, 86% recyclable potential, 42.5% municipal collection coverage.
+
 ---
 
 ## 3. Finite State Machine Transitions
@@ -74,6 +91,8 @@ stateDiagram-v2
     cancelled --> [*]
 ```
 
+Transition enforcement function: `isValidTransition(currentStatus, targetStatus)`.
+
 ---
 
 ## 4. REST API Integration (`WasteApiService`)
@@ -85,33 +104,15 @@ stateDiagram-v2
 
 ---
 
-## 5. Device Capability Integration (`LocationService`)
-- **Package:** `geolocator: ^14.1.2`
-- **Platform Configuration:** Configured in `AndroidManifest.xml`:
-  - `android.permission.INTERNET`
-  - `android.permission.ACCESS_FINE_LOCATION`
-  - `android.permission.ACCESS_COARSE_LOCATION`
-- **Permission Flow:** Checks `isLocationServiceEnabled()`, requests permissions dynamically (`checkPermission()` / `requestPermission()`), and handles permanent denials gracefully without application disruption.
-- **Spatial Resolution:** Resolves distance using Haversine approximation from center $(3.05^\circ, 30.91^\circ)$. If distance $\le 12$ km, calculates vector angle to assign Cardinal Zone.
+## 5. Device Capability Integration (`LocationService` & `WasteCameraScanner`)
+- **Geolocator GPS:** Configured in `AndroidManifest.xml` (`ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`). Resolves distance using Haversine approximation from center $(3.05^\circ, 30.91^\circ)$. If distance $\le 12$ km, calculates vector angle to assign Cardinal Zone.
+- **Waste Camera Scanner:** Viewfinder features simulated real-time ultrasonic proximity detection. When distance decreases below 0.25m, the system auto-captures the photo, acquires GPS coordinates, and if `autoCompleteOnAutoCapture: true`, automatically saves and returns to the order screen.
 
 ---
 
-## 6. Waste Camera & Proximity Guidance (`WasteCameraScanner`)
-- **Proximity Sensor Simulation:** Viewfinder computes target bounding alignment. Prompts resident: *"Move closer to the rubbish..."*.
-- **Dual Capture Modes:**
-  - **Automatic Capture:** Once proximity reaches the $0.95$ threshold, captures evidence automatically.
-  - **Manual Capture:** Shutter button allows user-initiated photo snap at any distance.
-- **Automatic GPS Trigger:** Instantly acquires device GPS coordinates via `LocationService` upon capture completion and locks coordinates into the pickup request.
-
----
-
-## 7. Mobile Money Payment & Digital Receipts (`MoMoPaymentDialog`)
-- **Providers:** Simulates **MTN MoMo** and **Airtel Money** API gateways.
-- **Default Phone Number:** Prefilled with requested municipal hotline **`+256394880352`**.
-- **Digital Audit Receipt:** Emits tamper-resistant receipt showing unique transaction ID (`TX-MTN-...`), timestamp, payer details, sack breakdown, and official verification stamp.
-
----
-
-## 8. Multilingual Localization Engine (`LanguageService`)
-- **Languages:** Supports **English**, **Lugbara** (native language of West Nile / Arua), and **Kiswahili**.
-- **Reactivity:** Singleton `ChangeNotifier` triggers instant UI updates across dashboard, schedules, forms, and dialogs.
+## 6. Build Artifacts & Distribution
+- **Debug Split APKs:** Located in `build/app/outputs/flutter-apk/` (split by ABI: `arm64-v8a`, `armeabi-v7a`, `x86_64`).
+- **Production Release Split APKs:** Built with AOT compilation, native ARM machine code, icon tree-shaking (99.3% reduction), and minification:
+  - `build/app/outputs/flutter-apk/app-arm64-v8a-release.apk` (166.6 MB)
+  - `build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk` (154.0 MB)
+  - `build/app/outputs/flutter-apk/app-x86_64-release.apk` (167.7 MB)
