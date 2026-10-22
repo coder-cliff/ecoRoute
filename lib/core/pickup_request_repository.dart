@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/entities/pickup_request.dart';
 import '../domain/enums/request_status.dart';
 import '../domain/enums/waste_type.dart';
+import '../domain/enums/zone.dart';
 
 abstract interface class PickupRequestRepository {
   Future<List<PickupRequest>> loadAll();
@@ -102,12 +103,21 @@ class SharedPreferencesPickupRequestRepository
     );
   }
 
-  Map<String, Object> _requestToJson(PickupRequest request) => {
+  Map<String, Object?> _requestToJson(PickupRequest request) => {
     'id': request.id,
     'wasteType': request.wasteType.name,
     'description': request.description,
     'submittedAt': request.submittedAt.toIso8601String(),
     'status': request.status.name,
+    'sackCount': request.sackCount,
+    'priceUgx': request.priceUgx,
+    'zone': request.zone.name,
+    'address': request.address,
+    'latitude': request.latitude,
+    'longitude': request.longitude,
+    'residentName': request.residentName,
+    'residentPhone': request.residentPhone,
+    'residentId': request.residentId,
   };
 
   PickupRequest _requestFromJson(Map<String, dynamic> json) => PickupRequest(
@@ -116,5 +126,16 @@ class SharedPreferencesPickupRequestRepository
     description: json['description'] as String,
     submittedAt: DateTime.parse(json['submittedAt'] as String),
     status: RequestStatus.values.byName(json['status'] as String),
+    sackCount: (json['sackCount'] as num?)?.toInt() ?? 1,
+    priceUgx: (json['priceUgx'] as num?)?.toInt() ?? 1500,
+    zone: json['zone'] != null
+        ? Zone.values.byName(json['zone'] as String)
+        : Zone.north,
+    address: json['address'] as String? ?? 'Arua Central',
+    latitude: (json['latitude'] as num?)?.toDouble(),
+    longitude: (json['longitude'] as num?)?.toDouble(),
+    residentName: json['residentName'] as String? ?? 'Resident',
+    residentPhone: json['residentPhone'] as String? ?? '+256 772 000 001',
+    residentId: json['residentId'] as String? ?? 'resident-1',
   );
 }

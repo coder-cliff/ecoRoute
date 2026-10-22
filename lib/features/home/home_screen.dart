@@ -4,18 +4,32 @@ import 'package:flutter/material.dart';
 
 import '../../app/config/app_config.dart';
 import '../../core/pickup_request_repository.dart';
+import '../../core/services/auth_service.dart';
+import '../../core/services/location_service.dart';
+import '../../core/services/waste_api_service.dart';
+import '../../core/utils/formatters.dart';
+import '../../domain/entities/app_user.dart';
 import '../../domain/entities/pickup_request.dart';
 import '../../domain/enums/request_status.dart';
 import '../../domain/enums/role.dart';
 import '../../domain/enums/waste_type.dart';
+import '../../domain/enums/zone.dart';
+import '../../domain/rules/reminder_policy.dart';
 import '../../domain/rules/status_machine.dart';
 import '../auth/auth_sheet.dart';
 import '../request/order_page.dart';
 
 class EcoRouteSplashScreen extends StatefulWidget {
-  const EcoRouteSplashScreen({required this.repository, super.key});
+  const EcoRouteSplashScreen({
+    required this.repository,
+    this.authService,
+    this.wasteApiService,
+    super.key,
+  });
 
   final PickupRequestRepository repository;
+  final AuthService? authService;
+  final WasteApiService? wasteApiService;
 
   @override
   State<EcoRouteSplashScreen> createState() => _EcoRouteSplashScreenState();
@@ -31,7 +45,11 @@ class _EcoRouteSplashScreenState extends State<EcoRouteSplashScreen> {
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (_) => EcoRouteHomeScreen(repository: widget.repository),
+            builder: (_) => EcoRouteHomeScreen(
+              repository: widget.repository,
+              authService: widget.authService,
+              wasteApiService: widget.wasteApiService,
+            ),
           ),
         );
       }
@@ -54,9 +72,18 @@ class _EcoRouteSplashScreenState extends State<EcoRouteSplashScreen> {
 }
 
 class EcoRouteHomeScreen extends StatefulWidget {
-  const EcoRouteHomeScreen({required this.repository, super.key});
+  const EcoRouteHomeScreen({
+    required this.repository,
+    this.authService,
+    this.wasteApiService,
+    this.locationService = const LocationService(),
+    super.key,
+  });
 
   final PickupRequestRepository repository;
+  final AuthService? authService;
+  final WasteApiService? wasteApiService;
+  final LocationService locationService;
 
   @override
   State<EcoRouteHomeScreen> createState() => _EcoRouteHomeScreenState();
@@ -66,13 +93,56 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   int _tab = 0;
   bool _signedIn = false;
   AppRole _role = AppRole.resident;
+  AppUser? _currentUser;
   bool _loadingOrders = true;
   final List<PickupRequest> _orders = [];
+
+  // Week 9: External API Data
+  late final WasteApiService _apiService;
+  AruaWeatherReport? _weatherReport;
+  bool _loadingWeather = false;
+
+  // Week 11: Device Location state
+  UserLocationResult? _lastGpsResult;
+  bool _locatingGps = false;
+
+  // Week 6: State filtering
+  RequestStatus? _statusFilter;
+  String _searchQuery = '';
+
+  // Week 11: Reminders policy
+  bool _remindersEnabled = true;
+  static const _reminderPolicy = ReminderPolicy();
 
   @override
   void initState() {
     super.initState();
+    _apiService = widget.wasteApiService ?? WasteApiService();
+    _loadUserSession();
     _loadOrders();
+    _loadWeather();
+  }
+
+  void _loadUserSession() {
+    if (widget.authService != null) {
+      final user = widget.authService!.getCurrentUser();
+      if (user != null) {
+        _signedIn = true;
+        _role = user.role;
+        _currentUser = user;
+      }
+    }
+  }
+
+  Future<void> _loadWeather() async {
+    setState(() => _loadingWeather = true);
+    final report = await _apiService.fetchAruaCollectionWeather();
+    if (mounted) {
+      setState(() {
+        _weatherReport = report;
+        _loadingWeather = false;
+      });
+    }
   }
 
   Future<void> _loadOrders() async {
@@ -97,14 +167,29 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   }
 
   Future<void> _addOrder(PickupRequest request) async {
-    await widget.repository.save(request);
+    final requestWithUser = request.copyWith(
+      residentId: _currentUser?.id ?? 'resident-1',
+      residentName: _currentUser?.fullName ?? 'Amina Dranzoa',
+      residentPhone: _currentUser?.phone ?? request.residentPhone,
+    );
+
+    await widget.repository.save(requestWithUser);
     if (!mounted) return;
-    setState(() => _orders.insert(0, request));
+    setState(() => _orders.insert(0, requestWithUser));
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Your collection order has been submitted.'),
       ),
+    );
+  }
+
+  Future<void> _deleteOrder(PickupRequest request) async {
+    await widget.repository.delete(request.id);
+    if (!mounted) return;
+    setState(() => _orders.removeWhere((o) => o.id == request.id));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Collection request cancelled.')),
     );
   }
 
@@ -142,10 +227,46 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => AuthSheet(
+        authService: widget.authService,
         onAuthenticated: (role) => setState(() {
           _signedIn = true;
           _role = role;
+          if (widget.authService != null) {
+            _currentUser = widget.authService!.getCurrentUser();
+          }
         }),
+      ),
+    );
+  }
+
+  Future<void> _signOut() async {
+    if (widget.authService != null) {
+      await widget.authService!.logout();
+    }
+    if (!mounted) return;
+    setState(() {
+      _signedIn = false;
+      _role = AppRole.resident;
+      _currentUser = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Signed out successfully.')),
+    );
+  }
+
+  Future<void> _checkGpsLocation() async {
+    setState(() => _locatingGps = true);
+    final result = await widget.locationService.getCurrentUserLocation();
+    if (!mounted) return;
+    setState(() {
+      _locatingGps = false;
+      _lastGpsResult = result;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.message ?? 'GPS location evaluated.'),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -264,6 +385,11 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         children: [
           _buildWelcome(),
           const SizedBox(height: 16),
+
+          // Weather & Route Safety Card (Week 9 REST API integration)
+          _buildWeatherSafetyCard(),
+          const SizedBox(height: 16),
+
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(18),
@@ -408,6 +534,107 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     );
   }
 
+  Widget _buildWeatherSafetyCard() {
+    final report = _weatherReport;
+    final isOnline = report?.isOnline ?? false;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F7F2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD6E8D8)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              report != null && report.isSafeForCollection
+                  ? Icons.wb_sunny_rounded
+                  : Icons.cloud_queue_rounded,
+              color: const Color(0xFF2E7D32),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Arua Route Weather',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF183B20),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isOnline
+                            ? const Color(0xFFE8F5E9)
+                            : const Color(0xFFFFF3E0),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isOnline ? 'REST API Live' : 'Cached',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: isOnline
+                              ? const Color(0xFF2E7D32)
+                              : const Color(0xFFE65100),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  report != null
+                      ? '${report.temperatureC.toStringAsFixed(1)}°C • ${report.conditionSummary}'
+                      : 'Connecting to Arua meteorological service...',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF556958),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: _loadingWeather ? null : _loadWeather,
+            tooltip: 'Refresh Weather',
+            icon: _loadingWeather
+                ? const SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh_rounded, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
   int _countStatus(RequestStatus status) =>
       _orders.where((order) => order.status == status).length;
 
@@ -463,7 +690,8 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       child: approvals.isEmpty
           ? const _EmptyPanelMessage(
               icon: Icons.task_alt_rounded,
-              text: 'All caught up. Completed pickups will appear here for review.',
+              text:
+                  'All caught up. Completed pickups will appear here for review.',
             )
           : Column(
               children: [
@@ -502,7 +730,8 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       child: _orders.isEmpty
           ? const _EmptyPanelMessage(
               icon: Icons.bar_chart_rounded,
-              text: 'Analytics will populate as collection requests are submitted.',
+              text:
+                  'Analytics will populate as collection requests are submitted.',
             )
           : Column(
               children: [
@@ -613,7 +842,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   );
 
   Widget _buildMapPanel() => Container(
-    height: 294,
+    height: 320,
     clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
       color: const Color(0xFFE7F0E6),
@@ -623,15 +852,17 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     child: Stack(
       children: [
         CustomPaint(size: Size.infinite, painter: _MapPainter()),
-        const Positioned(
+        Positioned(
           left: 18,
           top: 18,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Arua service map',
-                style: TextStyle(
+                _lastGpsResult != null && _lastGpsResult!.resolvedZone != null
+                    ? 'Arua service map (${_lastGpsResult!.resolvedZone!.label} zone)'
+                    : 'Arua service map',
+                style: const TextStyle(
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF21452A),
                 ),
@@ -666,11 +897,16 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         Positioned(
           right: 14,
           top: 14,
-          child: _mapControl(Icons.layers_outlined),
+          child: GestureDetector(
+            onTap: _locatingGps ? null : _checkGpsLocation,
+            child: _mapControl(
+              _locatingGps ? Icons.hourglass_top : Icons.my_location_rounded,
+            ),
+          ),
         ),
         Positioned(
           right: 14,
-          bottom: 62,
+          bottom: 74,
           child: Column(
             children: [
               _mapControl(Icons.add),
@@ -682,13 +918,13 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         const Positioned(left: 80, top: 92, child: _MapPin()),
         const Positioned(left: 188, top: 150, child: _MapPin()),
         const Positioned(right: 72, top: 102, child: _MapPin()),
-        const Positioned(left: 132, bottom: 54, child: _MapPin()),
+        const Positioned(left: 132, bottom: 84, child: _MapPin()),
         Positioned(
           left: 16,
           right: 16,
           bottom: 14,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
@@ -831,76 +1067,175 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(20),
+    final filteredOrders = _orders.where((order) {
+      final matchesStatus =
+          _statusFilter == null || order.status == _statusFilter;
+      final matchesSearch = _searchQuery.isEmpty ||
+          order.description.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          order.address.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          order.wasteType.label.toLowerCase().contains(_searchQuery.toLowerCase());
+      return matchesStatus && matchesSearch;
+    }).toList();
+
+    return Column(
       children: [
-        for (final order in _orders)
-          Card(
-            margin: const EdgeInsets.only(bottom: 14),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Icon(
-                      Icons.pending_actions,
-                      color: Color(0xFF2E7D32),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          order.wasteType.label,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          order.description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            Chip(
-                              label: Text(order.status.label),
-                              backgroundColor: const Color(0xFFE8F5E9),
-                            ),
-                            if (_signedIn)
-                              _StatusSelector(
-                                currentStatus: order.status,
-                                onChanged: (status) {
-                                  if (status != null) {
-                                    _updateOrderStatus(order, status);
-                                  }
-                                },
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+        // Search & Filter header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: 'Search requests by location or type...',
+              prefixIcon: const Icon(Icons.search_rounded),
+              isDense: true,
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
               ),
             ),
+            onChanged: (val) => setState(() => _searchQuery = val.trim()),
           ),
+        ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              FilterChip(
+                label: const Text('All'),
+                selected: _statusFilter == null,
+                onSelected: (_) => setState(() => _statusFilter = null),
+              ),
+              const SizedBox(width: 8),
+              for (final status in RequestStatus.values) ...[
+                FilterChip(
+                  label: Text(status.label),
+                  selected: _statusFilter == status,
+                  onSelected: (selected) => setState(
+                    () => _statusFilter = selected ? status : null,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ],
+          ),
+        ),
+        Expanded(
+          child: filteredOrders.isEmpty
+              ? const Center(
+                  child: Text(
+                    'No requests matching the selected filter.',
+                    style: TextStyle(color: Color(0xFF71877D)),
+                  ),
+                )
+              : ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                  children: [
+                    for (final order in filteredOrders)
+                      Card(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.only(top: 8),
+                                child: Icon(
+                                  Icons.pending_actions,
+                                  color: Color(0xFF2E7D32),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          order.wasteType.label,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        Text(
+                                          formatUgx(order.priceUgx),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF2E7D32),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      '${order.sackCount} sack(s) • ${order.zone.label} zone • ${order.address}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF556958),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      order.description,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        Chip(
+                                          label: Text(order.status.label),
+                                          backgroundColor:
+                                              const Color(0xFFE8F5E9),
+                                        ),
+                                        if (_signedIn)
+                                          _StatusSelector(
+                                            currentStatus: order.status,
+                                            onChanged: (status) {
+                                              if (status != null) {
+                                                _updateOrderStatus(order, status);
+                                              }
+                                            },
+                                          ),
+                                        if (order.status ==
+                                            RequestStatus.requested)
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.delete_outline_rounded,
+                                              size: 20,
+                                              color: Colors.redAccent,
+                                            ),
+                                            tooltip: 'Cancel Request',
+                                            onPressed: () =>
+                                                _deleteOrder(order),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+        ),
       ],
     );
   }
 
   Widget _buildProfile() => Center(
     child: _signedIn
-        ? Padding(
+        ? SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -928,6 +1263,20 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
+                if (_currentUser != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    _currentUser!.fullName,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    '${_currentUser!.email} • ${_currentUser!.phone}',
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF71877D)),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Text(
                   _role == AppRole.rider
@@ -965,11 +1314,70 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // Week 11 Reminder Policy toggle
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2EAE1)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Pickup schedule reminders',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _reminderPolicy.shouldSendReminder(
+                                successfulRequests:
+                                    _countStatus(RequestStatus.paid),
+                                remindersEnabled: _remindersEnabled,
+                              )
+                                  ? 'Active: Free onboarding reminder policy enabled.'
+                                  : 'Reminders inactive or onboarding threshold met.',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _remindersEnabled,
+                        onChanged: (val) =>
+                            setState(() => _remindersEnabled = val),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 18),
-                FilledButton.icon(
-                  onPressed: _showAuth,
-                  icon: const Icon(Icons.swap_horiz_rounded),
-                  label: const Text('Switch role'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: _showAuth,
+                      icon: const Icon(Icons.swap_horiz_rounded),
+                      label: const Text('Switch role'),
+                    ),
+                    const SizedBox(width: 12),
+                    OutlinedButton.icon(
+                      onPressed: _signOut,
+                      icon: const Icon(Icons.logout_rounded),
+                      label: const Text('Sign out'),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1256,7 +1664,7 @@ class _AnalyticsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final proportion = count / total;
+    final proportion = total == 0 ? 0.0 : (count / total);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/services/auth_service.dart';
 import '../../domain/enums/role.dart';
 
 class DemoAccount {
@@ -10,9 +11,14 @@ class DemoAccount {
 }
 
 class AuthSheet extends StatefulWidget {
-  const AuthSheet({required this.onAuthenticated, super.key});
+  const AuthSheet({
+    required this.onAuthenticated,
+    this.authService,
+    super.key,
+  });
 
   final void Function(AppRole role) onAuthenticated;
+  final AuthService? authService;
 
   @override
   State<AuthSheet> createState() => _AuthSheetState();
@@ -64,6 +70,24 @@ class _AuthSheetState extends State<AuthSheet> {
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
+      if (widget.authService != null) {
+        if (_createAccount) {
+          widget.authService!.register(
+            fullName: _fullName.text.trim().isEmpty
+                ? 'EcoRoute Resident'
+                : _fullName.text.trim(),
+            email: _email.text.trim(),
+            phone: '+256 772 000 000',
+            password: _password.text,
+            role: _selectedRole,
+          );
+        } else {
+          widget.authService!.login(
+            email: _email.text.trim(),
+            password: _password.text,
+          );
+        }
+      }
       Navigator.pop(context);
       widget.onAuthenticated(_selectedRole);
     }
@@ -79,95 +103,100 @@ class _AuthSheetState extends State<AuthSheet> {
       ),
       child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _createAccount ? 'Create your EcoRoute account' : 'Welcome back',
-              style: const TextStyle(
-                fontSize: 23,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF183B20),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _createAccount ? 'Create your EcoRoute account' : 'Welcome back',
+                style: const TextStyle(
+                  fontSize: 23,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF183B20),
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _createAccount
-                  ? 'Create an account to request waste collection.'
-                  : 'Sign in to request a collection for your waste.',
-            ),
-            const SizedBox(height: 18),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: AppRole.values
-                  .where((role) => role != AppRole.guest)
-                  .map(
-                    (role) => ChoiceChip(
-                      label: Text(role.label),
-                      selected: _selectedRole == role,
-                      onSelected: (_) {
-                        setState(() => _selectedRole = role);
-                        _applyDemoAccount();
-                      },
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Demo access: resident@ecoroute.demo • rider@ecoroute.demo • admin@ecoroute.demo',
-              style: const TextStyle(fontSize: 12, color: Color(0xFF647568)),
-            ),
-            const SizedBox(height: 12),
-            if (_createAccount) ...[
+              const SizedBox(height: 6),
+              Text(
+                _createAccount
+                    ? 'Create an account to request waste collection.'
+                    : 'Sign in to request a collection for your waste.',
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: AppRole.values
+                    .where((role) => role != AppRole.guest)
+                    .map(
+                      (role) => ChoiceChip(
+                        label: Text(role.label),
+                        selected: _selectedRole == role,
+                        onSelected: (_) {
+                          setState(() => _selectedRole = role);
+                          _applyDemoAccount();
+                        },
+                      ),
+                    )
+                    .toList(),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Demo access: resident@ecoroute.demo • rider@ecoroute.demo • admin@ecoroute.demo',
+                style: TextStyle(fontSize: 12, color: Color(0xFF647568)),
+              ),
+              const SizedBox(height: 12),
+              if (_createAccount) ...[
+                TextFormField(
+                  controller: _fullName,
+                  decoration: const InputDecoration(labelText: 'Full name'),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Enter your name'
+                      : null,
+                ),
+                const SizedBox(height: 12),
+              ],
               TextFormField(
-                controller: _fullName,
-                decoration: const InputDecoration(labelText: 'Full name'),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Enter your name'
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'Email address'),
+                validator: (value) => value == null || !value.contains('@')
+                    ? 'Enter a valid email'
                     : null,
               ),
               const SizedBox(height: 12),
-            ],
-            TextFormField(
-              controller: _email,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(labelText: 'Email address'),
-              validator: (value) => value == null || !value.contains('@')
-                  ? 'Enter a valid email'
-                  : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _password,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Password'),
-              validator: (value) => value == null || value.length < 6
-                  ? 'Use at least 6 characters'
-                  : null,
-            ),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: FilledButton(
-                onPressed: _submit,
-                child: _ResponsiveButtonLabel(
-                  _createAccount ? 'Create account' : 'Sign in',
+              TextFormField(
+                controller: _password,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password'),
+                validator: (value) => value == null || value.length < 6
+                    ? 'Use at least 6 characters'
+                    : null,
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: FilledButton(
+                  onPressed: _submit,
+                  child: _ResponsiveButtonLabel(
+                    _createAccount ? 'Create account' : 'Sign in',
+                  ),
                 ),
               ),
-            ),
-            TextButton(
-              onPressed: () => setState(() => _createAccount = !_createAccount),
-              child: _ResponsiveButtonLabel(
-                _createAccount
-                    ? 'Already have an account? Sign in'
-                    : 'New to EcoRoute? Create an account',
+              Center(
+                child: TextButton(
+                  onPressed: () =>
+                      setState(() => _createAccount = !_createAccount),
+                  child: _ResponsiveButtonLabel(
+                    _createAccount
+                        ? 'Already have an account? Sign in'
+                        : 'New to EcoRoute? Create an account',
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
