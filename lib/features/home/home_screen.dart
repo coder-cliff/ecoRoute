@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../app/config/app_config.dart';
 import '../../core/pickup_request_repository.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/language_service.dart';
@@ -567,51 +566,8 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           if (_role == AppRole.resident) ...[
             const SizedBox(height: 16),
             _buildReportButton(),
-            const SizedBox(height: 18),
           ],
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Arua collection schedule',
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF183B20),
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: () => setState(() => _tab = 1),
-                child: const Text('See all'),
-              ),
-            ],
-          ),
-          _reportTile(
-            'North zone',
-            AppConfig.collectionSchedule['north'] ?? 'Wednesdays',
-            Icons.north_rounded,
-            const Color(0xFFE7F3E8),
-          ),
-          _reportTile(
-            'South zone',
-            AppConfig.collectionSchedule['south'] ?? 'Thursdays',
-            Icons.south_rounded,
-            const Color(0xFFF2F7E8),
-          ),
-          _reportTile(
-            'East zone',
-            AppConfig.collectionSchedule['east'] ?? 'Fridays',
-            Icons.east_rounded,
-            const Color(0xFFEAF4FF),
-          ),
-          _reportTile(
-            'West zone',
-            AppConfig.collectionSchedule['west'] ?? 'Saturdays',
-            Icons.west_rounded,
-            const Color(0xFFFFF2D8),
-          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -936,54 +892,6 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-    ),
-  );
-
-  Widget _reportTile(
-    String title,
-    String time,
-    IconData icon,
-    Color background,
-  ) => Container(
-    margin: const EdgeInsets.only(bottom: 10),
-    padding: const EdgeInsets.all(13),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: const Color(0xFFE2EAE1)),
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: const Color(0xFF3D7850)),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 3),
-              Text(
-                time,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF78877B)),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        const Icon(Icons.chevron_right, color: Color(0xFF9AA79C)),
-      ],
     ),
   );
 
