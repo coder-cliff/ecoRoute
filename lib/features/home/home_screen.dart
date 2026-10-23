@@ -13,7 +13,6 @@ import '../../domain/entities/pickup_request.dart';
 import '../../domain/enums/request_status.dart';
 import '../../domain/enums/role.dart';
 import '../../domain/enums/waste_type.dart';
-import '../../domain/enums/zone.dart';
 import '../../domain/rules/reminder_policy.dart';
 import '../../domain/rules/status_machine.dart';
 import '../admin/widgets/analytics_breakdown.dart';
@@ -1125,7 +1124,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                                     ),
                                     const SizedBox(height: 3),
                                     Text(
-                                      '${order.sackCount} sack(s) • ${order.zone.label} zone • ${order.address}',
+                                      '${order.sackCount} sack(s) • Instant Pickup • ${order.address}',
                                       style: const TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
@@ -1355,7 +1354,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                   ),
                   subtitle: const Text(
-                    'Populates demonstration orders across all 4 Arua zones',
+                    'Populates demonstration instant collection requests across Arua',
                     style: TextStyle(fontSize: 11),
                   ),
                   trailing: const Icon(Icons.arrow_forward_rounded),
@@ -1365,7 +1364,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Demonstration orders restored for all 4 Arua zones.'),
+                        content: Text('Demonstration instant collection orders restored.'),
                         backgroundColor: Color(0xFF2E7D32),
                       ),
                     );

@@ -258,8 +258,8 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                   ),
                   child: Text(
                     hasGps
-                        ? '${lat.toStringAsFixed(5)}°N, ${lng.toStringAsFixed(5)}°E (${widget.locationResult!.resolvedZone?.label ?? 'Arua'} Zone)'
-                        : 'Arua Municipal Radius: 12 km • 4 Collection Zones',
+                        ? '${lat.toStringAsFixed(5)}°N, ${lng.toStringAsFixed(5)}°E • Instant Service Active'
+                        : 'Arua service radius: 12 km • Instant On-Demand Dispatch',
                     style: const TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -438,9 +438,9 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                             color: const Color(0xFFE8F0FE),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text(
-                            '${_selectedLandmark!.zone.label} Zone',
-                            style: const TextStyle(
+                          child: const Text(
+                            'Instant Drop-Off Hub',
+                            style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
                               color: Color(0xFF1A73E8),

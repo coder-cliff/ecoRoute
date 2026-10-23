@@ -11,6 +11,7 @@ class PickupRequest {
     this.status = RequestStatus.requested,
     this.sackCount = 1,
     this.priceUgx = 1500,
+    this.isInstant = true,
     this.zone = Zone.north,
     this.address = 'Arua Central',
     this.latitude,
@@ -27,6 +28,7 @@ class PickupRequest {
   final RequestStatus status;
   final int sackCount;
   final int priceUgx;
+  final bool isInstant;
   final Zone zone;
   final String address;
   final double? latitude;
@@ -43,6 +45,7 @@ class PickupRequest {
     RequestStatus? status,
     int? sackCount,
     int? priceUgx,
+    bool? isInstant,
     Zone? zone,
     String? address,
     double? latitude,
@@ -59,6 +62,7 @@ class PickupRequest {
       status: status ?? this.status,
       sackCount: sackCount ?? this.sackCount,
       priceUgx: priceUgx ?? this.priceUgx,
+      isInstant: isInstant ?? this.isInstant,
       zone: zone ?? this.zone,
       address: address ?? this.address,
       latitude: latitude ?? this.latitude,

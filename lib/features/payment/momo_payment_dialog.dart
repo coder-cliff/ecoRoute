@@ -5,7 +5,6 @@ import '../../core/utils/formatters.dart';
 import '../../domain/entities/pickup_request.dart';
 import '../../domain/enums/request_status.dart';
 import '../../domain/enums/waste_type.dart';
-import '../../domain/enums/zone.dart';
 
 enum MoMoProvider {
   mtn('MTN MoMo', Color(0xFFFFCC00), Colors.black, Icons.phone_android_rounded),
@@ -309,7 +308,7 @@ class _MoMoPaymentDialogState extends State<MoMoPaymentDialog> {
                 const Divider(height: 16),
                 _receiptRow('Sacks & Waste', '${widget.request.sackCount} sacks (${widget.request.wasteType.label})'),
                 const Divider(height: 16),
-                _receiptRow('Location', '${widget.request.zone.label} zone • ${widget.request.address}'),
+                _receiptRow('Location', 'Instant Pickup • ${widget.request.address}'),
                 const Divider(height: 16),
                 _receiptRow('Amount Settled', formatUgx(widget.request.priceUgx), isBold: true),
               ],

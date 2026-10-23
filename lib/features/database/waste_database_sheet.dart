@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../core/services/waste_database_service.dart';
 import '../../core/utils/formatters.dart';
-import '../../domain/enums/zone.dart';
 
 class WasteDatabaseSheet extends StatefulWidget {
   const WasteDatabaseSheet({super.key});
@@ -113,7 +112,7 @@ class _WasteDatabaseSheetState extends State<WasteDatabaseSheet> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
-                      '• ${fac.name} (${fac.zone.label} Zone - ${fac.address})',
+                      '• ${fac.name} (${fac.address})',
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),

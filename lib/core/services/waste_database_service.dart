@@ -362,6 +362,9 @@ class WasteDatabaseService {
     }).toList();
   }
 
+  /// Find facilities serving instant municipal drop-offs across Arua
+  List<RecyclingFacility> getInstantFacilities() => getAruaFacilities();
+
   /// Find facilities serving a specific municipal zone
   List<RecyclingFacility> getFacilitiesByZone(Zone zone) {
     return getAruaFacilities().where((f) => f.zone == zone).toList();
