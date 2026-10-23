@@ -53,11 +53,12 @@ ecoRoute/
 | `description` | `String` | Pickup location details and description ($\ge 10$ chars) |
 | `sackCount` | `int` | Number of sacks to collect ($1 \le n \le 50$) |
 | `priceUgx` | `int` | Total computed collection fee in Uganda Shillings |
-| `zone` | `Zone` | `north`, `south`, `east`, `west` |
-| `address` | `String` | Physical landmark or division name |
-| `latitude` / `longitude` | `double?` | GPS coordinates acquired via Geolocator |
+| `isInstant` | `bool` | Instant on-demand collection flag (dispatched immediately upon request without zone delays) |
+| `address` | `String` | Physical landmark, street address, or division name |
+| `latitude` / `longitude` | `double?` | Real-time GPS coordinates acquired via Geolocator |
 | `residentName` / `residentPhone` | `String` | Contact details for pickup coordination (Default: `+256394880352`) |
 | `status` | `RequestStatus` | `requested`, `collected`, `awaitingVerification`, `paid`, `cancelled` |
+| `zone` | `Zone` | Legacy geographic coordinate indicator (retained for backward compatibility) |
 
 ### Open Waste Database Models (`WasteDatabaseService`):
 1. **`WasteMaterial`:**

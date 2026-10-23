@@ -48,18 +48,19 @@ adb install -r "build\app\outputs\flutter-apk\app-arm64-v8a-release.apk"
   - Filter streams: *Plastics, Organic, Paper, Metals, Glass, Hazardous*.
   - View decomposition periods, carbon avoided, and estimated resale rates in UGX/kg.
   - Discover certified Arua recovery bays (*Arua Central Market, River Oli, Arua Hill, Referral Hospital, Muni University, Ediofe*).
-- **Interactive Arua Map:** Pan and zoom across Arua City to inspect collection zones and municipal landmarks.
+- **Interactive Google Maps Panel:** Pan, zoom, and switch between Streets and Satellite modes to inspect Arua City landmarks and instant drop-off hubs, with 1-tap Google Maps navigation.
 
-### B. Scheduling a Pickup with Smart Camera Auto-Scan
-1. Tap **AUTO-SCAN RUBBISH (SMART CAMERA)** on the home screen.
-2. The camera viewfinder opens automatically with proximity detection:
+### B. Requesting Instant On-Demand Collection
+1. **Instant On-Demand Model:** Waste collections operate upon direct request anywhere in Arua municipality — no waiting for fixed zone schedules.
+2. Tap **AUTO-SCAN RUBBISH (SMART CAMERA)** on the home screen:
    - Bring the camera within range of the waste.
    - The ultrasonic guidance counts down and **automatically triggers the shutter** when proximity is reached.
-   - The device GPS coordinates and municipal boundary are automatically locked.
-   - The app auto-returns to the order form with the photo attached!
-3. Alternatively, tap **REPORT AN ISSUE** for manual photo capture.
+   - Device GPS coordinates and municipal boundary verification are locked automatically.
+   - Returns to the order form with the photo attached!
+3. Alternatively, tap **REPORT AN ISSUE** to manually fill the form.
 4. Select your **Waste Type** and number of sacks (e.g. 3 sacks = 4,500 UGX).
-5. Review the prefilled phone number (`+256394880352`) and tap **Submit collection order**.
+5. Enter your **Instant Pickup Address / Landmark** or tap the **GPS Autofill** icon to acquire exact satellite coordinates.
+6. Review the prefilled phone number (`+256394880352`) and tap **Submit collection order**. Direct dispatch is initiated immediately!
 
 ### C. Paying via Mobile Money (MTN MoMo & Airtel Money)
 1. Navigate to the **Requests** tab.
@@ -77,7 +78,7 @@ adb install -r "build\app\outputs\flutter-apk\app-arm64-v8a-release.apk"
 1. **Switch to Rider Role:**
    - Tap the profile/notification icon, select **Rider** (`rider@ecoroute.demo`), and tap **Sign in**.
 2. **Review Today's Route Stops:**
-   - The dashboard transforms into the **Rider dispatch board**, grouping active stops in your zone.
+   - The dashboard transforms into the **Rider dispatch board**, displaying active instant collection stops across Arua municipality.
 3. **Advance Stops Through the Collection Pipeline:**
    - Upon arriving and loading sacks onto the tricycle, tap **Mark collected**.
    - Once the load is secured, tap **Send for verification** to forward the request to the municipal administrator.
