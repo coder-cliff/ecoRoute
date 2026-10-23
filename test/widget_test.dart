@@ -208,4 +208,7 @@ class _TestPickupRequestRepository implements PickupRequestRepository {
   Future<void> delete(String id) async {
     _requests.removeWhere((request) => request.id == id);
   }
+
+  @override
+  Future<void> seedDemoData({bool force = false}) async {}
 }

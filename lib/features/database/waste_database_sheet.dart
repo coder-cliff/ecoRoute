@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../core/services/waste_database_service.dart';
 import '../../core/utils/formatters.dart';
-import '../../domain/enums/zone.dart';
 
 class WasteDatabaseSheet extends StatefulWidget {
   const WasteDatabaseSheet({super.key});
@@ -17,6 +16,11 @@ class _WasteDatabaseSheetState extends State<WasteDatabaseSheet> {
 
   WasteCategory? _selectedCategory;
   String _query = '';
+
+  // Calculator State
+  bool _showCalculator = false;
+  double _calcWeightKg = 10.0;
+  String _calcMaterialId = 'mat-pet';
 
   @override
   void dispose() {
@@ -108,7 +112,7 @@ class _WasteDatabaseSheetState extends State<WasteDatabaseSheet> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
-                      '• ${fac.name} (${fac.zone.label} Zone - ${fac.address})',
+                      '• ${fac.name} (${fac.address})',
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),
@@ -252,6 +256,180 @@ class _WasteDatabaseSheetState extends State<WasteDatabaseSheet> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Interactive Scrap Cash & Carbon Calculator
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFE8F5E9), Color(0xFFF1F8F2)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFC8E6C9)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                InkWell(
+                  onTap: () => setState(() => _showCalculator = !_showCalculator),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calculate_rounded, color: Color(0xFF1B5E20), size: 20),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Scrap Value & Carbon Calculator',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1B5E20),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        _showCalculator ? 'Hide' : 'Calculate Earnings',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                      Icon(
+                        _showCalculator
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        color: const Color(0xFF2E7D32),
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                ),
+                if (_showCalculator) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: _calcMaterialId,
+                    isDense: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Select Recyclable Material',
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    ),
+                    items: all.map((m) {
+                      return DropdownMenuItem(
+                        value: m.id,
+                        child: Text(
+                          '${m.name} (${formatUgx(m.valuePerKgUgx)}/kg)',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) setState(() => _calcMaterialId = val);
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Slider(
+                          value: _calcWeightKg,
+                          min: 1.0,
+                          max: 50.0,
+                          divisions: 49,
+                          label: '${_calcWeightKg.round()} kg',
+                          onChanged: (val) => setState(() => _calcWeightKg = val),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFC8E6C9)),
+                        ),
+                        child: Text(
+                          '${_calcWeightKg.toStringAsFixed(0)} kg',
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Builder(
+                    builder: (context) {
+                      final item = all.firstWhere(
+                        (m) => m.id == _calcMaterialId,
+                        orElse: () => all.first,
+                      );
+                      final totalValue = (item.valuePerKgUgx * _calcWeightKg).round();
+                      final totalCo2 = (item.co2SavedPerKg * _calcWeightKg).toStringAsFixed(1);
+
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Estimated Cash Payout',
+                                    style: TextStyle(fontSize: 10, color: Color(0xFF556958)),
+                                  ),
+                                  Text(
+                                    '${formatUgx(totalValue)} UGX',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF1B5E20),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Carbon Avoided',
+                                    style: TextStyle(fontSize: 10, color: Color(0xFF556958)),
+                                  ),
+                                  Text(
+                                    '$totalCo2 kg CO₂',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF2E7D32),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
               ],
             ),
           ),

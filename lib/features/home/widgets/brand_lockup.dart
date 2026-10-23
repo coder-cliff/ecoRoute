@@ -9,17 +9,31 @@ class BrandLockup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (splash) {
-      return const Column(
+      return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.recycling_rounded, size: 126, color: Colors.white),
-          SizedBox(height: 14),
-          Text(
+          ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: Image.asset(
+              'assets/EcoRoute_logo.png',
+              width: 120,
+              height: 120,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => const Icon(
+                Icons.recycling_rounded,
+                size: 120,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
             'EcoRoute',
             style: TextStyle(
               color: Colors.white,
               fontSize: 34,
               fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
             ),
           ),
         ],
@@ -29,16 +43,25 @@ class BrandLockup extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          Icons.recycling_rounded,
-          size: compact ? 44 : 120,
-          color: const Color(0xFF123B1A),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(compact ? 8 : 18),
+          child: Image.asset(
+            'assets/EcoRoute_logo.png',
+            width: compact ? 34 : 70,
+            height: compact ? 34 : 70,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Icon(
+              Icons.recycling_rounded,
+              size: compact ? 34 : 70,
+              color: const Color(0xFF123B1A),
+            ),
+          ),
         ),
         const SizedBox(width: 10),
         Text(
           'EcoRoute',
           style: TextStyle(
-            fontSize: compact ? 20 : 40,
+            fontSize: compact ? 20 : 36,
             fontWeight: FontWeight.w800,
             color: const Color(0xFF123B1A),
           ),

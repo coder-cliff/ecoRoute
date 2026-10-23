@@ -13,7 +13,6 @@ import '../../domain/entities/pickup_request.dart';
 import '../../domain/enums/request_status.dart';
 import '../../domain/enums/role.dart';
 import '../../domain/enums/waste_type.dart';
-import '../../domain/enums/zone.dart';
 import '../../domain/rules/reminder_policy.dart';
 import '../../domain/rules/status_machine.dart';
 import '../admin/widgets/analytics_breakdown.dart';
@@ -1125,7 +1124,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                                     ),
                                     const SizedBox(height: 3),
                                     Text(
-                                      '${order.sackCount} sack(s) • ${order.zone.label} zone • ${order.address}',
+                                      '${order.sackCount} sack(s) • Instant Pickup • ${order.address}',
                                       style: const TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
@@ -1341,6 +1340,35 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: _showWasteDatabase,
+                ),
+                const SizedBox(height: 10),
+                ListTile(
+                  tileColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: const BorderSide(color: Color(0xFFE2EAE1)),
+                  ),
+                  leading: const Icon(Icons.refresh_rounded, color: Color(0xFF1E88E5)),
+                  title: const Text(
+                    'Reset / Re-seed Demo Municipal Records',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: const Text(
+                    'Populates demonstration instant collection requests across Arua',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  trailing: const Icon(Icons.arrow_forward_rounded),
+                  onTap: () async {
+                    await widget.repository.seedDemoData(force: true);
+                    await _loadOrders();
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Demonstration instant collection orders restored.'),
+                        backgroundColor: Color(0xFF2E7D32),
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 18),
                 Row(

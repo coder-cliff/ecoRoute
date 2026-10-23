@@ -4,6 +4,8 @@ import 'package:ecoroute/domain/enums/request_status.dart';
 import 'package:ecoroute/domain/enums/waste_type.dart';
 import 'package:ecoroute/domain/enums/zone.dart';
 import 'package:ecoroute/domain/rules/price_calculator.dart';
+import 'package:ecoroute/features/request/order_page.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -32,6 +34,7 @@ void main() {
         status: RequestStatus.requested,
         sackCount: 5,
         priceUgx: 12500,
+        isInstant: true,
         zone: Zone.east,
         address: 'Arua Hill Market, Stand 14',
         latitude: 3.0520,
@@ -51,6 +54,7 @@ void main() {
       expect(item.wasteType, WasteType.tradingCenter);
       expect(item.sackCount, 5);
       expect(item.priceUgx, 12500);
+      expect(item.isInstant, isTrue);
       expect(item.zone, Zone.east);
       expect(item.address, 'Arua Hill Market, Stand 14');
       expect(item.latitude, 3.0520);
@@ -68,6 +72,55 @@ void main() {
       await repo.delete('ord-100');
       final afterDelete = await repo.loadAll();
       expect(afterDelete, isEmpty);
+    });
+
+    test('persists isInstant flag for on-demand collection requests', () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final repo = SharedPreferencesPickupRequestRepository(preferences);
+
+      final instantRequest = PickupRequest(
+        id: 'ord-instant-01',
+        wasteType: WasteType.household,
+        description: 'Instant pickup: Plastic sacks ready',
+        submittedAt: DateTime(2026, 10, 23, 12, 0),
+        isInstant: true,
+        address: 'Arua Central Lane 4',
+      );
+
+      await repo.save(instantRequest);
+      final loaded = await repo.loadAll();
+      expect(loaded.single.isInstant, isTrue);
+      expect(loaded.single.address, 'Arua Central Lane 4');
+    });
+
+    testWidgets('OrderPage displays instant collection mode and has no zone dropdown', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OrderPage(onSubmitted: (_) async {}),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Instant On-Demand Dispatch header
+      expect(find.text('Instant On-Demand Collection'), findsOneWidget);
+      expect(
+        find.text(
+          'Collections operate upon instant request across Arua municipality without zone delays.',
+        ),
+        findsOneWidget,
+      );
+
+      // Dedicated Instant pickup address input with GPS autofill
+      expect(find.text('Instant pickup address / landmark'), findsOneWidget);
+
+      // Verify NO zone dropdown is present
+      expect(find.text('North Zone'), findsNothing);
+      expect(find.text('South Zone'), findsNothing);
+      expect(find.text('East Zone'), findsNothing);
+      expect(find.text('West Zone'), findsNothing);
     });
   });
 }

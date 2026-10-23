@@ -4,7 +4,6 @@ import '../../core/services/location_service.dart';
 import '../../core/utils/formatters.dart';
 import '../../domain/entities/pickup_request.dart';
 import '../../domain/enums/waste_type.dart';
-import '../../domain/enums/zone.dart';
 import '../../domain/rules/price_calculator.dart';
 import '../database/waste_database_sheet.dart';
 import 'widgets/waste_camera_scanner.dart';
@@ -28,7 +27,6 @@ class _OrderPageState extends State<OrderPage> {
   final _locationService = const LocationService();
 
   WasteType? _wasteType;
-  Zone _zone = Zone.north;
   bool _submitting = false;
   bool _locating = false;
 
@@ -97,16 +95,13 @@ class _OrderPageState extends State<OrderPage> {
             _capturedPhotoLabel = result.imageLabel;
             _latitude = result.locationResult.latitude;
             _longitude = result.locationResult.longitude;
-            if (result.locationResult.resolvedZone != null) {
-              _zone = result.locationResult.resolvedZone!;
-            }
           });
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Photo captured! GPS automatically locked: '
-                '${result.locationResult.isWithinServiceArea ? '${_zone.label} Zone verified' : 'Outside boundary'}',
+                'Photo captured! GPS coordinates locked for instant collection '
+                '(${result.locationResult.isWithinServiceArea ? 'Arua municipality verified' : 'Outside boundary'}).',
               ),
               backgroundColor: const Color(0xFF2E7D32),
             ),
@@ -126,9 +121,6 @@ class _OrderPageState extends State<OrderPage> {
       _locating = false;
       _latitude = result.latitude;
       _longitude = result.longitude;
-      if (result.resolvedZone != null) {
-        _zone = result.resolvedZone!;
-      }
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -136,7 +128,7 @@ class _OrderPageState extends State<OrderPage> {
         content: Text(
           result.message ??
               (result.isWithinServiceArea
-                  ? 'Location resolved to ${_zone.label} zone.'
+                  ? 'Location locked: Ready for instant on-demand collection.'
                   : 'Unable to resolve GPS location.'),
         ),
         duration: const Duration(seconds: 3),
@@ -158,7 +150,7 @@ class _OrderPageState extends State<OrderPage> {
         submittedAt: DateTime.now(),
         sackCount: _sackCount,
         priceUgx: _totalPrice,
-        zone: _zone,
+        isInstant: true,
         address: _addressController.text.trim().isEmpty
             ? 'Arua Municipality'
             : _addressController.text.trim(),
@@ -217,6 +209,42 @@ class _OrderPageState extends State<OrderPage> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           children: [
+            // Instant On-Demand Dispatch Notice
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F5E9),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFA5D6A7)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.bolt_rounded, color: Color(0xFF2E7D32), size: 24),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Instant On-Demand Collection',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: Color(0xFF1B5E20),
+                          ),
+                        ),
+                        Text(
+                          'Collections operate upon instant request across Arua municipality without zone delays.',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF2E7D32)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             Row(
               children: [
                 Expanded(
@@ -346,31 +374,15 @@ class _OrderPageState extends State<OrderPage> {
             ),
             const SizedBox(height: 10),
 
-            // Zone dropdown with GPS autofill button
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<Zone>(
-                    initialValue: _zone,
-                    decoration: const InputDecoration(
-                      labelText: 'Zone',
-                      isDense: true,
-                    ),
-                    items: Zone.values
-                        .map(
-                          (z) => DropdownMenuItem(
-                            value: z,
-                            child: Text('${z.label} Zone'),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _zone = val);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filledTonal(
+            // Instant Pickup Address & Landmark with GPS Autofill
+            TextFormField(
+              controller: _addressController,
+              decoration: InputDecoration(
+                labelText: 'Instant pickup address / landmark',
+                hintText: 'e.g. Near Market Stall #14, Arua Hill or Exact Gate',
+                isDense: true,
+                prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
+                suffixIcon: IconButton(
                   onPressed: _locating ? null : _detectLocation,
                   tooltip: 'GPS Autofill',
                   icon: _locating
@@ -380,8 +392,37 @@ class _OrderPageState extends State<OrderPage> {
                         )
                       : const Icon(Icons.my_location_rounded, size: 20),
                 ),
-              ],
+              ),
+              validator: (val) =>
+                  val == null || val.trim().isEmpty ? 'Enter pickup location' : null,
             ),
+            if (_latitude != null && _longitude != null) ...[
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFA5D6A7)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF2E7D32)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'GPS Locked: ${_latitude!.toStringAsFixed(5)}°N, ${_longitude!.toStringAsFixed(5)}°E (Instant Pin)',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1B5E20),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
 
             // Submit Button

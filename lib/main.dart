@@ -12,6 +12,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final preferences = await SharedPreferences.getInstance();
   final repository = SharedPreferencesPickupRequestRepository(preferences);
+  // Auto-seed realistic municipal demo data if storage is fresh
+  await repository.seedDemoData();
   final authService = AuthService(preferences);
   final wasteApiService = WasteApiService();
 
