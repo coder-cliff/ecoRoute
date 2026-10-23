@@ -1342,6 +1342,35 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: _showWasteDatabase,
                 ),
+                const SizedBox(height: 10),
+                ListTile(
+                  tileColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: const BorderSide(color: Color(0xFFE2EAE1)),
+                  ),
+                  leading: const Icon(Icons.refresh_rounded, color: Color(0xFF1E88E5)),
+                  title: const Text(
+                    'Reset / Re-seed Demo Municipal Records',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: const Text(
+                    'Populates demonstration orders across all 4 Arua zones',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  trailing: const Icon(Icons.arrow_forward_rounded),
+                  onTap: () async {
+                    await widget.repository.seedDemoData(force: true);
+                    await _loadOrders();
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Demonstration orders restored for all 4 Arua zones.'),
+                        backgroundColor: Color(0xFF2E7D32),
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 18),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
