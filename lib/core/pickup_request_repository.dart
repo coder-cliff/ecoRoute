@@ -1,5 +1,9 @@
 import 'dart:convert';
+import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/entities/pickup_request.dart';
@@ -163,6 +167,154 @@ class SharedPreferencesPickupRequestRepository
   );
 }
 
+class FirebasePickupRequestRepository implements PickupRequestRepository {
+  FirebasePickupRequestRepository(
+    this._localRepository, {
+    required this._firestore,
+    required this._firebaseAuth,
+  });
+
+  final SharedPreferencesPickupRequestRepository _localRepository;
+  final FirebaseFirestore _firestore;
+  final firebase_auth.FirebaseAuth _firebaseAuth;
+
+  CollectionReference<Map<String, dynamic>> get _requests =>
+      _firestore.collection('pickupRequests');
+
+  @override
+  Future<void> seedDemoData({bool force = false}) =>
+      _localRepository.seedDemoData(force: force);
+
+  @override
+  Future<List<PickupRequest>> loadAll() async {
+    final localRequests = await _localRepository.loadAll();
+    final user = _firebaseAuth.currentUser;
+    if (user == null) return localRequests;
+
+    try {
+      final profile = await _firestore
+          .collection('profiles')
+          .doc(user.uid)
+          .get();
+      final role = profile.data()?['role'] as String? ?? 'resident';
+      final query = _requests.orderBy('submittedAt', descending: true);
+      final snapshot = role == 'resident'
+          ? await query.where('residentId', isEqualTo: user.uid).get()
+          : await query.get();
+      final cloudRequests = snapshot.docs.map(_requestFromDocument).toList();
+      final byId = {for (final request in localRequests) request.id: request};
+      for (final request in cloudRequests) {
+        byId[request.id] = request;
+      }
+      final combined = byId.values.toList()
+        ..sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+      return combined;
+    } on FirebaseException catch (error) {
+      if (!_isConnectivityError(error)) rethrow;
+      debugPrint('Firestore read unavailable; showing locally saved requests.');
+      return localRequests;
+    }
+  }
+
+  @override
+  Future<void> save(PickupRequest request) async {
+    final user = _firebaseAuth.currentUser;
+    if (user != null && request.residentId != user.uid) {
+      throw StateError('A signed-in user can only submit their own request.');
+    }
+    await _localRepository.save(request);
+    if (user == null) return;
+    _queueCloudWrite(
+      _requests.doc(request.id).set(_requestToDocument(request)),
+      'save pickup request',
+    );
+  }
+
+  @override
+  Future<void> updateStatus(String id, RequestStatus status) async {
+    await _localRepository.updateStatus(id, status);
+    if (_firebaseAuth.currentUser == null) return;
+    _queueCloudWrite(
+      _requests.doc(id).update({
+        'status': status.name,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }),
+      'update pickup status',
+    );
+  }
+
+  @override
+  Future<void> delete(String id) async {
+    await _localRepository.delete(id);
+    if (_firebaseAuth.currentUser == null) return;
+    _queueCloudWrite(_requests.doc(id).delete(), 'delete pickup request');
+  }
+
+  bool _isConnectivityError(FirebaseException error) =>
+      error.code == 'unavailable' ||
+      error.code == 'deadline-exceeded' ||
+      error.code == 'network-request-failed';
+
+  void _queueCloudWrite(Future<void> write, String operation) {
+    unawaited(
+      write.catchError((Object error, StackTrace stackTrace) {
+        if (error is FirebaseException && _isConnectivityError(error)) {
+          debugPrint(
+            'Firestore $operation is waiting for a network connection.',
+          );
+          return;
+        }
+        debugPrint('Firestore $operation failed: $error');
+      }),
+    );
+  }
+
+  Map<String, Object?> _requestToDocument(PickupRequest request) => {
+    'id': request.id,
+    'wasteType': request.wasteType.name,
+    'description': request.description,
+    'submittedAt': Timestamp.fromDate(request.submittedAt),
+    'status': request.status.name,
+    'sackCount': request.sackCount,
+    'priceUgx': request.priceUgx,
+    'isInstant': request.isInstant,
+    'zone': request.zone.name,
+    'address': request.address,
+    'latitude': request.latitude,
+    'longitude': request.longitude,
+    'residentName': request.residentName,
+    'residentPhone': request.residentPhone,
+    'residentId': request.residentId,
+    'updatedAt': FieldValue.serverTimestamp(),
+  };
+
+  PickupRequest _requestFromDocument(
+    QueryDocumentSnapshot<Map<String, dynamic>> document,
+  ) {
+    final data = document.data();
+    final submittedAt = data['submittedAt'];
+    return PickupRequest(
+      id: data['id'] as String? ?? document.id,
+      wasteType: WasteType.values.byName(data['wasteType'] as String),
+      description: data['description'] as String,
+      submittedAt: submittedAt is Timestamp
+          ? submittedAt.toDate()
+          : DateTime.parse(submittedAt as String),
+      status: RequestStatus.values.byName(data['status'] as String),
+      sackCount: (data['sackCount'] as num?)?.toInt() ?? 1,
+      priceUgx: (data['priceUgx'] as num?)?.toInt() ?? 1500,
+      isInstant: (data['isInstant'] as bool?) ?? true,
+      zone: Zone.values.byName(data['zone'] as String? ?? 'north'),
+      address: data['address'] as String? ?? 'Arua Central',
+      latitude: (data['latitude'] as num?)?.toDouble(),
+      longitude: (data['longitude'] as num?)?.toDouble(),
+      residentName: data['residentName'] as String? ?? 'Resident',
+      residentPhone: data['residentPhone'] as String? ?? '',
+      residentId: data['residentId'] as String,
+    );
+  }
+}
+
 /// Initial realistic demonstration requests for Arua City
 List<PickupRequest> getInitialDemoRequests() {
   final now = DateTime.now();
@@ -170,7 +322,8 @@ List<PickupRequest> getInitialDemoRequests() {
     PickupRequest(
       id: 'req-arua-01',
       wasteType: WasteType.household,
-      description: 'Instant pickup: Domestic sorted recyclables behind market stalls.',
+      description:
+          'Instant pickup: Domestic sorted recyclables behind market stalls.',
       submittedAt: now.subtract(const Duration(hours: 3)),
       status: RequestStatus.requested,
       sackCount: 3,

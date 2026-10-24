@@ -1,20 +1,46 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
 import 'core/pickup_request_repository.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/waste_api_service.dart';
+import 'firebase_options.dart';
 
 export 'package:ecoroute/app/app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final preferences = await SharedPreferences.getInstance();
-  final repository = SharedPreferencesPickupRequestRepository(preferences);
+  FirebaseAuth? firebaseAuth;
+  FirebaseFirestore? firestore;
+  if (kIsWeb || defaultTargetPlatform == TargetPlatform.android) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    firebaseAuth = FirebaseAuth.instance;
+    firestore = FirebaseFirestore.instance;
+  }
+
+  final localRepository = SharedPreferencesPickupRequestRepository(preferences);
+  final repository = firestore == null || firebaseAuth == null
+      ? localRepository
+      : FirebasePickupRequestRepository(
+          localRepository,
+          firestore: firestore,
+          firebaseAuth: firebaseAuth,
+        );
   // Auto-seed realistic municipal demo data if storage is fresh
   await repository.seedDemoData();
-  final authService = AuthService(preferences);
+  final authService = AuthService(
+    preferences,
+    firebaseAuth: firebaseAuth,
+    firestore: firestore,
+  );
   final wasteApiService = WasteApiService();
 
   runApp(

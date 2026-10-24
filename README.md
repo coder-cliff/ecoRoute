@@ -71,6 +71,43 @@ EcoRoute has been developed and reviewed strictly according to the **14-Week Pro
 
 ---
 
+## Cloud Database Setup
+
+**Firebase Authentication and Cloud Firestore** are wired as the primary cloud
+services on Chrome and Android. Firestore is mirrored to the existing local
+SharedPreferences cache for offline use. A Supabase Postgres schema is prepared
+as a future secondary reporting/mirror database:
+
+- Firebase initialization options: [`lib/firebase_options.dart`](lib/firebase_options.dart).
+- Firestore security rules and index configuration: [`firestore.rules`](firestore.rules),
+  [`firestore.indexes.json`](firestore.indexes.json), and [`firebase.json`](firebase.json).
+- Supabase schema, constraints, indexes, and server-only access:
+  [`supabase/migrations/20261024000000_initial_schema.sql`](supabase/migrations/20261024000000_initial_schema.sql).
+- Firebase users sign up as residents; elevated rider/admin roles must be assigned
+  by a trusted administrator.
+
+### Provision the free-tier projects
+
+1. Create a Firebase project, enable **Email/Password** in Firebase Authentication,
+   and create a Cloud Firestore database. The web config is already populated.
+2. Install the Firebase CLI, run `firebase login`, then `firebase use --add` from
+   the repository root to select your Firebase project. Deploy the Firestore rules
+   and indexes with `firebase deploy --only firestore`.
+3. The current Firebase Android registration uses package name `eco_Route.com`,
+   but this app's Android application ID is `com.ecoroute.ecoroute`. Register the
+   latter package name as an Android app in Firebase and update the Android
+   `appId` in `lib/firebase_options.dart` before relying on Firebase on Android.
+4. Create a Supabase project and run the SQL migration in its SQL Editor. Keep
+   Supabase credentials out of the repository; do not use a service-role key in
+   the Flutter client.
+
+Supabase is not connected to runtime synchronization yet. Mirroring Firebase
+records to Supabase requires a trusted server-side function; never put the
+Supabase service-role key in this Flutter app. iOS and desktop remain local-only
+until platform-specific Firebase app configurations are added.
+
+---
+
 ## Quickstart Guide
 
 ### Prerequisites

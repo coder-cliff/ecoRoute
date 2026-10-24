@@ -1,17 +1,21 @@
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/entities/app_user.dart';
 import '../../domain/enums/role.dart';
 
 class AuthService {
-  AuthService(this._preferences);
+  AuthService(this._preferences, {this._firebaseAuth, this._firestore});
 
   static const String _sessionKey = 'ecoroute_current_user_v1';
   static const String _usersKey = 'ecoroute_registered_users_v1';
 
   final SharedPreferences _preferences;
+  final firebase_auth.FirebaseAuth? _firebaseAuth;
+  final FirebaseFirestore? _firestore;
 
   static const List<Map<String, dynamic>> _demoAccounts = [
     {
@@ -69,6 +73,7 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    await _firebaseAuth?.signOut();
     await _preferences.remove(_sessionKey);
   }
 
@@ -82,6 +87,7 @@ class AuthService {
     for (final demo in _demoAccounts) {
       if ((demo['email'] as String).toLowerCase() == cleanEmail &&
           demo['password'] == password) {
+        await _firebaseAuth?.signOut();
         final user = AppUser(
           id: demo['id'] as String,
           fullName: demo['fullName'] as String,
@@ -92,6 +98,47 @@ class AuthService {
         await _saveSession(user);
         return user;
       }
+    }
+
+    final firebaseAuth = _firebaseAuth;
+    final firestore = _firestore;
+    if (firebaseAuth != null && firestore != null) {
+      final credential = await firebaseAuth.signInWithEmailAndPassword(
+        email: cleanEmail,
+        password: password,
+      );
+      final firebaseUser = credential.user;
+      if (firebaseUser == null || firebaseUser.email == null) return null;
+
+      final profileRef = firestore.collection('profiles').doc(firebaseUser.uid);
+      final profileSnapshot = await profileRef.get();
+      final profile = profileSnapshot.data();
+      if (profile == null) {
+        await profileRef.set({
+          'id': firebaseUser.uid,
+          'fullName': firebaseUser.displayName ?? '',
+          'email': cleanEmail,
+          'phone': firebaseUser.phoneNumber ?? '',
+          'role': 'resident',
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      final user = AppUser(
+        id: firebaseUser.uid,
+        fullName:
+            (profile?['fullName'] as String?) ??
+            firebaseUser.displayName ??
+            cleanEmail,
+        email: cleanEmail,
+        phone: (profile?['phone'] as String?) ?? firebaseUser.phoneNumber ?? '',
+        role: AppRole.values.byName(
+          (profile?['role'] as String?) ?? 'resident',
+        ),
+      );
+      await _saveSession(user);
+      return user;
     }
 
     // 2. Check registered accounts
@@ -122,6 +169,41 @@ class AuthService {
     AppRole role = AppRole.resident,
   }) async {
     final cleanEmail = email.trim().toLowerCase();
+    final firebaseAuth = _firebaseAuth;
+    final firestore = _firestore;
+    if (firebaseAuth != null && firestore != null) {
+      final credential = await firebaseAuth.createUserWithEmailAndPassword(
+        email: cleanEmail,
+        password: password,
+      );
+      final firebaseUser = credential.user;
+      if (firebaseUser == null) {
+        throw StateError('Firebase did not return the created user.');
+      }
+
+      final normalizedPhone = phone.trim().isEmpty
+          ? '+256 772 000 000'
+          : phone.trim();
+      final user = AppUser(
+        id: firebaseUser.uid,
+        fullName: fullName.trim(),
+        email: cleanEmail,
+        phone: normalizedPhone,
+        role: AppRole.resident,
+      );
+      await firestore.collection('profiles').doc(firebaseUser.uid).set({
+        'id': firebaseUser.uid,
+        'fullName': user.fullName,
+        'email': user.email,
+        'phone': user.phone,
+        'role': user.role.name,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      await _saveSession(user);
+      return user;
+    }
+
     final users = _getRegisteredUsers();
 
     final userId = 'user-${DateTime.now().millisecondsSinceEpoch}';
@@ -134,7 +216,9 @@ class AuthService {
       'password': password,
     };
 
-    users.removeWhere((u) => (u['email'] as String).toLowerCase() == cleanEmail);
+    users.removeWhere(
+      (u) => (u['email'] as String).toLowerCase() == cleanEmail,
+    );
     users.add(newUserMap);
 
     await _preferences.setString(_usersKey, jsonEncode(users));
