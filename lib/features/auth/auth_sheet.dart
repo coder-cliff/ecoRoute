@@ -163,7 +163,14 @@ class _AuthSheetState extends State<AuthSheet> {
           return;
         }
       }
-    } on Exception catch (error) {
+    } on StateError catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+        _errorMessage = error.message;
+      });
+      return;
+    } catch (error) {
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;

@@ -19,11 +19,15 @@ Future<void> main() async {
   FirebaseAuth? firebaseAuth;
   FirebaseFirestore? firestore;
   if (kIsWeb || defaultTargetPlatform == TargetPlatform.android) {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    firebaseAuth = FirebaseAuth.instance;
-    firestore = FirebaseFirestore.instance;
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      firebaseAuth = FirebaseAuth.instance;
+      firestore = FirebaseFirestore.instance;
+    } catch (e) {
+      debugPrint('Firebase initialization notice: $e');
+    }
   }
 
   final localRepository = SharedPreferencesPickupRequestRepository(preferences);

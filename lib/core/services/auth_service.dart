@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/entities/app_user.dart';
@@ -78,7 +79,9 @@ class AuthService {
   }
 
   Future<void> logout() async {
-    await _firebaseAuth?.signOut();
+    try {
+      await _firebaseAuth?.signOut();
+    } catch (_) {}
     await _preferences.remove(_sessionKey);
   }
 
@@ -105,7 +108,9 @@ class AuthService {
     for (final demo in _demoAccounts) {
       if ((demo['email'] as String).toLowerCase() == cleanEmail &&
           demo['password'] == password) {
-        await _firebaseAuth?.signOut();
+        try {
+          await _firebaseAuth?.signOut();
+        } catch (_) {}
         final user = AppUser(
           id: demo['id'] as String,
           fullName: demo['fullName'] as String,
@@ -119,48 +124,59 @@ class AuthService {
       }
     }
 
+    // 2. Attempt Firebase Authentication if configured
     final firebaseAuth = _firebaseAuth;
     final firestore = _firestore;
     if (firebaseAuth != null && firestore != null) {
-      final credential = await firebaseAuth.signInWithEmailAndPassword(
-        email: cleanEmail,
-        password: password,
-      );
-      final firebaseUser = credential.user;
-      if (firebaseUser == null || firebaseUser.email == null) return null;
+      try {
+        final credential = await firebaseAuth.signInWithEmailAndPassword(
+          email: cleanEmail,
+          password: password,
+        );
+        final firebaseUser = credential.user;
+        if (firebaseUser != null && firebaseUser.email != null) {
+          final profileRef = firestore.collection('profiles').doc(firebaseUser.uid);
+          final profileSnapshot = await profileRef.get();
+          final profile = profileSnapshot.data();
+          if (profile == null) {
+            await profileRef.set({
+              'id': firebaseUser.uid,
+              'fullName': firebaseUser.displayName ?? cleanEmail.split('@').first,
+              'email': cleanEmail,
+              'phone': firebaseUser.phoneNumber ?? '+256394880352',
+              'role': 'resident',
+              'address': 'Arua Municipality',
+              'createdAt': FieldValue.serverTimestamp(),
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+          }
 
-      final profileRef = firestore.collection('profiles').doc(firebaseUser.uid);
-      final profileSnapshot = await profileRef.get();
-      final profile = profileSnapshot.data();
-      if (profile == null) {
-        await profileRef.set({
-          'id': firebaseUser.uid,
-          'fullName': firebaseUser.displayName ?? '',
-          'email': cleanEmail,
-          'phone': firebaseUser.phoneNumber ?? '',
-          'role': 'resident',
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+          final user = AppUser(
+            id: firebaseUser.uid,
+            fullName: (profile?['fullName'] as String?) ??
+                firebaseUser.displayName ??
+                cleanEmail.split('@').first,
+            email: cleanEmail,
+            phone: (profile?['phone'] as String?) ?? firebaseUser.phoneNumber ?? '+256394880352',
+            role: AppRole.values.byName(
+              (profile?['role'] as String?) ?? 'resident',
+            ),
+            address: profile?['address'] as String?,
+          );
+          await _saveSession(user);
+          return user;
+        }
+      } on firebase_auth.FirebaseAuthException catch (e) {
+        debugPrint('Firebase signIn notice: ${e.code} - ${e.message}');
+        if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+          return null;
+        }
+      } catch (e) {
+        debugPrint('Firebase login exception: $e');
       }
-
-      final user = AppUser(
-        id: firebaseUser.uid,
-        fullName:
-            (profile?['fullName'] as String?) ??
-            firebaseUser.displayName ??
-            cleanEmail,
-        email: cleanEmail,
-        phone: (profile?['phone'] as String?) ?? firebaseUser.phoneNumber ?? '',
-        role: AppRole.values.byName(
-          (profile?['role'] as String?) ?? 'resident',
-        ),
-      );
-      await _saveSession(user);
-      return user;
     }
 
-    // 2. Check registered accounts
+    // 3. Fallback to locally registered accounts
     final registered = _getRegisteredUsers();
     for (final reg in registered) {
       if ((reg['email'] as String).toLowerCase() == cleanEmail &&
@@ -190,71 +206,103 @@ class AuthService {
     String? address,
   }) async {
     final cleanEmail = email.trim().toLowerCase();
+    final normalizedPhone = phone.trim().isEmpty ? '+256394880352' : phone.trim();
+    final normalizedAddress = address?.trim().isNotEmpty == true
+        ? address!.trim()
+        : 'Arua Municipality';
+
+    // 1. Attempt Firebase Authentication if configured
     final firebaseAuth = _firebaseAuth;
     final firestore = _firestore;
     if (firebaseAuth != null && firestore != null) {
-      final credential = await firebaseAuth.createUserWithEmailAndPassword(
-        email: cleanEmail,
-        password: password,
-      );
-      final firebaseUser = credential.user;
-      if (firebaseUser == null) {
-        throw StateError('Firebase did not return the created user.');
-      }
+      try {
+        final credential = await firebaseAuth.createUserWithEmailAndPassword(
+          email: cleanEmail,
+          password: password,
+        );
+        final firebaseUser = credential.user;
+        if (firebaseUser == null) {
+          throw StateError('Firebase did not return the created user.');
+        }
 
-      final normalizedPhone = phone.trim().isEmpty
-          ? '+256 772 000 000'
-          : phone.trim();
-      final user = AppUser(
-        id: firebaseUser.uid,
-        fullName: fullName.trim(),
-        email: cleanEmail,
-        phone: normalizedPhone,
-        role: AppRole.resident,
-      );
-      await firestore.collection('profiles').doc(firebaseUser.uid).set({
-        'id': firebaseUser.uid,
-        'fullName': user.fullName,
-        'email': user.email,
-        'phone': user.phone,
-        'role': user.role.name,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      await _saveSession(user);
-      return user;
+        try {
+          await firebaseUser.updateDisplayName(fullName.trim());
+        } catch (_) {}
+
+        final user = AppUser(
+          id: firebaseUser.uid,
+          fullName: fullName.trim(),
+          email: cleanEmail,
+          phone: normalizedPhone,
+          role: role,
+          address: normalizedAddress,
+        );
+
+        // Store user profile in Firestore
+        await firestore.collection('profiles').doc(firebaseUser.uid).set({
+          'id': firebaseUser.uid,
+          'fullName': user.fullName,
+          'email': user.email,
+          'phone': user.phone,
+          'role': user.role.name,
+          'address': user.address,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        // Save locally for offline sync
+        _saveToLocalRegisteredUsers(user, password);
+        await _saveSession(user);
+        return user;
+      } on firebase_auth.FirebaseAuthException catch (e) {
+        if (e.code == 'email-already-in-use') {
+          throw StateError('This email is already registered with Firebase. Please sign in.');
+        } else if (e.code == 'weak-password') {
+          throw StateError('The password is too weak. Please use at least 6 characters.');
+        } else if (e.code == 'invalid-email') {
+          throw StateError('The email address format is invalid.');
+        } else if (e.code == 'network-request-failed' || e.code == 'unavailable') {
+          debugPrint('Firebase network unavailable. Falling back to local offline registration.');
+        } else {
+          throw StateError(e.message ?? 'Firebase registration failed (${e.code}).');
+        }
+      } catch (e) {
+        if (e is StateError) rethrow;
+        debugPrint('Firebase registration notice: $e. Falling back to local registration.');
+      }
     }
 
-    final users = _getRegisteredUsers();
-
+    // 2. Local Registration (offline / test mode fallback)
     final userId = 'user-${DateTime.now().millisecondsSinceEpoch}';
-    final newUserMap = {
-      'id': userId,
-      'fullName': fullName.trim(),
-      'email': cleanEmail,
-      'phone': phone.trim().isEmpty ? '+256394880352' : phone.trim(),
-      'role': role.name,
-      'password': password,
-      'address': address?.trim().isNotEmpty == true ? address!.trim() : 'Arua Municipality',
-    };
-
-    users.removeWhere(
-      (u) => (u['email'] as String).toLowerCase() == cleanEmail,
-    );
-    users.add(newUserMap);
-
-    await _preferences.setString(_usersKey, jsonEncode(users));
-
     final user = AppUser(
       id: userId,
       fullName: fullName.trim(),
       email: cleanEmail,
-      phone: phone.trim().isEmpty ? '+256394880352' : phone.trim(),
+      phone: normalizedPhone,
       role: role,
-      address: address?.trim().isNotEmpty == true ? address!.trim() : 'Arua Municipality',
+      address: normalizedAddress,
     );
+
+    _saveToLocalRegisteredUsers(user, password);
     await _saveSession(user);
     return user;
+  }
+
+  void _saveToLocalRegisteredUsers(AppUser user, String password) {
+    final users = _getRegisteredUsers();
+    final newUserMap = {
+      'id': user.id,
+      'fullName': user.fullName,
+      'email': user.email,
+      'phone': user.phone,
+      'role': user.role.name,
+      'password': password,
+      'address': user.address,
+    };
+
+    users.removeWhere((u) => (u['email'] as String).toLowerCase() == user.email.toLowerCase());
+    users.add(newUserMap);
+    _preferences.setString(_usersKey, jsonEncode(users));
   }
 
   List<Map<String, dynamic>> _getRegisteredUsers() {
