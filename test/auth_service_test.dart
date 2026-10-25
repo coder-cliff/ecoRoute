@@ -105,6 +105,7 @@ void main() {
       expect(find.text('Full name'), findsNothing);
 
       // Tap toggle to create account
+      await tester.ensureVisible(find.text('New to EcoRoute? Create an account'));
       await tester.tap(find.text('New to EcoRoute? Create an account'));
       await tester.pumpAndSettle();
 
@@ -142,6 +143,7 @@ void main() {
       await tester.enterText(find.widgetWithText(TextFormField, 'Password'), 'secret123');
       await tester.enterText(find.widgetWithText(TextFormField, 'Confirm password'), 'secret999');
 
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Create account'));
       await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
       await tester.pumpAndSettle();
 
@@ -173,6 +175,7 @@ void main() {
       await tester.enterText(find.widgetWithText(TextFormField, 'Password'), 'secure123');
       await tester.enterText(find.widgetWithText(TextFormField, 'Confirm password'), 'secure123');
 
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Create account'));
       await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
       await tester.pumpAndSettle();
 
