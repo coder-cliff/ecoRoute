@@ -7,6 +7,7 @@ class AppUser {
     required this.email,
     required this.phone,
     this.role = AppRole.resident,
+    this.address,
   });
 
   final String id;
@@ -14,4 +15,5 @@ class AppUser {
   final String email;
   final String phone;
   final AppRole role;
+  final String? address;
 }

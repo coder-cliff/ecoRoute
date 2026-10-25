@@ -11,10 +11,16 @@ class DemoAccount {
 }
 
 class AuthSheet extends StatefulWidget {
-  const AuthSheet({required this.onAuthenticated, this.authService, super.key});
+  const AuthSheet({
+    required this.onAuthenticated,
+    this.authService,
+    this.initialCreateAccount = false,
+    super.key,
+  });
 
   final void Function(AppRole role) onAuthenticated;
   final AuthService? authService;
+  final bool initialCreateAccount;
 
   @override
   State<AuthSheet> createState() => _AuthSheetState();
@@ -36,27 +42,41 @@ class _AuthSheetState extends State<AuthSheet> {
     ),
   };
 
-  bool _createAccount = false;
+  late bool _createAccount;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   bool _isSubmitting = false;
   AppRole _selectedRole = AppRole.resident;
   String? _errorMessage;
+
   final _formKey = GlobalKey<FormState>();
   final _fullName = TextEditingController();
+  final _phone = TextEditingController(text: '+256394880352');
+  final _address = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _confirmPassword = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _applyDemoAccount();
+    _createAccount = widget.initialCreateAccount;
+    if (_createAccount) {
+      _email.clear();
+      _password.clear();
+    } else {
+      _applyDemoAccount();
+    }
   }
 
   @override
   void dispose() {
     _fullName.dispose();
+    _phone.dispose();
+    _address.dispose();
     _email.dispose();
     _password.dispose();
+    _confirmPassword.dispose();
     super.dispose();
   }
 
@@ -65,6 +85,21 @@ class _AuthSheetState extends State<AuthSheet> {
     if (account == null) return;
     _email.text = account.email;
     _password.text = account.password;
+  }
+
+  void _toggleAccountMode() {
+    setState(() {
+      _createAccount = !_createAccount;
+      _errorMessage = null;
+      if (_createAccount) {
+        if (_email.text.endsWith('@ecoroute.demo')) {
+          _email.clear();
+          _password.clear();
+        }
+      } else {
+        _applyDemoAccount();
+      }
+    });
   }
 
   Future<void> _submit() async {
@@ -80,13 +115,27 @@ class _AuthSheetState extends State<AuthSheet> {
       if (authService != null) {
         if (_createAccount) {
           final user = await authService.register(
-            fullName: _fullName.text.trim(),
+            fullName: _fullName.text.trim().isEmpty
+                ? 'EcoRoute Resident'
+                : _fullName.text.trim(),
             email: _email.text.trim(),
-            phone: '+256 772 000 000',
+            phone: _phone.text.trim().isEmpty ? '+256394880352' : _phone.text.trim(),
             password: _password.text,
             role: _selectedRole,
+            address: _address.text.trim().isEmpty ? null : _address.text.trim(),
           );
           authenticatedRole = user.role;
+
+          if (!mounted) return;
+          Navigator.of(context).pop();
+          widget.onAuthenticated(authenticatedRole);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Welcome to EcoRoute, ${user.fullName}! Account created successfully.'),
+              backgroundColor: const Color(0xFF2E7D32),
+            ),
+          );
+          return;
         } else {
           final user = await authService.login(
             email: _email.text.trim(),
@@ -96,19 +145,29 @@ class _AuthSheetState extends State<AuthSheet> {
           if (user == null) {
             setState(() {
               _isSubmitting = false;
-              _errorMessage =
-                  'That email and password combination was not found.';
+              _errorMessage = 'That email and password combination was not found.';
             });
             return;
           }
           authenticatedRole = user.role;
+
+          if (!mounted) return;
+          Navigator.of(context).pop();
+          widget.onAuthenticated(authenticatedRole);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Signed in as ${user.fullName} (${user.role.label}).'),
+              backgroundColor: const Color(0xFF2E7D32),
+            ),
+          );
+          return;
         }
       }
     } on Exception catch (error) {
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
-        _errorMessage = 'We could not complete sign-in: $error';
+        _errorMessage = 'Authentication error: $error';
       });
       return;
     }
@@ -116,19 +175,6 @@ class _AuthSheetState extends State<AuthSheet> {
     if (!mounted) return;
     Navigator.of(context).pop();
     widget.onAuthenticated(authenticatedRole);
-  }
-
-  void _toggleAccountMode() {
-    setState(() {
-      _createAccount = !_createAccount;
-      _errorMessage = null;
-      _fullName.clear();
-      if (_createAccount) {
-        _selectedRole = AppRole.resident;
-      } else {
-        _applyDemoAccount();
-      }
-    });
   }
 
   @override
@@ -153,155 +199,180 @@ class _AuthSheetState extends State<AuthSheet> {
                   children: [
                     _AuthHeader(
                       title: _createAccount
-                          ? 'Join the cleaner route'
+                          ? 'Create your EcoRoute account'
                           : 'Welcome back',
                       subtitle: _createAccount
-                          ? 'Create your EcoRoute account to get started.'
-                          : 'Sign in to manage your collections and routes.',
+                          ? 'Sign up for instant on-demand waste collection & recycling rewards in Arua.'
+                          : 'Sign in to manage waste collections, tricycle routes, and approvals.',
                       onClose: () => Navigator.of(context).maybePop(),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+                    if (_errorMessage != null) ...[
+                      _AuthError(message: _errorMessage!),
+                      const SizedBox(height: 14),
+                    ],
                     Text(
-                      _createAccount ? 'I am joining as' : 'I am signing in as',
-                      style: Theme.of(context).textTheme.labelLarge
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      _createAccount ? 'Register as' : 'Sign in as',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF2E7D32),
+                      ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: AppRole.values
-                          .where(
-                            (role) =>
-                                role != AppRole.guest &&
-                                (!_createAccount || role == AppRole.resident),
-                          )
+                          .where((role) => role != AppRole.guest)
                           .map(
                             (role) => ChoiceChip(
                               avatar: Icon(
                                 _roleIcon(role),
-                                size: 17,
+                                size: 16,
                                 color: _selectedRole == role
-                                    ? colors.onPrimaryContainer
-                                    : colors.onSurfaceVariant,
+                                    ? Colors.white
+                                    : const Color(0xFF2E7D32),
                               ),
                               label: Text(role.label),
                               selected: _selectedRole == role,
-                              onSelected: _isSubmitting
-                                  ? null
-                                  : (_) {
-                                      setState(() {
-                                        _selectedRole = role;
-                                        _errorMessage = null;
-                                      });
-                                      if (!_createAccount) _applyDemoAccount();
-                                    },
+                              onSelected: (_) {
+                                setState(() => _selectedRole = role);
+                                if (!_createAccount) {
+                                  _applyDemoAccount();
+                                }
+                              },
                             ),
                           )
                           .toList(),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
+
+                    // Signup exclusive fields
                     if (_createAccount) ...[
                       TextFormField(
                         controller: _fullName,
-                        textCapitalization: TextCapitalization.words,
-                        textInputAction: TextInputAction.next,
-                        autofillHints: const [AutofillHints.name],
                         decoration: const InputDecoration(
                           labelText: 'Full name',
-                          prefixIcon: Icon(Icons.person_outline_rounded),
+                          hintText: 'e.g. Amina Dranzoa',
+                          prefixIcon: Icon(Icons.person_outline, size: 20),
+                          isDense: true,
                         ),
-                        validator: (value) =>
-                            value == null || value.trim().isEmpty
-                            ? 'Enter your name'
+                        validator: (value) => value == null || value.trim().length < 2
+                            ? 'Please enter your full name'
                             : null,
                       ),
                       const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _phone,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          labelText: 'Phone number',
+                          hintText: '+256 772 123 456',
+                          prefixIcon: Icon(Icons.phone_outlined, size: 20),
+                          isDense: true,
+                        ),
+                        validator: (value) => value == null || value.trim().length < 9
+                            ? 'Enter a valid phone number (e.g. +256...)'
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _address,
+                        decoration: const InputDecoration(
+                          labelText: 'Default pickup address / landmark',
+                          hintText: 'e.g. Near Market Stall #14, Arua Hill',
+                          prefixIcon: Icon(Icons.location_on_outlined, size: 20),
+                          isDense: true,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                     ],
+
+                    // Email Address
                     TextFormField(
                       controller: _email,
                       keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                      autofillHints: const [AutofillHints.username],
-                      autocorrect: false,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Email address',
-                        prefixIcon: Icon(Icons.alternate_email_rounded),
+                        hintText: _createAccount ? 'e.g. yourname@example.ug' : null,
+                        prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                        isDense: true,
                       ),
                       validator: (value) {
-                        final email = value?.trim() ?? '';
-                        return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-                                .hasMatch(email)
-                            ? null
-                            : 'Enter a valid email address';
+                        if (value == null || !value.contains('@') || !value.contains('.')) {
+                          return 'Enter a valid email address';
+                        }
+                        return null;
                       },
                     ),
                     const SizedBox(height: 12),
+
+                    // Password
                     TextFormField(
                       controller: _password,
                       obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.done,
-                      autofillHints: [
-                        _createAccount
-                            ? AutofillHints.newPassword
-                            : AutofillHints.password,
-                      ],
-                      onFieldSubmitted: (_) => _submit(),
                       decoration: InputDecoration(
                         labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        hintText: 'Use at least 6 characters',
+                        prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                        isDense: true,
                         suffixIcon: IconButton(
-                          tooltip: _obscurePassword
-                              ? 'Show password'
-                              : 'Hide password',
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
                           icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
+                            _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                            size: 20,
                           ),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                         ),
                       ),
                       validator: (value) => value == null || value.length < 6
                           ? 'Use at least 6 characters'
                           : null,
                     ),
-                    if (_errorMessage != null) ...[
-                      const SizedBox(height: 12),
-                      _AuthError(message: _errorMessage!),
+                    const SizedBox(height: 12),
+
+                    // Confirm Password in Signup mode
+                    if (_createAccount) ...[
+                      TextFormField(
+                        controller: _confirmPassword,
+                        obscureText: _obscureConfirmPassword,
+                        decoration: InputDecoration(
+                          labelText: 'Confirm password',
+                          hintText: 'Re-enter your password',
+                          prefixIcon: const Icon(Icons.lock_reset_outlined, size: 20),
+                          isDense: true,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                          ),
+                        ),
+                        validator: (value) => value != _password.text
+                            ? 'Passwords do not match'
+                            : null,
+                      ),
+                      const SizedBox(height: 14),
                     ],
-                    const SizedBox(height: 18),
+
+                    // Submit Action Button
                     SizedBox(
-                      height: 52,
+                      height: 50,
                       child: FilledButton(
                         onPressed: _isSubmitting ? null : _submit,
                         child: _isSubmitting
                             ? const SizedBox.square(
-                                dimension: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.4,
-                                ),
+                                dimension: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                               )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    _createAccount
-                                        ? Icons.person_add_alt_1_rounded
-                                        : Icons.login_rounded,
-                                  ),
-                                  const SizedBox(width: 9),
-                                  Text(
-                                    _createAccount
-                                        ? 'Create account'
-                                        : 'Sign in',
-                                  ),
-                                ],
+                            : _ResponsiveButtonLabel(
+                                _createAccount ? 'Create account' : 'Sign in',
                               ),
                       ),
                     ),
+                    const SizedBox(height: 8),
+
+                    // Toggle Button
                     Center(
                       child: TextButton(
                         onPressed: _isSubmitting ? null : _toggleAccountMode,
@@ -312,6 +383,7 @@ class _AuthSheetState extends State<AuthSheet> {
                         ),
                       ),
                     ),
+
                     if (!_createAccount) ...[
                       Divider(
                         height: 12,
@@ -319,21 +391,23 @@ class _AuthSheetState extends State<AuthSheet> {
                             ? colors.outlineVariant
                             : colors.surfaceContainerHighest,
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 6),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
                             Icons.info_outline_rounded,
-                            size: 18,
+                            size: 16,
                             color: colors.primary,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Demo access is available for residents, riders, and admins. Use the prefilled demo credentials.',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: colors.onSurfaceVariant),
+                              'Demo access: resident@ecoroute.demo • rider@ecoroute.demo • admin@ecoroute.demo',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                                fontSize: 11,
+                              ),
                             ),
                           ),
                         ],
@@ -350,11 +424,25 @@ class _AuthSheetState extends State<AuthSheet> {
   }
 
   IconData _roleIcon(AppRole role) => switch (role) {
-    AppRole.resident => Icons.home_work_outlined,
-    AppRole.rider => Icons.delivery_dining_rounded,
+    AppRole.resident => Icons.home_outlined,
+    AppRole.rider => Icons.two_wheeler_outlined,
     AppRole.admin => Icons.admin_panel_settings_outlined,
     AppRole.guest => Icons.person_outline_rounded,
   };
+}
+
+class _ResponsiveButtonLabel extends StatelessWidget {
+  const _ResponsiveButtonLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
+    );
+  }
 }
 
 class _AuthHeader extends StatelessWidget {
@@ -373,43 +461,45 @@ class _AuthHeader extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 16, 12, 18),
+      padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [colors.primary, const Color(0xFF174A2B)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(15),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.eco_rounded, color: Colors.white, size: 27),
+            child: const Icon(Icons.eco_rounded, color: Colors.white, size: 24),
           ),
-          const SizedBox(width: 13),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   subtitle,
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: Colors.white.withValues(alpha: 0.86)),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.88),
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
@@ -417,7 +507,7 @@ class _AuthHeader extends StatelessWidget {
           IconButton(
             onPressed: onClose,
             tooltip: 'Close',
-            icon: const Icon(Icons.close_rounded, color: Colors.white),
+            icon: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
           ),
         ],
       ),
@@ -435,20 +525,20 @@ class _AuthError extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: colors.errorContainer,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.error_outline_rounded, color: colors.onErrorContainer),
-          const SizedBox(width: 9),
+          Icon(Icons.error_outline_rounded, color: colors.onErrorContainer, size: 18),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
-              style: TextStyle(color: colors.onErrorContainer),
+              style: TextStyle(color: colors.onErrorContainer, fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ),
         ],

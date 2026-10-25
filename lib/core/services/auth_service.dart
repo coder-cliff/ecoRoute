@@ -25,6 +25,7 @@ class AuthService {
       'phone': '+256 772 123 456',
       'role': 'resident',
       'password': 'demo123',
+      'address': 'Arua Central Market',
     },
     {
       'id': 'rider-demo-1',
@@ -33,6 +34,7 @@ class AuthService {
       'phone': '+256 701 987 654',
       'role': 'rider',
       'password': 'demo123',
+      'address': 'River Oli Depot',
     },
     {
       'id': 'admin-demo-1',
@@ -41,6 +43,7 @@ class AuthService {
       'phone': '+256 782 555 111',
       'role': 'admin',
       'password': 'demo123',
+      'address': 'Arua City Hall',
     },
   ];
 
@@ -55,6 +58,7 @@ class AuthService {
         email: map['email'] as String,
         phone: map['phone'] as String,
         role: AppRole.values.byName(map['role'] as String),
+        address: map['address'] as String?,
       );
     } catch (_) {
       return null;
@@ -68,6 +72,7 @@ class AuthService {
       'email': user.email,
       'phone': user.phone,
       'role': user.role.name,
+      'address': user.address,
     };
     await _preferences.setString(_sessionKey, jsonEncode(data));
   }
@@ -75,6 +80,19 @@ class AuthService {
   Future<void> logout() async {
     await _firebaseAuth?.signOut();
     await _preferences.remove(_sessionKey);
+  }
+
+  /// Checks if an email is already registered in the system (demo or registered accounts)
+  bool isEmailRegistered(String email) {
+    final cleanEmail = email.trim().toLowerCase();
+    for (final demo in _demoAccounts) {
+      if ((demo['email'] as String).toLowerCase() == cleanEmail) return true;
+    }
+    final registered = _getRegisteredUsers();
+    for (final reg in registered) {
+      if ((reg['email'] as String).toLowerCase() == cleanEmail) return true;
+    }
+    return false;
   }
 
   Future<AppUser?> login({
@@ -94,6 +112,7 @@ class AuthService {
           email: demo['email'] as String,
           phone: demo['phone'] as String,
           role: AppRole.values.byName(demo['role'] as String),
+          address: demo['address'] as String?,
         );
         await _saveSession(user);
         return user;
@@ -152,6 +171,7 @@ class AuthService {
           email: reg['email'] as String,
           phone: reg['phone'] as String,
           role: AppRole.values.byName(reg['role'] as String),
+          address: reg['address'] as String?,
         );
         await _saveSession(user);
         return user;
@@ -167,6 +187,7 @@ class AuthService {
     required String phone,
     required String password,
     AppRole role = AppRole.resident,
+    String? address,
   }) async {
     final cleanEmail = email.trim().toLowerCase();
     final firebaseAuth = _firebaseAuth;
@@ -211,9 +232,10 @@ class AuthService {
       'id': userId,
       'fullName': fullName.trim(),
       'email': cleanEmail,
-      'phone': phone.trim().isEmpty ? '+256 772 000 000' : phone.trim(),
+      'phone': phone.trim().isEmpty ? '+256394880352' : phone.trim(),
       'role': role.name,
       'password': password,
+      'address': address?.trim().isNotEmpty == true ? address!.trim() : 'Arua Municipality',
     };
 
     users.removeWhere(
@@ -227,8 +249,9 @@ class AuthService {
       id: userId,
       fullName: fullName.trim(),
       email: cleanEmail,
-      phone: phone.trim().isEmpty ? '+256 772 000 000' : phone.trim(),
+      phone: phone.trim().isEmpty ? '+256394880352' : phone.trim(),
       role: role,
+      address: address?.trim().isNotEmpty == true ? address!.trim() : 'Arua Municipality',
     );
     await _saveSession(user);
     return user;

@@ -223,6 +223,9 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       residentPhone: request.residentPhone.isNotEmpty
           ? request.residentPhone
           : (_currentUser?.phone ?? '+256394880352'),
+      address: (request.address.isNotEmpty && request.address != 'Arua Municipality')
+          ? request.address
+          : (_currentUser?.address ?? request.address),
     );
 
     await widget.repository.save(requestWithUser);
@@ -293,13 +296,14 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     );
   }
 
-  void _showAuth() {
+  void _showAuth({bool createAccount = false}) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => AuthSheet(
         authService: widget.authService,
+        initialCreateAccount: createAccount,
         onAuthenticated: (role) => setState(() {
           _signedIn = true;
           _role = role;
