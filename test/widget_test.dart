@@ -23,7 +23,7 @@ void main() {
     expect(find.text('REPORT AN ISSUE'), findsOneWidget);
   });
 
-  testWidgets('demo auth accounts sign in as different roles', (
+  testWidgets('auth accounts sign in as different roles', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const EcoRouteApp());
@@ -34,10 +34,15 @@ void main() {
     await tester.tap(find.text('REPORT AN ISSUE'));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Rider'));
-    await tester.tap(find.text('Rider'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Email address'),
+      'rider.juma@ecoroute.ug',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Password'),
+      '#ecorute26',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Login'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Profile'));
     await tester.tap(find.text('Profile'));
@@ -63,7 +68,7 @@ void main() {
       find.widgetWithText(TextFormField, 'Password'),
       'secret1',
     );
-    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Login'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('REPORT AN ISSUE'));
     await tester.pumpAndSettle();
@@ -176,9 +181,22 @@ void main() {
 Future<void> _signInAs(WidgetTester tester, String role) async {
   await tester.tap(find.byIcon(Icons.notifications_none_rounded));
   await tester.pumpAndSettle();
-  await tester.tap(find.widgetWithText(ChoiceChip, role));
-  await tester.pumpAndSettle();
-  await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+  if (role.toLowerCase() == 'rider') {
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Email address'),
+      'rider.juma@ecoroute.ug',
+    );
+  } else if (role.toLowerCase() == 'admin') {
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Email address'),
+      'saviordeogratius@gmail.com',
+    );
+  }
+  await tester.enterText(
+    find.widgetWithText(TextFormField, 'Password'),
+    '#ecorute26',
+  );
+  await tester.tap(find.widgetWithText(FilledButton, 'Login'));
   await tester.pumpAndSettle();
 }
 

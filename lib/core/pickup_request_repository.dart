@@ -144,6 +144,7 @@ class SharedPreferencesPickupRequestRepository
     'residentName': request.residentName,
     'residentPhone': request.residentPhone,
     'residentId': request.residentId,
+    'photoUrl': request.photoUrl,
   };
 
   PickupRequest _requestFromJson(Map<String, dynamic> json) => PickupRequest(
@@ -164,6 +165,7 @@ class SharedPreferencesPickupRequestRepository
     residentName: json['residentName'] as String? ?? 'Resident',
     residentPhone: json['residentPhone'] as String? ?? '+256 772 000 001',
     residentId: json['residentId'] as String? ?? 'resident-1',
+    photoUrl: json['photoUrl'] as String?,
   );
 }
 
@@ -285,6 +287,7 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
     'residentName': request.residentName,
     'residentPhone': request.residentPhone,
     'residentId': request.residentId,
+    'photoUrl': request.photoUrl,
     'updatedAt': FieldValue.serverTimestamp(),
   };
 
@@ -311,6 +314,7 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
       residentName: data['residentName'] as String? ?? 'Resident',
       residentPhone: data['residentPhone'] as String? ?? '',
       residentId: data['residentId'] as String,
+      photoUrl: data['photoUrl'] as String?,
     );
   }
 }

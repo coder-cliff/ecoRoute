@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:ecoroute/core/services/language_service.dart';
 import 'package:ecoroute/core/services/location_service.dart';
 import 'package:ecoroute/domain/entities/pickup_request.dart';
@@ -8,6 +10,7 @@ import 'package:ecoroute/features/payment/momo_payment_dialog.dart';
 import 'package:ecoroute/features/request/widgets/waste_camera_scanner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image_picker/image_picker.dart';
 
 class _FakeLocationService extends LocationService {
   const _FakeLocationService();
@@ -15,6 +18,24 @@ class _FakeLocationService extends LocationService {
   @override
   Future<UserLocationResult> getCurrentUserLocation() async {
     return evaluateCoordinates(3.0300, 30.9100);
+  }
+}
+
+class _FakeImagePicker extends ImagePicker {
+  _FakeImagePicker({this.fileToReturn});
+
+  final XFile? fileToReturn;
+
+  @override
+  Future<XFile?> pickImage({
+    required ImageSource source,
+    double? maxWidth,
+    double? maxHeight,
+    int? imageQuality,
+    CameraDevice preferredCameraDevice = CameraDevice.rear,
+    bool requestFullMetadata = true,
+  }) async {
+    return fileToReturn;
   }
 }
 
@@ -46,7 +67,7 @@ void main() {
   });
 
   group('WasteCameraScanner (Proximity Guidance & Auto-GPS)', () {
-    testWidgets('renders camera viewfinder and proximity guidance prompt', (
+    testWidgets('renders camera viewfinder and manual capture controls', (
       WidgetTester tester,
     ) async {
       const locationService = _FakeLocationService();
@@ -65,12 +86,12 @@ void main() {
 
       // Verify guidance prompt and capture controls
       expect(find.text('Rubbish Photo Capture'), findsOneWidget);
-      expect(find.text('Move closer to the rubbish...'), findsOneWidget);
-      expect(find.text('Auto'), findsOneWidget);
-      expect(find.text('Manual'), findsOneWidget);
+      expect(find.text('Manual Camera Capture'), findsOneWidget);
+      expect(find.text('Open Camera'), findsOneWidget);
+      expect(find.text('From Gallery'), findsOneWidget);
 
       // Tap manual capture shutter icon
-      await tester.tap(find.byIcon(Icons.camera_alt_rounded));
+      await tester.tap(find.byIcon(Icons.check_circle_outline_rounded));
       await tester.pump(const Duration(milliseconds: 100));
 
       // Confirm and save captured photo
@@ -80,9 +101,75 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(capturedResult, isNotNull);
-      expect(capturedResult!.imageLabel, contains('waste_evidence'));
+      expect(capturedResult!.imageLabel, contains('waste_photo'));
       expect(capturedResult!.locationResult.isWithinServiceArea, isTrue);
     });
+
+    testWidgets('displays device camera and gallery action buttons', (
+      WidgetTester tester,
+    ) async {
+      const locationService = _FakeLocationService();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: WasteCameraScanner(
+              locationService: locationService,
+              onCaptured: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.photo_library_outlined), findsWidgets);
+      expect(find.byIcon(Icons.photo_camera_rounded), findsWidgets);
+    });
+
+    testWidgets(
+      'automatically launches camera and returns photo evidence when autoLaunchCamera is true',
+      (WidgetTester tester) async {
+        const locationService = _FakeLocationService();
+        WastePhotoCaptureResult? capturedResult;
+        final fakePicker = _FakeImagePicker(
+          fileToReturn: XFile.fromData(
+            Uint8List.fromList([1, 2, 3, 4]),
+            name: 'test_evidence.jpg',
+            path: 'test_evidence.jpg',
+          ),
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: WasteCameraScanner(
+                locationService: locationService,
+                imagePicker: fakePicker,
+                autoLaunchCamera: true,
+                onCaptured: (result) => capturedResult = result,
+              ),
+            ),
+          ),
+        );
+
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('Rubbish Photo Verified'), findsOneWidget);
+        expect(find.text('Captured with live device camera'), findsOneWidget);
+        expect(find.text('Confirm & Save'), findsOneWidget);
+
+        await tester.tap(find.text('Confirm & Save'));
+        await tester.pump();
+
+        expect(capturedResult, isNotNull);
+        expect(capturedResult!.imageLabel, 'test_evidence.jpg');
+        expect(capturedResult!.photoBytes, isNotNull);
+        expect(capturedResult!.locationResult.isWithinServiceArea, isTrue);
+      },
+    );
   });
 
   group('MoMoPaymentDialog (Mobile Money & Digital Receipt)', () {

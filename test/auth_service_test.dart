@@ -18,24 +18,33 @@ void main() {
       authService = AuthService(preferences);
     });
 
-    test('logs in built-in demo accounts successfully', () async {
-      final user = await authService.login(
-        email: 'resident@ecoroute.demo',
-        password: 'demo123',
+    test('logs in built-in admin accounts successfully', () async {
+      final admin1 = await authService.login(
+        email: 'saviordeogratius@gmail.com',
+        password: '#ecorute26',
       );
 
-      expect(user, isNotNull);
-      expect(user!.role, AppRole.resident);
-      expect(user.fullName, contains('Amina Dranzoa'));
+      expect(admin1, isNotNull);
+      expect(admin1!.role, AppRole.admin);
+      expect(admin1.fullName, 'Savior Deo (Admin)');
+
+      final admin2 = await authService.login(
+        email: 'techcliff451@gmail.com',
+        password: '#ecorute26',
+      );
+
+      expect(admin2, isNotNull);
+      expect(admin2!.role, AppRole.admin);
+      expect(admin2.fullName, 'Tech Cliff (Admin)');
 
       // Verify persistent session
       final restored = authService.getCurrentUser();
-      expect(restored?.email, 'resident@ecoroute.demo');
+      expect(restored?.email, 'techcliff451@gmail.com');
     });
 
     test('rejects incorrect credentials', () async {
       final user = await authService.login(
-        email: 'resident@ecoroute.demo',
+        email: 'saviordeogratius@gmail.com',
         password: 'wrong_password',
       );
 
@@ -72,6 +81,35 @@ void main() {
       expect(reLoggedIn?.fullName, 'Kezia Candia');
       expect(reLoggedIn?.address, 'Arua Hill, Stand 14');
     });
+
+    test('manages rider invitations and resident directory', () async {
+      // Invite a rider
+      await authService.inviteRider(
+        email: 'rider.test@ecoroute.ug',
+        fullName: 'Test Rider',
+        phone: '+256 701 111 222',
+      );
+
+      final riders = authService.getInvitedRiders();
+      expect(riders.any((r) => r['email'] == 'rider.test@ecoroute.ug'), isTrue);
+
+      // Register a resident and verify resident directory
+      await authService.register(
+        fullName: 'Arua Resident',
+        email: 'resident.arua@example.ug',
+        phone: '+256 772 333 444',
+        password: 'password123',
+        address: 'Bazaar Ward',
+      );
+
+      final residents = authService.getRegisteredResidents();
+      expect(residents.any((res) => res.email == 'resident.arua@example.ug'), isTrue);
+
+      // Remove rider
+      await authService.removeRider('rider.test@ecoroute.ug');
+      final updatedRiders = authService.getInvitedRiders();
+      expect(updatedRiders.any((r) => r['email'] == 'rider.test@ecoroute.ug'), isFalse);
+    });
   });
 
   group('AuthSheet (Signup & Registration UI Flow)', () {
@@ -99,9 +137,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Initially in Sign in mode
-      expect(find.text('Welcome back'), findsOneWidget);
-      expect(find.text('Sign in'), findsOneWidget);
+      // Initially in Login mode
+      expect(find.text('Login'), findsWidgets);
       expect(find.text('Full name'), findsNothing);
 
       // Tap toggle to create account

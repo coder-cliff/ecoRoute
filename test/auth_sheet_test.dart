@@ -29,19 +29,20 @@ void main() {
       find.widgetWithText(TextFormField, 'Password'),
       'unknown123',
     );
-    await tester.ensureVisible(find.text('Sign in'));
-    await tester.tap(find.text('Sign in'));
+    final loginButton = find.widgetWithText(FilledButton, 'Login');
+    await tester.ensureVisible(loginButton);
+    await tester.tap(loginButton);
     await tester.pumpAndSettle();
 
     expect(
-      find.text('That email and password combination was not found.'),
+      find.text('Invalid email or password. Please try again.'),
       findsOneWidget,
     );
-    expect(find.text('Sign in'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Login'), findsOneWidget);
     expect(authenticated, isFalse);
   });
 
-  testWidgets('signs in using the selected demo role', (tester) async {
+  testWidgets('signs in using admin credentials', (tester) async {
     AppRole? authenticatedRole;
     await _openAuthSheet(
       tester,
@@ -49,14 +50,20 @@ void main() {
       (role) => authenticatedRole = role,
     );
 
-    await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'Rider'));
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Rider'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Sign in'));
-    await tester.tap(find.text('Sign in'));
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Email address'),
+      'saviordeogratius@gmail.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Password'),
+      '#ecorute26',
+    );
+    final loginButton = find.widgetWithText(FilledButton, 'Login');
+    await tester.ensureVisible(loginButton);
+    await tester.tap(loginButton);
     await tester.pumpAndSettle();
 
-    expect(authenticatedRole, AppRole.rider);
+    expect(authenticatedRole, AppRole.admin);
   });
 }
 

@@ -135,12 +135,12 @@ void main() {
       await tester.pumpAndSettle();
 
       // Quick action cards
-      expect(find.text('Auto-scan waste'), findsOneWidget);
+      expect(find.text('Take rubbish photo'), findsOneWidget);
       expect(find.text('Waste database'), findsOneWidget);
 
       // Report section buttons
       await tester.ensureVisible(find.text('REPORT AN ISSUE'));
-      expect(find.text('AUTO-SCAN RUBBISH (SMART CAMERA)'), findsOneWidget);
+      expect(find.text('TAKE RUBBISH PHOTO (CAMERA)'), findsOneWidget);
       expect(find.text('REPORT AN ISSUE'), findsOneWidget);
       expect(find.text('Municipal Waste & Recycling Database'), findsOneWidget);
 

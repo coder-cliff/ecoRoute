@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/services/location_service.dart';
 import '../../core/utils/formatters.dart';
@@ -39,6 +42,8 @@ class _OrderPageState extends State<OrderPage> {
   double? _latitude;
   double? _longitude;
   String? _capturedPhotoLabel;
+  String? _capturedPhotoPath;
+  Uint8List? _capturedPhotoBytes;
 
   @override
   void initState() {
@@ -83,16 +88,23 @@ class _OrderPageState extends State<OrderPage> {
     super.dispose();
   }
 
-  Future<void> _openCameraScanner() async {
+  Future<void> _openCameraScanner({
+    bool autoLaunchCamera = true,
+    ImageSource? initialSource,
+  }) async {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (_) => WasteCameraScanner(
         locationService: _locationService,
         autoCompleteOnAutoCapture: widget.autoTriggerCamera,
+        autoLaunchCamera: autoLaunchCamera,
+        initialSource: initialSource,
         onCaptured: (result) {
           setState(() {
             _capturedPhotoLabel = result.imageLabel;
+            _capturedPhotoPath = result.photoPath;
+            _capturedPhotoBytes = result.photoBytes;
             _latitude = result.locationResult.latitude;
             _longitude = result.locationResult.longitude;
           });
@@ -157,6 +169,7 @@ class _OrderPageState extends State<OrderPage> {
         latitude: _latitude,
         longitude: _longitude,
         residentPhone: _phoneController.text.trim(),
+        photoUrl: _capturedPhotoPath ?? _capturedPhotoLabel,
       );
 
       await widget.onSubmitted(request);
@@ -277,10 +290,90 @@ class _OrderPageState extends State<OrderPage> {
                     color: const Color(0xFF2E7D32),
                   ),
                   label: Text(_capturedPhotoLabel != null ? 'Retake' : 'Scan Rubbish'),
-                  onPressed: _openCameraScanner,
+                  onPressed: () => _openCameraScanner(autoLaunchCamera: true),
                 ),
               ],
             ),
+            if (_capturedPhotoLabel != null || _capturedPhotoBytes != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF81C784)),
+                ),
+                child: Row(
+                  children: [
+                    if (_capturedPhotoBytes != null)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.memory(
+                          _capturedPhotoBytes!,
+                          width: 44,
+                          height: 44,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    else
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2E7D32),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.verified_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _capturedPhotoLabel ?? 'waste_evidence.jpg',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            _latitude != null && _longitude != null
+                                ? 'GPS: ${_latitude!.toStringAsFixed(4)}, ${_longitude!.toStringAsFixed(4)} (Locked)'
+                                : 'Location verified for instant dispatch',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF2E7D32),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: Colors.redAccent,
+                      ),
+                      tooltip: 'Remove photo',
+                      onPressed: () {
+                        setState(() {
+                          _capturedPhotoLabel = null;
+                          _capturedPhotoPath = null;
+                          _capturedPhotoBytes = null;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 10),
 
             // Waste type dropdown

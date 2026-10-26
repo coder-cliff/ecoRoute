@@ -31,6 +31,25 @@ class ApprovalItemTile extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(color: Color(0xFF71877D), fontSize: 12),
         ),
+        if (request.photoUrl != null) ...[
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              const Icon(Icons.photo_camera_back_outlined, size: 14, color: Color(0xFF2E7D4F)),
+              const SizedBox(width: 4),
+              Text(
+                'Photo evidence: ${request.photoUrl!.split(RegExp(r"[/\\]")).last}',
+                style: const TextStyle(
+                  color: Color(0xFF2E7D4F),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,

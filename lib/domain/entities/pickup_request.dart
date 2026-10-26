@@ -19,6 +19,7 @@ class PickupRequest {
     this.residentName = 'Resident',
     this.residentPhone = '+256 772 000 001',
     this.residentId = 'resident-1',
+    this.photoUrl,
   });
 
   final String id;
@@ -36,6 +37,7 @@ class PickupRequest {
   final String residentName;
   final String residentPhone;
   final String residentId;
+  final String? photoUrl;
 
   PickupRequest copyWith({
     String? id,
@@ -53,6 +55,7 @@ class PickupRequest {
     String? residentName,
     String? residentPhone,
     String? residentId,
+    String? photoUrl,
   }) {
     return PickupRequest(
       id: id ?? this.id,
@@ -70,6 +73,7 @@ class PickupRequest {
       residentName: residentName ?? this.residentName,
       residentPhone: residentPhone ?? this.residentPhone,
       residentId: residentId ?? this.residentId,
+      photoUrl: photoUrl ?? this.photoUrl,
     );
   }
 }

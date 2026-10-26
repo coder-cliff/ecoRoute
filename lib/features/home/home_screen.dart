@@ -59,21 +59,54 @@ class EcoRouteSplashScreen extends StatefulWidget {
   State<EcoRouteSplashScreen> createState() => _EcoRouteSplashScreenState();
 }
 
-class _EcoRouteSplashScreenState extends State<EcoRouteSplashScreen> {
-  Timer? _timer;
+class _EcoRouteSplashScreenState extends State<EcoRouteSplashScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnimation;
+  late final Animation<double> _opacityAnimation;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer(const Duration(milliseconds: 1500), () {
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.9, end: 1.05)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 60,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.05, end: 1.6)
+            .chain(CurveTween(curve: Curves.easeInCubic)),
+        weight: 40,
+      ),
+    ]).animate(_controller);
+
+    _opacityAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: ConstantTween<double>(1.0), weight: 75),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 0.0)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 25,
+      ),
+    ]).animate(_controller);
+
+    _controller.forward().then((_) {
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => EcoRouteHomeScreen(
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => EcoRouteHomeScreen(
               repository: widget.repository,
               authService: widget.authService,
               wasteApiService: widget.wasteApiService,
             ),
+            transitionDuration: const Duration(milliseconds: 300),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+                FadeTransition(opacity: animation, child: child),
           ),
         );
       }
@@ -82,15 +115,29 @@ class _EcoRouteSplashScreenState extends State<EcoRouteSplashScreen> {
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFF2EAD65),
-      body: Center(child: BrandLockup(splash: true)),
+    return Scaffold(
+      backgroundColor: const Color(0xFF2EAD65),
+      body: Center(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return FadeTransition(
+              opacity: _opacityAnimation,
+              child: Transform.scale(
+                scale: _scaleAnimation.value,
+                child: child,
+              ),
+            );
+          },
+          child: const BrandLockup(splash: true),
+        ),
+      ),
     );
   }
 }
@@ -140,6 +187,19 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
   final LanguageService _langService = LanguageService.instance;
 
+  // Rider Management Controllers
+  final TextEditingController _riderEmailController = TextEditingController();
+  final TextEditingController _riderNameController = TextEditingController();
+  final TextEditingController _riderPhoneController = TextEditingController();
+  bool _invitingRider = false;
+
+  @override
+  void dispose() {
+    _riderEmailController.dispose();
+    _riderNameController.dispose();
+    _riderPhoneController.dispose();
+    super.dispose();
+  }
   @override
   void initState() {
     super.initState();
@@ -180,6 +240,67 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         ..addAll(orders);
       _loadingOrders = false;
     });
+  }
+
+  Future<void> _inviteRider() async {
+    final email = _riderEmailController.text.trim();
+    final name = _riderNameController.text.trim();
+    final phone = _riderPhoneController.text.trim();
+
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email address for the rider.')),
+      );
+      return;
+    }
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter rider full name.')),
+      );
+      return;
+    }
+
+    setState(() => _invitingRider = true);
+    try {
+      if (widget.authService != null) {
+        await widget.authService!.inviteRider(
+          email: email,
+          fullName: name,
+          phone: phone,
+        );
+      }
+      _riderEmailController.clear();
+      _riderNameController.clear();
+      _riderPhoneController.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFF2E8B57),
+            content: Text('Rider invite sent successfully to ! Password: #ecorute26'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to invite rider: ')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _invitingRider = false);
+    }
+  }
+
+  Future<void> _removeRider(String email) async {
+    if (widget.authService != null) {
+      await widget.authService!.removeRider(email);
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Rider  removed.')),
+        );
+      }
+    }
   }
 
   void _openOrder() {
@@ -584,6 +705,10 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             const SizedBox(height: 18),
             _buildApprovalQueue(),
             const SizedBox(height: 18),
+            _buildRiderManagement(),
+            const SizedBox(height: 18),
+            _buildResidentDirectory(),
+            const SizedBox(height: 18),
             _buildAnalytics(),
           ],
           const SizedBox(height: 18),
@@ -786,6 +911,267 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     );
   }
 
+  Widget _buildRiderManagement() {
+    final riders = widget.authService?.getInvitedRiders() ?? [];
+
+    return _DashboardPanel(
+      title: 'Rider management',
+      subtitle: '${riders.length} active / invited riders',
+      icon: Icons.two_wheeler_rounded,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7FBF8),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE0ECE2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Invite New Collection Rider',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: Color(0xFF1B5E3B),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Riders are strictly invited via email by municipal admins. Default password is #ecorute26.',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF557060)),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _riderNameController,
+                  decoration: InputDecoration(
+                    labelText: 'Rider full name',
+                    hintText: 'e.g. John Boda',
+                    prefixIcon: const Icon(Icons.person_outline, size: 20),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _riderEmailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Rider email address',
+                    hintText: 'e.g. rider@ecoroute.ug',
+                    prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _riderPhoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Phone number (optional)',
+                    hintText: '+256 700 000 000',
+                    prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 40,
+                  child: FilledButton.icon(
+                    onPressed: _invitingRider ? null : _inviteRider,
+                    icon: _invitingRider
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.send_rounded, size: 18),
+                    label: Text(_invitingRider ? 'Inviting...' : 'Send Rider Invite'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF1B5E3B),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Authorized Riders',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: Color(0xFF1E2D24),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (riders.isEmpty)
+            const _EmptyPanelMessage(
+              icon: Icons.two_wheeler_outlined,
+              text: 'No riders invited yet.',
+            )
+          else
+            Column(
+              children: [
+                for (var i = 0; i < riders.length; i++) ...[
+                  if (i > 0) const Divider(height: 14),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: const Color(0xFFE8F5E9),
+                        child: const Icon(
+                          Icons.delivery_dining_rounded,
+                          size: 20,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              riders[i]['fullName'] as String? ?? 'Rider',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                            Text(
+                              '${riders[i]['email']} • ${riders[i]['phone'] ?? ''}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF647568),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          (riders[i]['status'] as String? ?? 'invited').toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1B5E20),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                        tooltip: 'Remove rider',
+                        onPressed: () => _removeRider(riders[i]['email'] as String),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResidentDirectory() {
+    final residents = widget.authService?.getRegisteredResidents() ?? [];
+
+    return _DashboardPanel(
+      title: 'Resident directory',
+      subtitle: '${residents.length} registered residents',
+      icon: Icons.people_alt_outlined,
+      child: residents.isEmpty
+          ? const _EmptyPanelMessage(
+              icon: Icons.people_outline,
+              text: 'No residents registered yet. New resident signups will appear here.',
+            )
+          : Column(
+              children: [
+                for (var i = 0; i < residents.length; i++) ...[
+                  if (i > 0) const Divider(height: 14),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: const Color(0xFFE3F2FD),
+                        child: Text(
+                          residents[i].fullName.isNotEmpty
+                              ? residents[i].fullName[0].toUpperCase()
+                              : 'R',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1976D2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              residents[i].fullName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                            Text(
+                              '${residents[i].email} • ${residents[i].phone}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF647568),
+                              ),
+                            ),
+                            if (residents[i].address != null && residents[i].address!.isNotEmpty)
+                              Text(
+                                residents[i].address!,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Color(0xFF8B9D90),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'RESIDENT',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1B5E20),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+    );
+  }
+
   Widget _buildAnalytics() {
     final statuses = [
       RequestStatus.requested,
@@ -833,8 +1219,8 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     final actions = [
       _QuickActionCard(
         icon: Icons.camera_alt_outlined,
-        title: 'Auto-scan waste',
-        subtitle: 'Auto-proximity & GPS',
+        title: 'Take rubbish photo',
+        subtitle: 'Camera & GPS',
         accent: const Color(0xFF2E8B57),
         onTap: _openAutoScanOrder,
       ),
@@ -848,7 +1234,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       _QuickActionCard(
         icon: Icons.manage_accounts_outlined,
         title: 'Account & role',
-        subtitle: 'Manage demo session',
+        subtitle: 'Manage account & login',
         accent: const Color(0xFFF0A62A),
         onTap: _showAuth,
       ),
@@ -921,7 +1307,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         child: FilledButton.icon(
           onPressed: _openAutoScanOrder,
           icon: const Icon(Icons.camera_alt_rounded),
-          label: const ResponsiveButtonLabel('AUTO-SCAN RUBBISH (SMART CAMERA)'),
+          label: const ResponsiveButtonLabel('TAKE RUBBISH PHOTO (CAMERA)'),
           style: FilledButton.styleFrom(
             backgroundColor: const Color(0xFF1B5E3B),
             foregroundColor: Colors.white,
