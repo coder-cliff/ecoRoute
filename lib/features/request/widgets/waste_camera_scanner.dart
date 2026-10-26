@@ -1,6 +1,3 @@
-import 'dart:typed_data';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -43,6 +40,32 @@ class WasteCameraScanner extends StatefulWidget {
   final ImageSource? initialSource;
   final ImagePicker? imagePicker;
 
+  static const Set<String> validImageExtensions = {
+    'jpg',
+    'jpeg',
+    'png',
+    'webp',
+    'heic',
+    'heif',
+  };
+
+  static bool isSupportedImageFile(String path, {String? fileName}) {
+    final candidate = (fileName != null && fileName.isNotEmpty) ? fileName : path;
+    final lower = candidate.toLowerCase();
+    if (lower.endsWith('.md') ||
+        lower.endsWith('.markdown') ||
+        lower.endsWith('.txt') ||
+        lower.endsWith('.doc') ||
+        lower.endsWith('.docx') ||
+        lower.endsWith('.pdf')) {
+      return false;
+    }
+    final dot = lower.lastIndexOf('.');
+    if (dot == -1) return true;
+    final ext = lower.substring(dot + 1);
+    return validImageExtensions.contains(ext);
+  }
+
   @override
   State<WasteCameraScanner> createState() => _WasteCameraScannerState();
 }
@@ -77,31 +100,7 @@ class _WasteCameraScannerState extends State<WasteCameraScanner> {
     });
   }
 
-  static const Set<String> _validImageExtensions = {
-    'jpg',
-    'jpeg',
-    'png',
-    'webp',
-    'heic',
-    'heif',
-  };
 
-  static bool isSupportedImageFile(String path, {String? fileName}) {
-    final candidate = (fileName != null && fileName.isNotEmpty) ? fileName : path;
-    final lower = candidate.toLowerCase();
-    if (lower.endsWith('.md') ||
-        lower.endsWith('.markdown') ||
-        lower.endsWith('.txt') ||
-        lower.endsWith('.doc') ||
-        lower.endsWith('.docx') ||
-        lower.endsWith('.pdf')) {
-      return false;
-    }
-    final dot = lower.lastIndexOf('.');
-    if (dot == -1) return true;
-    final ext = lower.substring(dot + 1);
-    return _validImageExtensions.contains(ext);
-  }
 
   Future<void> _pickFromSource(ImageSource source) async {
     setState(() => _isProcessingImage = true);
@@ -119,7 +118,7 @@ class _WasteCameraScannerState extends State<WasteCameraScanner> {
         return;
       }
 
-      if (!isSupportedImageFile(file.path, fileName: file.name)) {
+      if (!WasteCameraScanner.isSupportedImageFile(file.path, fileName: file.name)) {
         if (mounted) {
           setState(() => _isProcessingImage = false);
           ScaffoldMessenger.of(context).showSnackBar(
