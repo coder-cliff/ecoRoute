@@ -213,7 +213,7 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.map_rounded, size: 14, color: Color(0xFF1A73E8)),
+                          const Icon(Icons.map_rounded, size: 14, color: Color(0xFF2E7D32)),
                           const SizedBox(width: 5),
                           Text(
                             _mapType == GoogleMapType.roadmap
@@ -299,7 +299,7 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                       ? Icons.hourglass_top
                       : Icons.my_location_rounded,
                   tooltip: 'Locate Accurately in Real Time',
-                  accentColor: const Color(0xFF1A73E8),
+                  accentColor: const Color(0xFF2E7D32),
                   onTap: widget.isLocating ? null : widget.onLocateGps,
                 ),
                 const SizedBox(height: 6),
@@ -335,7 +335,7 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
             ),
           ),
 
-          // User Location Marker (Google Maps Blue Dot)
+          // User Location Marker (EcoRoute Green GPS Dot)
           if (hasGps)
             Positioned(
               left: 140,
@@ -348,14 +348,14 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                     height: 34,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFF4285F4).withValues(alpha: 0.22),
+                      color: const Color(0xFF2EAD65).withValues(alpha: 0.25),
                     ),
                   ),
                   Container(
                     width: 18,
                     height: 18,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1A73E8),
+                      color: const Color(0xFF2E7D32),
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 3),
                       boxShadow: const [
@@ -435,7 +435,7 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE8F0FE),
+                            color: const Color(0xFFE8F5E9),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text(
@@ -443,7 +443,7 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFF1A73E8),
+                              color: Color(0xFF1B5E20),
                             ),
                           ),
                         ),
@@ -488,7 +488,7 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                           icon: const Icon(
                             Icons.directions_rounded,
                             size: 15,
-                            color: Color(0xFF1A73E8),
+                            color: Color(0xFF2E7D32),
                           ),
                           label: const Text(
                             'Directions in Google Maps',
@@ -499,8 +499,8 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                           ),
                           style: OutlinedButton.styleFrom(
                             visualDensity: VisualDensity.compact,
-                            foregroundColor: const Color(0xFF1A73E8),
-                            side: const BorderSide(color: Color(0xFF1A73E8)),
+                            foregroundColor: const Color(0xFF2E7D32),
+                            side: const BorderSide(color: Color(0xFF2E7D32)),
                           ),
                         ),
                       ],
@@ -552,7 +552,7 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8F0FE),
+                        color: const Color(0xFFE8F5E9),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Row(
@@ -561,7 +561,7 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                           Icon(
                             Icons.map_rounded,
                             size: 13,
-                            color: Color(0xFF1A73E8),
+                            color: Color(0xFF2E7D32),
                           ),
                           SizedBox(width: 4),
                           Text(
@@ -569,7 +569,7 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF1A73E8),
+                              color: Color(0xFF1B5E20),
                             ),
                           ),
                         ],
@@ -662,9 +662,9 @@ class _AruaGoogleMapsPainter extends CustomPainter {
     canvas.drawLine(Offset(size.width * 0.5, 0), Offset(size.width * 0.5, size.height), dashPaint);
     canvas.drawLine(Offset(0, size.height * 0.5), Offset(size.width, size.height * 0.5), dashPaint);
 
-    // River Oli (Google Maps Water Blue)
+    // River Oli (Waterway Green)
     final riverPaint = Paint()
-      ..color = isSatellite ? const Color(0xFF0F3A56) : const Color(0xFFA5DCF4)
+      ..color = isSatellite ? const Color(0xFF143020) : const Color(0xFFC8E6C9)
       ..strokeWidth = 18
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;

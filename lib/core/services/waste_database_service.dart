@@ -2,7 +2,7 @@ import '../../domain/enums/zone.dart';
 
 enum WasteCategory {
   organic('Organic & Biodegradable', '0xFF4CAF50'),
-  plastic('Recyclable Plastics', '0xFF2196F3'),
+  plastic('Recyclable Plastics', '0xFF2E7D32'),
   paper('Paper & Cardboard', '0xFFFFA726'),
   metal('Scrap Metals', '0xFF78909C'),
   glass('Glass & Bottles', '0xFF26A69A'),

@@ -19,10 +19,25 @@ class EcoRouteTheme {
       brightness: brightness,
       colorScheme: ColorScheme.fromSeed(
         seedColor: green,
+        primary: green,
+        secondary: darkGreen,
         brightness: brightness,
         surface: surface,
       ),
       scaffoldBackgroundColor: bg,
+      navigationBarTheme: NavigationBarThemeData(
+        indicatorColor: const Color(0xFFDCEFE0),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const IconThemeData(color: green);
+          }
+          return const IconThemeData(color: Color(0xFF647568));
+        }),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        selectedItemColor: green,
+        unselectedItemColor: Color(0xFF647568),
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: bg,
         surfaceTintColor: Colors.transparent,

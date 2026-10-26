@@ -520,6 +520,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: _tab,
+            indicatorColor: const Color(0xFFDCEFE0),
             labelBehavior: MediaQuery.sizeOf(context).width < 360
                 ? NavigationDestinationLabelBehavior.onlyShowSelected
                 : NavigationDestinationLabelBehavior.alwaysShow,
@@ -1108,14 +1109,14 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                     children: [
                       CircleAvatar(
                         radius: 18,
-                        backgroundColor: const Color(0xFFE3F2FD),
+                        backgroundColor: const Color(0xFFE8F5E9),
                         child: Text(
                           residents[i].fullName.isNotEmpty
                               ? residents[i].fullName[0].toUpperCase()
                               : 'R',
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF1976D2),
+                            color: Color(0xFF2E7D32),
                           ),
                         ),
                       ),
@@ -1228,7 +1229,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         icon: Icons.dataset_outlined,
         title: 'Waste database',
         subtitle: 'Pricing & Lugbara terms',
-        accent: const Color(0xFF1E88E5),
+        accent: const Color(0xFF2E7D32),
         onTap: _showWasteDatabase,
       ),
       _QuickActionCard(
@@ -1738,7 +1739,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                     borderRadius: BorderRadius.circular(16),
                     side: const BorderSide(color: Color(0xFFE2EAE1)),
                   ),
-                  leading: const Icon(Icons.refresh_rounded, color: Color(0xFF1E88E5)),
+                  leading: const Icon(Icons.refresh_rounded, color: Color(0xFF2E7D32)),
                   title: const Text(
                     'Reset / Re-seed Demo Municipal Records',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
