@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/pickup_request_repository.dart';
 import '../../core/services/auth_service.dart';
@@ -121,21 +122,31 @@ class _EcoRouteSplashScreenState extends State<EcoRouteSplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF2EAD65),
-      body: Center(
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            return FadeTransition(
-              opacity: _opacityAnimation,
-              child: Transform.scale(
-                scale: _scaleAnimation.value,
-                child: child,
-              ),
-            );
-          },
-          child: const BrandLockup(splash: true),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Color(0xFF2EAD65),
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Color(0xFF2EAD65),
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarDividerColor: Colors.transparent,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF2EAD65),
+        body: Center(
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              return FadeTransition(
+                opacity: _opacityAnimation,
+                child: Transform.scale(
+                  scale: _scaleAnimation.value,
+                  child: child,
+                ),
+              );
+            },
+            child: const BrandLockup(splash: true),
+          ),
         ),
       ),
     );
@@ -470,11 +481,28 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: _langService,
-      builder: (context, _) {
-        return Scaffold(
-          appBar: AppBar(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Color(0xFF2EAD65),
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Color(0xFF2EAD65),
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarDividerColor: Colors.transparent,
+      ),
+      child: ListenableBuilder(
+        listenable: _langService,
+        builder: (context, _) {
+          return Scaffold(
+            appBar: AppBar(
+              systemOverlayStyle: const SystemUiOverlayStyle(
+                statusBarColor: Color(0xFF2EAD65),
+                statusBarIconBrightness: Brightness.light,
+                statusBarBrightness: Brightness.dark,
+                systemNavigationBarColor: Color(0xFF2EAD65),
+                systemNavigationBarIconBrightness: Brightness.light,
+                systemNavigationBarDividerColor: Colors.transparent,
+              ),
             title: const FittedBox(
               fit: BoxFit.scaleDown,
               child: BrandLockup(compact: true),
@@ -545,8 +573,9 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           ),
         );
       },
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildBrowse() {
     final heroTitle = switch (_role) {

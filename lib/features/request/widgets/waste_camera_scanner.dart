@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/services/location_service.dart';
@@ -184,6 +185,12 @@ class _WasteCameraScannerState extends State<WasteCameraScanner> {
         backgroundColor: Colors.black,
         appBar: AppBar(
           backgroundColor: Colors.black,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.black,
+            statusBarIconBrightness: Brightness.light,
+            systemNavigationBarColor: Color(0xFF141915),
+            systemNavigationBarIconBrightness: Brightness.light,
+          ),
           iconTheme: const IconThemeData(color: Colors.white),
           title: const Text(
             'Rubbish Photo Capture',

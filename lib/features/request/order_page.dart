@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/services/location_service.dart';
@@ -74,7 +75,7 @@ class _OrderPageState extends State<OrderPage> {
         sackCount: _sackCount,
         pricePerSackUgx: _ratePerSack,
       );
-    } catch (_) {
+    } catch (e) {
       return 1500;
     }
   }
@@ -173,11 +174,12 @@ class _OrderPageState extends State<OrderPage> {
       );
 
       await widget.onSubmitted(request);
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Could not save the request. Try again.'),
+            content: Text('Could not save the request: $e'),
+            backgroundColor: const Color(0xFFC62828),
           ),
         );
       }
@@ -188,9 +190,26 @@ class _OrderPageState extends State<OrderPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Order a collection'),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Color(0xFF2EAD65),
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Color(0xFF2EAD65),
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarDividerColor: Colors.transparent,
+      ),
+      child: Scaffold(
+        appBar: AppBar(
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Color(0xFF2EAD65),
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+            systemNavigationBarColor: Color(0xFF2EAD65),
+            systemNavigationBarIconBrightness: Brightness.light,
+            systemNavigationBarDividerColor: Colors.transparent,
+          ),
+          title: const Text('Order a collection'),
         actions: [
           IconButton(
             tooltip: 'Waste Database & Rates',

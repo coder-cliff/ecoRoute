@@ -221,8 +221,8 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
   @override
   Future<void> save(PickupRequest request) async {
     final user = _firebaseAuth.currentUser;
-    if (user != null && request.residentId != user.uid) {
-      throw StateError('A signed-in user can only submit their own request.');
+    if (user != null && user.uid.isNotEmpty) {
+      request = request.copyWith(residentId: user.uid);
     }
     await _localRepository.save(request);
     if (user == null) return;

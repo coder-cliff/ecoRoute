@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../core/pickup_request_repository.dart';
 import '../core/services/auth_service.dart';
@@ -20,14 +21,24 @@ class EcoRouteApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'EcoRoute',
-      debugShowCheckedModeBanner: false,
-      theme: EcoRouteTheme.build(),
-      home: EcoRouteSplashScreen(
-        repository: repository,
-        authService: authService,
-        wasteApiService: wasteApiService,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Color(0xFF2EAD65),
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Color(0xFF2EAD65),
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarDividerColor: Colors.transparent,
+      ),
+      child: MaterialApp(
+        title: 'EcoRoute',
+        debugShowCheckedModeBanner: false,
+        theme: EcoRouteTheme.build(),
+        home: EcoRouteSplashScreen(
+          repository: repository,
+          authService: authService,
+          wasteApiService: wasteApiService,
+        ),
       ),
     );
   }
