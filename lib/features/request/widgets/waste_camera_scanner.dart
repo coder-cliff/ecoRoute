@@ -77,6 +77,32 @@ class _WasteCameraScannerState extends State<WasteCameraScanner> {
     });
   }
 
+  static const Set<String> _validImageExtensions = {
+    'jpg',
+    'jpeg',
+    'png',
+    'webp',
+    'heic',
+    'heif',
+  };
+
+  static bool isSupportedImageFile(String path, {String? fileName}) {
+    final candidate = (fileName != null && fileName.isNotEmpty) ? fileName : path;
+    final lower = candidate.toLowerCase();
+    if (lower.endsWith('.md') ||
+        lower.endsWith('.markdown') ||
+        lower.endsWith('.txt') ||
+        lower.endsWith('.doc') ||
+        lower.endsWith('.docx') ||
+        lower.endsWith('.pdf')) {
+      return false;
+    }
+    final dot = lower.lastIndexOf('.');
+    if (dot == -1) return true;
+    final ext = lower.substring(dot + 1);
+    return _validImageExtensions.contains(ext);
+  }
+
   Future<void> _pickFromSource(ImageSource source) async {
     setState(() => _isProcessingImage = true);
 
@@ -90,6 +116,22 @@ class _WasteCameraScannerState extends State<WasteCameraScanner> {
 
       if (file == null) {
         if (mounted) setState(() => _isProcessingImage = false);
+        return;
+      }
+
+      if (!isSupportedImageFile(file.path, fileName: file.name)) {
+        if (mounted) {
+          setState(() => _isProcessingImage = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Invalid file selected. EcoRoute only accepts image files (JPEG, PNG, WEBP). Markdown (.md) and document files cannot be read or uploaded.',
+              ),
+              backgroundColor: Colors.redAccent,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
         return;
       }
 

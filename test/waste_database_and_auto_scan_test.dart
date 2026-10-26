@@ -171,4 +171,27 @@ void main() {
       expect(find.text('Rubbish Photo Capture'), findsOneWidget);
     });
   });
+
+  group('File format security in WasteCameraScanner', () {
+    test('strictly permits image extensions and rejects markdown and document files', () {
+      expect(WasteCameraScanner.isSupportedImageFile('waste.jpg'), isTrue);
+      expect(WasteCameraScanner.isSupportedImageFile('image.png'), isTrue);
+      expect(WasteCameraScanner.isSupportedImageFile('photo.jpeg'), isTrue);
+      expect(WasteCameraScanner.isSupportedImageFile('scan.webp'), isTrue);
+      expect(WasteCameraScanner.isSupportedImageFile('picture.heic'), isTrue);
+
+      // Markdown and document files must never be allowed or read
+      expect(WasteCameraScanner.isSupportedImageFile('README.md'), isFalse);
+      expect(WasteCameraScanner.isSupportedImageFile('notes.markdown'), isFalse);
+      expect(WasteCameraScanner.isSupportedImageFile('document.txt'), isFalse);
+      expect(WasteCameraScanner.isSupportedImageFile('report.pdf'), isFalse);
+      expect(WasteCameraScanner.isSupportedImageFile('specs.doc'), isFalse);
+      expect(WasteCameraScanner.isSupportedImageFile('specs.docx'), isFalse);
+      expect(WasteCameraScanner.isSupportedImageFile('/storage/emulated/0/docs/guide.md'), isFalse);
+      expect(
+        WasteCameraScanner.isSupportedImageFile('/storage/picker/content_123', fileName: 'contract.md'),
+        isFalse,
+      );
+    });
+  });
 }
