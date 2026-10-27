@@ -8,6 +8,7 @@ import '../../core/pickup_request_repository.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/language_service.dart';
 import '../../core/services/location_service.dart';
+import '../../core/services/rider_invite_service.dart';
 import '../../core/services/waste_api_service.dart';
 import '../../core/utils/formatters.dart';
 import '../../domain/entities/app_user.dart';
@@ -409,6 +410,15 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           phone: phone.isNotEmpty ? phone : '+256 700 000 000',
         );
       }
+
+      // Dispatch invitation email via Google Apps Script MailApp API
+      final inviteLink = '${RiderInviteService.defaultAppUrl}?invite=$inviteCode&email=${Uri.encodeComponent(email)}';
+      await RiderInviteService.sendRiderInviteEmail(
+        riderEmail: email,
+        riderName: name,
+        inviteLink: inviteLink,
+      );
+
       _riderEmailController.clear();
       _riderNameController.clear();
       _riderPhoneController.clear();
@@ -737,13 +747,13 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.dataset_outlined),
-                tooltip: 'Waste Database & Rates',
+                tooltip: _langService.translate('waste_database'),
                 onPressed: _showWasteDatabase,
               ),
               // Language Selector Menu
               PopupMenuButton<AppLanguage>(
                 icon: const Icon(Icons.language_rounded),
-                tooltip: 'Select Language',
+                tooltip: _langService.translate('select_language'),
                 onSelected: (lang) => _langService.setLanguage(lang),
                 itemBuilder: (_) => AppLanguage.values
                     .map(
@@ -764,8 +774,8 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
               ),
               IconButton(
                 tooltip: _signedIn
-                    ? 'My Account (${_currentUser?.fullName ?? 'User'})'
-                    : 'Sign in or Register',
+                    ? '${_langService.translate('my_account')} (${_currentUser?.fullName ?? 'User'})'
+                    : _langService.translate('sign_in'),
                 onPressed: _showAuth,
                 icon: Icon(
                   _signedIn

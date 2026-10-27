@@ -84,7 +84,7 @@ class _WasteDatabaseSheetState extends State<WasteDatabaseSheet> {
               Text('Category: ${item.category.label}'),
               Text('Decomposition time: ${item.decompositionTime}'),
               Text('Estimated resale value: ${formatUgx(item.valuePerKgUgx)} / kg'),
-              Text('Carbon avoided: ${item.co2SavedPerKg} kg CO₂ / kg recycled'),
+              Text('Carbon avoided: ${item.co2SavedPerKg} kg CO2 / kg recycled'),
               const Divider(height: 20),
               const Text(
                 'Sorting instructions:',
@@ -387,7 +387,7 @@ class _WasteDatabaseSheetState extends State<WasteDatabaseSheet> {
                                     style: TextStyle(fontSize: 10, color: Color(0xFF556958)),
                                   ),
                                   Text(
-                                    '${formatUgx(totalValue)} UGX',
+                                    formatUgx(totalValue),
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,
@@ -413,8 +413,23 @@ class _WasteDatabaseSheetState extends State<WasteDatabaseSheet> {
                                     'Carbon Avoided',
                                     style: TextStyle(fontSize: 10, color: Color(0xFF556958)),
                                   ),
-                                  Text(
-                                    '$totalCo2 kg CO₂',
+                                  Text.rich(
+                                    TextSpan(
+                                      text: '$totalCo2 kg CO',
+                                      children: const [
+                                        WidgetSpan(
+                                          alignment: PlaceholderAlignment.bottom,
+                                          child: Text(
+                                            '2',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w800,
+                                              color: Color(0xFF2E7D32),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,

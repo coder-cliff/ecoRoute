@@ -55,6 +55,7 @@ class _AuthSheetState extends State<AuthSheet> {
   }
 
   void _toggleAccountMode() {
+    _formKey.currentState?.reset();
     setState(() {
       _createAccount = !_createAccount;
       _errorMessage = null;
@@ -241,6 +242,7 @@ class _AuthSheetState extends State<AuthSheet> {
                     // Registration exclusive fields
                     if (_createAccount) ...[
                       TextFormField(
+                        key: const ValueKey('auth_full_name'),
                         controller: _fullName,
                         decoration: const InputDecoration(
                           labelText: 'Full name',
@@ -254,6 +256,7 @@ class _AuthSheetState extends State<AuthSheet> {
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: const ValueKey('auth_phone'),
                         controller: _phone,
                         keyboardType: TextInputType.phone,
                         decoration: const InputDecoration(
@@ -268,6 +271,7 @@ class _AuthSheetState extends State<AuthSheet> {
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: const ValueKey('auth_address'),
                         controller: _address,
                         decoration: const InputDecoration(
                           labelText: 'Default pickup address / landmark',
@@ -281,6 +285,7 @@ class _AuthSheetState extends State<AuthSheet> {
 
                     // Email Address
                     TextFormField(
+                      key: const ValueKey('auth_email'),
                       controller: _email,
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
@@ -304,6 +309,7 @@ class _AuthSheetState extends State<AuthSheet> {
 
                     // Password
                     TextFormField(
+                      key: const ValueKey('auth_password'),
                       controller: _password,
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
@@ -396,6 +402,7 @@ class _AuthSheetState extends State<AuthSheet> {
                     // Confirm Password in Signup mode
                     if (_createAccount) ...[
                       TextFormField(
+                        key: const ValueKey('auth_confirm_password'),
                         controller: _confirmPassword,
                         obscureText: _obscureConfirmPassword,
                         decoration: InputDecoration(

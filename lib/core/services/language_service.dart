@@ -81,6 +81,10 @@ class LanguageService extends ChangeNotifier {
       'momo_pay': 'Pay with Mobile Money',
       'receipt': 'Collection Receipt',
       'language': 'Language',
+      'waste_database': 'Waste Database & Rates',
+      'select_language': 'Select Language',
+      'my_account': 'My Account',
+      'sign_in': 'Sign in or Register',
     },
     AppLanguage.lugbara: {
       'app_title': 'EcoRoute',
@@ -113,6 +117,10 @@ class LanguageService extends ChangeNotifier {
       'momo_pay': 'Momo fesi fesi',
       'receipt': 'Risiti liru ebi niri',
       'language': 'Ti ti',
+      'waste_database': 'Liru kabilo & Fesi',
+      'select_language': 'Ti ti nze',
+      'my_account': 'Akawunti mani',
+      'sign_in': 'Mi so ru adrisi',
     },
     AppLanguage.swahili: {
       'app_title': 'EcoRoute',
@@ -145,6 +153,10 @@ class LanguageService extends ChangeNotifier {
       'momo_pay': 'Lipa kwa Pesa ya Simu',
       'receipt': 'Stakabadhi ya Malipo',
       'language': 'Lugha',
+      'waste_database': 'Hifadhidata ya Taka na Bei',
+      'select_language': 'Chagua Lugha',
+      'my_account': 'Akaunti Yangu',
+      'sign_in': 'Ingia au Jisajili',
     },
   };
 }
