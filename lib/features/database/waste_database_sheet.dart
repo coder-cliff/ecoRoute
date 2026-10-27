@@ -247,7 +247,7 @@ class _WasteDatabaseSheetState extends State<WasteDatabaseSheet> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'World Bank / NEMA Municipal Data: ${benchmark.dailyPerCapitaKg} kg/day • ${benchmark.organicPercentage.toInt()}% Organic • ${benchmark.recyclablePotentialPercentage.toInt()}% Recyclable',
+                    'World Bank / NEMA Municipal Data (${benchmark.citation}): ${benchmark.dailyPerCapitaKg} kg/day • ${benchmark.organicPercentage.toInt()}% Organic • ${benchmark.recyclablePotentialPercentage.toInt()}% Recyclable',
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,

@@ -787,7 +787,12 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             labelBehavior: MediaQuery.sizeOf(context).width < 360
                 ? NavigationDestinationLabelBehavior.onlyShowSelected
                 : NavigationDestinationLabelBehavior.alwaysShow,
-            onDestinationSelected: (value) => setState(() => _tab = value),
+            onDestinationSelected: (value) {
+              if (value != _tab) {
+                HapticFeedback.selectionClick();
+                setState(() => _tab = value);
+              }
+            },
             destinations: const [
               NavigationDestination(
                 icon: Icon(Icons.home_outlined),
@@ -1500,23 +1505,26 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         icon: Icons.manage_accounts_outlined,
         title: 'Account & role',
         subtitle: 'Manage account & login',
-        accent: const Color(0xFFF0A62A),
+        accent: const Color(0xFF1B5E20),
         onTap: _showAuth,
       ),
     ];
 
-    return Row(
-      children: [
-        for (int index = 0; index < actions.length; index++)
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(
-                right: index < actions.length - 1 ? 8 : 0,
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (int index = 0; index < actions.length; index++)
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right: index < actions.length - 1 ? 8 : 0,
+                ),
+                child: actions[index],
               ),
-              child: actions[index],
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1697,27 +1705,80 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           ).toList()
         : _orders;
 
-    if (scopedOrders.isEmpty) {
+    if (_loadingOrders) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.receipt_long_outlined,
-                size: 56,
-                color: Color(0xFF7C9580),
+              SizedBox.square(
+                dimension: 36,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: Color(0xFF2E7D32),
+                ),
               ),
-              SizedBox(height: 12),
+              SizedBox(height: 16),
               Text(
+                'Retrieving collection requests...',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF556958),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (scopedOrders.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: const Icon(
+                  Icons.receipt_long_outlined,
+                  size: 38,
+                  color: Color(0xFF2E7D32),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
                 'No collection orders yet',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF183B20),
+                ),
               ),
-              SizedBox(height: 6),
-              Text(
-                'Your submitted orders will appear here.',
+              const SizedBox(height: 6),
+              const Text(
+                'Book an instant waste pickup and local tricycle riders will be dispatched.',
                 textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Color(0xFF647568)),
+              ),
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: _openOrder,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E7D32),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.add_rounded, size: 20),
+                label: const Text('Request Instant Pickup'),
               ),
             ],
           ),
@@ -1743,6 +1804,12 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             decoration: InputDecoration(
               hintText: 'Search requests by location or type...',
               prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 20),
+                      onPressed: () => setState(() => _searchQuery = ''),
+                    )
+                  : null,
               isDense: true,
               filled: true,
               fillColor: Colors.white,
@@ -1762,16 +1829,22 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
               FilterChip(
                 label: const Text('All'),
                 selected: _statusFilter == null,
-                onSelected: (_) => setState(() => _statusFilter = null),
+                onSelected: (_) {
+                  HapticFeedback.selectionClick();
+                  setState(() => _statusFilter = null);
+                },
               ),
               const SizedBox(width: 8),
               for (final status in RequestStatus.values) ...[
                 FilterChip(
                   label: Text(status.label),
                   selected: _statusFilter == status,
-                  onSelected: (selected) => setState(
-                    () => _statusFilter = selected ? status : null,
-                  ),
+                  onSelected: (selected) {
+                    HapticFeedback.selectionClick();
+                    setState(
+                      () => _statusFilter = selected ? status : null,
+                    );
+                  },
                 ),
                 const SizedBox(width: 8),
               ],
@@ -1780,18 +1853,74 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         ),
         Expanded(
           child: filteredOrders.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No requests matching the selected filter.',
-                    style: TextStyle(color: Color(0xFF71877D)),
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F8F2),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: const Icon(
+                            Icons.filter_alt_off_outlined,
+                            size: 28,
+                            color: Color(0xFF2E7D32),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'No matching requests',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF183B20),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Try clearing your search query or status filter to see other requests.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12, color: Color(0xFF647568)),
+                        ),
+                        const SizedBox(height: 14),
+                        OutlinedButton(
+                          onPressed: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              _statusFilter = null;
+                              _searchQuery = '';
+                            });
+                          },
+                          child: const Text('Clear all filters'),
+                        ),
+                      ],
+                    ),
                   ),
                 )
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-                  children: [
-                    for (final order in filteredOrders)
-                      Card(
+              : RefreshIndicator(
+                  color: const Color(0xFF2E7D32),
+                  onRefresh: () async {
+                    HapticFeedback.lightImpact();
+                    await _loadOrders();
+                  },
+                  child: ListView.builder(
+                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                    itemCount: filteredOrders.length,
+                    itemBuilder: (context, index) {
+                      final order = filteredOrders[index];
+                      return Card(
                         margin: const EdgeInsets.only(bottom: 14),
+                        elevation: 1.5,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: Row(
@@ -1830,7 +1959,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                                     ),
                                     const SizedBox(height: 3),
                                     Text(
-                                      '${order.sackCount} sack(s) ΓÇó Instant Pickup ΓÇó ${order.address}',
+                                      '${order.sackCount} sack(s) • Instant Pickup • ${order.address}',
                                       style: const TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
@@ -1894,8 +2023,9 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                             ],
                           ),
                         ),
-                      ),
-                  ],
+                      );
+                    },
+                  ),
                 ),
         ),
       ],

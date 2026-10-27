@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class MetricCard extends StatelessWidget {
   const MetricCard({
@@ -78,47 +79,63 @@ class QuickActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1B2C20) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark ? const Color(0xFF2A4230) : const Color(0xFFE3E6E1),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1B2C20) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark ? const Color(0xFF2A4230) : const Color(0xFFE3E6E1),
+            ),
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: accent),
               ),
-              child: Icon(icon, color: accent),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white : const Color(0xFF183B20),
+              const SizedBox(height: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF183B20),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? const Color(0xFFA5B8AB) : const Color(0xFF71877D),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark ? const Color(0xFFA5B8AB) : const Color(0xFF71877D),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

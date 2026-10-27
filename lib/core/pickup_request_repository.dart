@@ -375,7 +375,7 @@ List<PickupRequest> getInitialDemoRequests() {
       latitude: 3.0315,
       longitude: 30.9102,
       residentName: 'Amina Dranzoa',
-      residentPhone: '+256394880352',
+      residentPhone: '+256 772 000 001',
       residentId: 'resident-1',
     ),
     PickupRequest(
@@ -392,7 +392,7 @@ List<PickupRequest> getInitialDemoRequests() {
       latitude: 3.0180,
       longitude: 30.9020,
       residentName: 'Kassim Anguyo',
-      residentPhone: '+256394880352',
+      residentPhone: '+256 772 000 002',
       residentId: 'resident-2',
     ),
     PickupRequest(
@@ -409,7 +409,7 @@ List<PickupRequest> getInitialDemoRequests() {
       latitude: 3.0290,
       longitude: 30.8850,
       residentName: 'Sister Beatrice',
-      residentPhone: '+256394880352',
+      residentPhone: '+256 772 000 003',
       residentId: 'resident-3',
     ),
     PickupRequest(
@@ -426,7 +426,7 @@ List<PickupRequest> getInitialDemoRequests() {
       latitude: 2.9980,
       longitude: 30.9180,
       residentName: 'Dr. Taban Charles',
-      residentPhone: '+256394880352',
+      residentPhone: '+256 772 000 004',
       residentId: 'resident-4',
     ),
     PickupRequest(
@@ -443,7 +443,7 @@ List<PickupRequest> getInitialDemoRequests() {
       latitude: 3.0250,
       longitude: 30.9230,
       residentName: 'Grace Candiru',
-      residentPhone: '+256394880352',
+      residentPhone: '+256 772 000 005',
       residentId: 'resident-1',
     ),
   ];

@@ -73,6 +73,7 @@ class MunicipalWasteBenchmark {
     required this.paperPercentage,
     required this.recyclablePotentialPercentage,
     required this.currentCollectionCoverage,
+    this.citation = 'World Bank "What a Waste 2.0" (2018) & NEMA Uganda State of Environment Report (2020)',
   });
 
   final String city;
@@ -83,6 +84,7 @@ class MunicipalWasteBenchmark {
   final double paperPercentage;
   final double recyclablePotentialPercentage;
   final double currentCollectionCoverage;
+  final String citation;
 }
 
 class WasteDatabaseService {
@@ -278,7 +280,7 @@ class WasteDatabaseService {
         address: 'Market Lane, Central Division, Arua',
         acceptedCategories: [WasteCategory.organic, WasteCategory.plastic, WasteCategory.paper],
         operatingHours: 'Mon-Sat: 6:00 AM - 6:00 PM',
-        contactPhone: '+256394880352',
+        contactPhone: '+256 476 420 101',
       ),
       RecyclingFacility(
         id: 'fac-oli',
@@ -289,7 +291,7 @@ class WasteDatabaseService {
         address: 'Oli Division Office Road, Arua',
         acceptedCategories: [WasteCategory.plastic, WasteCategory.metal, WasteCategory.glass],
         operatingHours: 'Mon-Fri: 7:30 AM - 5:00 PM',
-        contactPhone: '+256394880352',
+        contactPhone: '+256 476 420 102',
       ),
       RecyclingFacility(
         id: 'fac-hill',
@@ -300,7 +302,7 @@ class WasteDatabaseService {
         address: 'Near Arua Hill Stadium, East Division',
         acceptedCategories: [WasteCategory.plastic, WasteCategory.paper, WasteCategory.metal],
         operatingHours: 'Daily: 7:00 AM - 7:00 PM',
-        contactPhone: '+256394880352',
+        contactPhone: '+256 476 420 103',
       ),
       RecyclingFacility(
         id: 'fac-hospital',
@@ -311,7 +313,7 @@ class WasteDatabaseService {
         address: 'Arua Regional Referral Hospital Perimeter, South Division',
         acceptedCategories: [WasteCategory.hazardous, WasteCategory.metal],
         operatingHours: '24/7 Monitored Drop-off',
-        contactPhone: '+256394880352',
+        contactPhone: '+256 476 420 104',
       ),
       RecyclingFacility(
         id: 'fac-muni',
@@ -322,7 +324,7 @@ class WasteDatabaseService {
         address: 'Muni Campus Agronomy Field, South Division',
         acceptedCategories: [WasteCategory.organic],
         operatingHours: 'Mon-Fri: 8:00 AM - 4:30 PM',
-        contactPhone: '+256394880352',
+        contactPhone: '+256 476 420 105',
       ),
     ];
   }

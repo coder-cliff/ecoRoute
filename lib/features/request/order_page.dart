@@ -211,12 +211,12 @@ class _OrderPageState extends State<OrderPage> {
       );
 
       await widget.onSubmitted(request);
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not save the request: $e'),
-            backgroundColor: const Color(0xFFC62828),
+          const SnackBar(
+            content: Text('Could not save the request. Please check your network connection and try again.'),
+            backgroundColor: Color(0xFFC62828),
           ),
         );
       }
@@ -339,7 +339,7 @@ class _OrderPageState extends State<OrderPage> {
                       ),
                       Text(
                         _capturedPhotoLabel != null
-                            ? 'Photo attached ΓÇó GPS locked'
+                            ? 'Photo attached • GPS locked'
                             : 'Give details or use camera scanner',
                         style: const TextStyle(fontSize: 12, color: Color(0xFF556958)),
                       ),
@@ -569,7 +569,7 @@ class _OrderPageState extends State<OrderPage> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'GPS Locked: ${_latitude!.toStringAsFixed(5)}┬░N, ${_longitude!.toStringAsFixed(5)}┬░E (Instant Pin)',
+                        'GPS Locked: ${_latitude!.toStringAsFixed(5)}°N, ${_longitude!.toStringAsFixed(5)}°E (Instant Pin)',
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,

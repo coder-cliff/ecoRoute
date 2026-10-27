@@ -17,10 +17,12 @@ class LanguageService extends ChangeNotifier {
 
   static const String _prefKey = 'ecoroute_app_language_v1';
   AppLanguage _currentLanguage = AppLanguage.english;
+  SharedPreferences? _prefs;
 
   AppLanguage get currentLanguage => _currentLanguage;
 
   Future<void> init(SharedPreferences prefs) async {
+    _prefs = prefs;
     final savedCode = prefs.getString(_prefKey);
     if (savedCode != null) {
       _currentLanguage = AppLanguage.values.firstWhere(
@@ -34,8 +36,11 @@ class LanguageService extends ChangeNotifier {
   Future<void> setLanguage(AppLanguage language, [SharedPreferences? prefs]) async {
     _currentLanguage = language;
     notifyListeners();
-    if (prefs != null) {
-      await prefs.setString(_prefKey, language.code);
+    try {
+      final p = prefs ?? _prefs ?? await SharedPreferences.getInstance();
+      await p.setString(_prefKey, language.code);
+    } catch (_) {
+      // Non-critical persistence failure in restricted environments
     }
   }
 
@@ -49,7 +54,7 @@ class LanguageService extends ChangeNotifier {
       'app_title': 'EcoRoute',
       'welcome': 'Arua waste pickup',
       'service_area': 'Service area: within 12 km of the Arua centre.',
-      'report_issue': 'REPORT AN ISSUE',
+      'report_issue': 'Report an issue',
       'schedule_pickup': 'Schedule pickup',
       'service_overview': 'Service overview',
       'account_role': 'Account & role',
@@ -81,7 +86,7 @@ class LanguageService extends ChangeNotifier {
       'app_title': 'EcoRoute',
       'welcome': 'Arua liru ebi',
       'service_area': 'Arua kilimita 12 vutia liru omba ku.',
-      'report_issue': 'REPORT AN ISSUE',
+      'report_issue': 'Azita nze / Adri embilu',
       'schedule_pickup': 'Liru omba',
       'service_overview': 'Azita ebi',
       'account_role': 'Akawunti & Ru',
@@ -113,7 +118,7 @@ class LanguageService extends ChangeNotifier {
       'app_title': 'EcoRoute',
       'welcome': 'Mkusanyiko wa taka Arua',
       'service_area': 'Eneo la huduma: ndani ya km 12 ya kituo cha Arua.',
-      'report_issue': 'REPORT AN ISSUE',
+      'report_issue': 'Toa taarifa ya tatizo',
       'schedule_pickup': 'Panga mkusanyiko',
       'service_overview': 'Muhtasari wa huduma',
       'account_role': 'Akaunti na jukumu',

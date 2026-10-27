@@ -80,12 +80,19 @@ class LocationService {
         if (lastKnown != null) {
           position = lastKnown;
         } else {
-          position = await Geolocator.getCurrentPosition(
-            locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.medium,
-              timeLimit: Duration(seconds: 4),
-            ),
-          );
+          try {
+            position = await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.medium,
+                timeLimit: Duration(seconds: 4),
+              ),
+            );
+          } catch (_) {
+            return const UserLocationResult(
+              status: LocationServiceStatus.error,
+              message: 'GPS fix timed out. Please enter your address or pin location manually.',
+            );
+          }
         }
       }
 
