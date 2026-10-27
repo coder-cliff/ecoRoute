@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/entities/app_user.dart';
@@ -15,6 +14,28 @@ class AuthService {
   static const String _usersKey = 'ecoroute_registered_users_v1';
   static const String _invitedRidersKey = 'ecoroute_invited_riders_v1';
   static const String supportEmail = 'ecoroute.waste@gmail.com';
+
+  /// Municipal administrator accounts configured with Muni University, Arua defaults
+  static const List<Map<String, dynamic>> _adminAccounts = [
+    {
+      'id': 'admin-deo',
+      'fullName': 'Savior Deo (Admin)',
+      'email': 'saviordeogratius@gmail.com',
+      'phone': '+256 782 555 111',
+      'role': 'admin',
+      'password': '#ecorute26',
+      'address': 'Muni University, Arua',
+    },
+    {
+      'id': 'admin-cliff',
+      'fullName': 'Tech Cliff (Admin)',
+      'email': 'techcliff451@gmail.com',
+      'phone': '+256 701 987 654',
+      'role': 'admin',
+      'password': '#ecorute26',
+      'address': 'Muni University, Arua',
+    },
+  ];
 
   final SharedPreferences _preferences;
   final firebase_auth.FirebaseAuth? _firebaseAuth;
@@ -60,6 +81,9 @@ class AuthService {
 
   bool isEmailRegistered(String email) {
     final cleanEmail = email.trim().toLowerCase();
+    for (final admin in _adminAccounts) {
+      if ((admin['email'] as String).toLowerCase() == cleanEmail) return true;
+    }
     final riders = getInvitedRiders();
     for (final rider in riders) {
       if ((rider['email'] as String).toLowerCase() == cleanEmail) return true;
@@ -76,6 +100,26 @@ class AuthService {
     required String password,
   }) async {
     final cleanEmail = email.trim().toLowerCase();
+
+    // 1. Check Admin accounts (saviordeogratius@gmail.com, techcliff451@gmail.com with #ecorute26)
+    for (final admin in _adminAccounts) {
+      if ((admin['email'] as String).toLowerCase() == cleanEmail &&
+          admin['password'] == password) {
+        try {
+          await _firebaseAuth?.signOut();
+        } catch (_) {}
+        final user = AppUser(
+          id: admin['id'] as String,
+          fullName: admin['fullName'] as String,
+          email: admin['email'] as String,
+          phone: admin['phone'] as String,
+          role: AppRole.admin,
+          address: admin['address'] as String?,
+        );
+        await _saveSession(user);
+        return user;
+      }
+    }
 
     final firebaseAuth = _firebaseAuth;
     final firestore = _firestore;
@@ -238,13 +282,13 @@ class AuthService {
   List<Map<String, dynamic>> getInvitedRiders() {
     final raw = _preferences.getString(_invitedRidersKey);
     if (raw == null) {
-      return const [];
+      return <Map<String, dynamic>>[];
     }
     try {
       final list = jsonDecode(raw) as List<dynamic>;
-      return list.cast<Map<String, dynamic>>();
+      return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
     } catch (_) {
-      return const [];
+      return <Map<String, dynamic>>[];
     }
   }
 
@@ -293,13 +337,13 @@ class AuthService {
   List<Map<String, dynamic>> _getRegisteredUsers() {
     final raw = _preferences.getString(_usersKey);
     if (raw == null) {
-      return const [];
+      return <Map<String, dynamic>>[];
     }
     try {
       final list = jsonDecode(raw) as List<dynamic>;
-      return list.cast<Map<String, dynamic>>();
+      return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
     } catch (_) {
-      return const [];
+      return <Map<String, dynamic>>[];
     }
   }
 }
