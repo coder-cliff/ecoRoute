@@ -16,7 +16,7 @@ class RiderInviteService {
   /// Default Google Apps Script Web App endpoint.
   /// Can be overridden dynamically by the admin or persisted via SharedPreferences.
   static String scriptUrl =
-      'https://script.google.com/macros/s/AKfycbyEcoRouteRiderInviteGateway/exec';
+      'https://script.google.com/macros/s/AKfycbxKNbA7SVD0DTVoxZDttQL5sqhNj5IgpjSN9RKL9eXgBTm9NVgbNgVG0nG3I1qkeZjnQw/exec';
 
   /// Loads the persisted Google Apps Script URL if saved by the admin
   static Future<String> getEffectiveScriptUrl([SharedPreferences? prefs]) async {
