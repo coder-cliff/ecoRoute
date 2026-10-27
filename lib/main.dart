@@ -3,12 +3,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, kDebugMode;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
 import 'core/pickup_request_repository.dart';
 import 'core/services/auth_service.dart';
+import 'core/services/language_service.dart';
 import 'core/services/waste_api_service.dart';
 import 'firebase_options.dart';
 
@@ -49,8 +50,13 @@ Future<void> main() async {
           firestore: firestore,
           firebaseAuth: firebaseAuth,
         );
-  // Auto-seed realistic municipal demo data if storage is fresh
-  await repository.seedDemoData();
+  // Restore user saved language preference on startup
+  await LanguageService.instance.init(preferences);
+
+  // Auto-seed realistic municipal demo data only in debug mode
+  if (kDebugMode) {
+    await repository.seedDemoData();
+  }
   final authService = AuthService(
     preferences,
     firebaseAuth: firebaseAuth,

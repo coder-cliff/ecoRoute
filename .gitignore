@@ -50,3 +50,17 @@ app.*.map.json
 # Kotlin
 .kotlin/
 **/android/.kotlin/
+
+# Secrets and credentials
+*.jks
+*.keystore
+key.properties
+.env
+.env.*
+google-services.json
+
+# Test output and machine logs
+test-output.txt
+.flutter-test-output.txt
+widget_machine.json
+

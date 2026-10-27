@@ -110,6 +110,52 @@ void main() {
       final updatedRiders = authService.getInvitedRiders();
       expect(updatedRiders.any((r) => r['email'] == 'rider.test@ecoroute.ug'), isFalse);
     });
+
+    test('hashes passwords using salted SHA-256', () {
+      final hash1 = AuthService.hashPassword('testPassword123');
+      final hash2 = AuthService.hashPassword('testPassword123');
+      final hash3 = AuthService.hashPassword('differentPassword');
+
+      expect(hash1, equals(hash2));
+      expect(hash1, isNot(equals(hash3)));
+      expect(hash1.length, equals(64)); // 256 bits = 64 hex characters
+    });
+
+    test('safely parses user roles with case insensitivity and fallback', () {
+      expect(AuthService.parseRole('admin'), AppRole.admin);
+      expect(AuthService.parseRole('ADMIN'), AppRole.admin);
+      expect(AuthService.parseRole('rider'), AppRole.rider);
+      expect(AuthService.parseRole('Rider'), AppRole.rider);
+      expect(AuthService.parseRole('resident'), AppRole.resident);
+      expect(AuthService.parseRole('unknown_role'), AppRole.resident);
+      expect(AuthService.parseRole(null), AppRole.resident);
+    });
+
+    test('throttles failed login attempts with lockout', () async {
+      const email = 'victim@example.com';
+
+      // 1st failed attempt
+      final res1 = await authService.login(email: email, password: 'wrong');
+      expect(res1, isNull);
+
+      // 2nd failed attempt
+      final res2 = await authService.login(email: email, password: 'wrong');
+      expect(res2, isNull);
+
+      // 3rd failed attempt triggers lockout
+      final res3 = await authService.login(email: email, password: 'wrong');
+      expect(res3, isNull);
+
+      // 4th attempt throws StateError with lockout message
+      expect(
+        () => authService.login(email: email, password: 'wrong'),
+        throwsA(isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('Too many failed login attempts'),
+        )),
+      );
+    });
   });
 
   group('AuthSheet (Signup & Registration UI Flow)', () {

@@ -41,6 +41,27 @@ service cloud.firestore {
           'residentPhone',
           'residentId'
         ])
+        && request.resource.data.keys().hasOnly([
+          'id',
+          'wasteType',
+          'description',
+          'submittedAt',
+          'serverSubmittedAt',
+          'status',
+          'sackCount',
+          'priceUgx',
+          'isInstant',
+          'zone',
+          'address',
+          'latitude',
+          'longitude',
+          'residentName',
+          'residentPhone',
+          'residentId',
+          'photoUrl',
+          'isSynced',
+          'updatedAt'
+        ])
         && request.resource.data.id is string
         && request.resource.data.wasteType in [
           'household',
@@ -48,6 +69,13 @@ service cloud.firestore {
           'unknown'
         ]
         && request.resource.data.description is string
+        && request.resource.data.description.size() <= 500
+        && request.resource.data.address is string
+        && request.resource.data.address.size() <= 200
+        && request.resource.data.residentName is string
+        && request.resource.data.residentName.size() <= 100
+        && request.resource.data.residentPhone is string
+        && request.resource.data.residentPhone.size() <= 25
         && request.resource.data.status in [
           'requested',
           'collected',
@@ -56,8 +84,11 @@ service cloud.firestore {
           'cancelled'
         ]
         && request.resource.data.sackCount is int
-        && request.resource.data.sackCount > 0
+        && request.resource.data.sackCount >= 1
+        && request.resource.data.sackCount <= 50
         && request.resource.data.priceUgx is int
+        && request.resource.data.priceUgx >= 1000
+        && request.resource.data.priceUgx <= 500000
         && request.resource.data.isInstant is bool
         && request.resource.data.zone in ['north', 'south', 'east', 'west']
         && request.resource.data.residentId is string;
@@ -70,13 +101,14 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.auth.uid == profileId
         && request.resource.data.id == profileId
-        && request.resource.data.role == 'resident'
+        && (request.resource.data.role == 'resident' || isAdmin())
         && request.resource.data.keys().hasOnly([
           'id',
           'fullName',
           'email',
           'phone',
           'role',
+          'address',
           'createdAt',
           'updatedAt'
         ]);
@@ -86,9 +118,14 @@ service cloud.firestore {
         && request.resource.data.role == resource.data.role
         && request.resource.data.id == resource.data.id
         && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['fullName', 'phone', 'updatedAt']);
+          .hasOnly(['fullName', 'phone', 'address', 'updatedAt']);
 
       allow delete: if isAdmin();
+    }
+
+    match /invitedRiders/{email} {
+      allow read: if signedIn() && (isAdmin() || request.auth.token.email == email);
+      allow write: if isAdmin();
     }
 
     match /pickupRequests/{requestId} {
@@ -126,12 +163,7 @@ service cloud.firestore {
             .hasOnly(['status', 'updatedAt'])
         );
 
-      allow delete: if isAdmin()
-        || (
-          signedIn()
-          && resource.data.residentId == request.auth.uid
-          && resource.data.status == 'requested'
-        );
+      allow delete: if isAdmin();
     }
   }
 }

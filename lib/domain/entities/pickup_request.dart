@@ -20,6 +20,7 @@ class PickupRequest {
     this.residentPhone = '+256 772 000 001',
     this.residentId = 'resident-1',
     this.photoUrl,
+    this.isSynced = true,
   });
 
   final String id;
@@ -38,6 +39,7 @@ class PickupRequest {
   final String residentPhone;
   final String residentId;
   final String? photoUrl;
+  final bool isSynced;
 
   PickupRequest copyWith({
     String? id,
@@ -56,6 +58,7 @@ class PickupRequest {
     String? residentPhone,
     String? residentId,
     String? photoUrl,
+    bool? isSynced,
   }) {
     return PickupRequest(
       id: id ?? this.id,
@@ -74,6 +77,7 @@ class PickupRequest {
       residentPhone: residentPhone ?? this.residentPhone,
       residentId: residentId ?? this.residentId,
       photoUrl: photoUrl ?? this.photoUrl,
+      isSynced: isSynced ?? this.isSynced,
     );
   }
 }

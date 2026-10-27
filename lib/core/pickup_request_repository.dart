@@ -14,6 +14,8 @@ import '../domain/enums/zone.dart';
 abstract interface class PickupRequestRepository {
   Future<List<PickupRequest>> loadAll();
 
+  Stream<List<PickupRequest>> watchRequests({int limit = 50});
+
   Future<void> save(PickupRequest request);
 
   Future<void> updateStatus(String id, RequestStatus status);
@@ -30,6 +32,10 @@ class MemoryPickupRequestRepository implements PickupRequestRepository {
 
   @override
   Future<List<PickupRequest>> loadAll() async => List.unmodifiable(_requests);
+
+  @override
+  Stream<List<PickupRequest>> watchRequests({int limit = 50}) =>
+      Stream.value(List.unmodifiable(_requests.take(limit).toList()));
 
   @override
   Future<void> save(PickupRequest request) async {
@@ -95,6 +101,12 @@ class SharedPreferencesPickupRequestRepository
   }
 
   @override
+  Stream<List<PickupRequest>> watchRequests({int limit = 50}) async* {
+    final all = await loadAll();
+    yield all.take(limit).toList();
+  }
+
+  @override
   Future<void> save(PickupRequest request) async {
     final requests = await loadAll();
     requests.removeWhere((existing) => existing.id == request.id);
@@ -145,6 +157,7 @@ class SharedPreferencesPickupRequestRepository
     'residentPhone': request.residentPhone,
     'residentId': request.residentId,
     'photoUrl': request.photoUrl,
+    'isSynced': request.isSynced,
   };
 
   PickupRequest _requestFromJson(Map<String, dynamic> json) => PickupRequest(
@@ -166,6 +179,7 @@ class SharedPreferencesPickupRequestRepository
     residentPhone: json['residentPhone'] as String? ?? '+256 772 000 001',
     residentId: json['residentId'] as String? ?? 'resident-1',
     photoUrl: json['photoUrl'] as String?,
+    isSynced: (json['isSynced'] as bool?) ?? true,
   );
 }
 
@@ -210,12 +224,31 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
       }
       final combined = byId.values.toList()
         ..sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+
+      // Cache cloud requests back into local storage for offline continuity
+      for (final req in cloudRequests) {
+        await _localRepository.save(req);
+      }
+
       return combined;
     } on FirebaseException catch (error) {
       if (!_isConnectivityError(error)) rethrow;
       debugPrint('Firestore read unavailable; showing locally saved requests.');
       return localRequests;
     }
+  }
+
+  @override
+  Stream<List<PickupRequest>> watchRequests({int limit = 50}) {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      return Stream.fromFuture(loadAll());
+    }
+    return _requests
+        .orderBy('submittedAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map(_requestFromDocument).toList());
   }
 
   @override
@@ -276,6 +309,7 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
     'wasteType': request.wasteType.name,
     'description': request.description,
     'submittedAt': Timestamp.fromDate(request.submittedAt),
+    'serverSubmittedAt': FieldValue.serverTimestamp(),
     'status': request.status.name,
     'sackCount': request.sackCount,
     'priceUgx': request.priceUgx,
@@ -295,14 +329,16 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
     QueryDocumentSnapshot<Map<String, dynamic>> document,
   ) {
     final data = document.data();
-    final submittedAt = data['submittedAt'];
+    final submittedAt = data['serverSubmittedAt'] ?? data['submittedAt'];
     return PickupRequest(
       id: data['id'] as String? ?? document.id,
       wasteType: WasteType.values.byName(data['wasteType'] as String),
       description: data['description'] as String,
       submittedAt: submittedAt is Timestamp
           ? submittedAt.toDate()
-          : DateTime.parse(submittedAt as String),
+          : submittedAt is int
+              ? DateTime.fromMillisecondsSinceEpoch(submittedAt)
+              : DateTime.tryParse(submittedAt?.toString() ?? '') ?? DateTime.now(),
       status: RequestStatus.values.byName(data['status'] as String),
       sackCount: (data['sackCount'] as num?)?.toInt() ?? 1,
       priceUgx: (data['priceUgx'] as num?)?.toInt() ?? 1500,
@@ -315,6 +351,7 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
       residentPhone: data['residentPhone'] as String? ?? '',
       residentId: data['residentId'] as String,
       photoUrl: data['photoUrl'] as String?,
+      isSynced: true,
     );
   }
 }

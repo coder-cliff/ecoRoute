@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -146,6 +148,36 @@ class _OrderPageState extends State<OrderPage> {
     );
   }
 
+  bool get _isFormDirty =>
+      _description.text.trim().isNotEmpty ||
+      _capturedPhotoLabel != null ||
+      _wasteType != null;
+
+  Future<bool> _confirmDiscard() async {
+    if (!_isFormDirty) return true;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Discard Request?'),
+        content: const Text(
+          'You have unsaved waste pickup details or photos. Are you sure you want to exit?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Keep Editing'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC62828)),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
   Future<void> _submit() async {
     if (_submitting || !_formKey.currentState!.validate()) {
       return;
@@ -153,8 +185,11 @@ class _OrderPageState extends State<OrderPage> {
 
     setState(() => _submitting = true);
     try {
+      final randomSuffix = (math.Random().nextInt(900000) + 100000).toString();
+      final collisionFreeId = 'req_${DateTime.now().millisecondsSinceEpoch}_$randomSuffix';
+
       final request = PickupRequest(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        id: collisionFreeId,
         wasteType: _wasteType!,
         description: _description.text.trim(),
         submittedAt: DateTime.now(),
@@ -187,7 +222,16 @@ class _OrderPageState extends State<OrderPage> {
 
   @override
   Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
+    return PopScope(
+      canPop: !_isFormDirty,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldPop = await _confirmDiscard();
+        if (shouldPop && mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Color(0xFF2EAD65),
         statusBarIconBrightness: Brightness.light,
@@ -558,7 +602,7 @@ class _OrderPageState extends State<OrderPage> {
       ),
     ),
   );
-  }
+}
 
 
 }

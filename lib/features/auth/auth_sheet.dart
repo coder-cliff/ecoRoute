@@ -28,7 +28,7 @@ class _AuthSheetState extends State<AuthSheet> {
 
   final _formKey = GlobalKey<FormState>();
   final _fullName = TextEditingController();
-  final _phone = TextEditingController(text: '+256394880352');
+  final _phone = TextEditingController();
   final _address = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -38,6 +38,9 @@ class _AuthSheetState extends State<AuthSheet> {
   void initState() {
     super.initState();
     _createAccount = widget.initialCreateAccount;
+    _password.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -58,6 +61,55 @@ class _AuthSheetState extends State<AuthSheet> {
     });
   }
 
+  int _calculatePasswordStrength(String password) {
+    if (password.length < 8) return 1; // Weak
+    bool hasLetter = password.contains(RegExp(r'[a-zA-Z]'));
+    bool hasNumber = password.contains(RegExp(r'[0-9]'));
+    bool hasSpecial = password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
+
+    if (hasLetter && hasNumber && hasSpecial && password.length >= 10) {
+      return 3; // Strong
+    } else if ((hasLetter && hasNumber) || (hasLetter && hasSpecial)) {
+      return 2; // Medium
+    }
+    return 1;
+  }
+
+  Future<void> _handleForgotPassword() async {
+    final email = _email.text.trim();
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    if (email.isEmpty || !emailRegex.hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid email address in the email field first.'),
+          backgroundColor: Color(0xFFC62828),
+        ),
+      );
+      return;
+    }
+
+    try {
+      if (widget.authService != null) {
+        await widget.authService!.sendPasswordResetEmail(email);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Password reset instructions sent to $email. Please check your inbox.'),
+          backgroundColor: const Color(0xFF2E7D32),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not send reset email: $e'),
+          backgroundColor: const Color(0xFFC62828),
+        ),
+      );
+    }
+  }
+
   Future<void> _submit() async {
     if (_isSubmitting || !_formKey.currentState!.validate()) return;
     setState(() {
@@ -75,7 +127,7 @@ class _AuthSheetState extends State<AuthSheet> {
                 ? 'EcoRoute Resident'
                 : _fullName.text.trim(),
             email: _email.text.trim(),
-            phone: _phone.text.trim().isEmpty ? '+256394880352' : _phone.text.trim(),
+            phone: _phone.text.trim().isEmpty ? '+256 700 000 000' : _phone.text.trim(),
             password: _password.text,
             role: AppRole.resident,
             address: _address.text.trim().isEmpty ? null : _address.text.trim(),
@@ -154,6 +206,8 @@ class _AuthSheetState extends State<AuthSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final passwordStrength = _calculatePasswordStrength(_password.text);
+
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SafeArea(
@@ -204,7 +258,7 @@ class _AuthSheetState extends State<AuthSheet> {
                         keyboardType: TextInputType.phone,
                         decoration: const InputDecoration(
                           labelText: 'Phone number',
-                          hintText: '+256 772 123 456',
+                          hintText: 'e.g. +256 772 123 456',
                           prefixIcon: Icon(Icons.phone_outlined, size: 20),
                           isDense: true,
                         ),
@@ -217,7 +271,7 @@ class _AuthSheetState extends State<AuthSheet> {
                         controller: _address,
                         decoration: const InputDecoration(
                           labelText: 'Default pickup address / landmark',
-                          hintText: 'e.g. Near Market Stall #14, Arua Hill',
+                          hintText: 'e.g. Muni University / Arua Hill',
                           prefixIcon: Icon(Icons.location_on_outlined, size: 20),
                           isDense: true,
                         ),
@@ -236,8 +290,12 @@ class _AuthSheetState extends State<AuthSheet> {
                         isDense: true,
                       ),
                       validator: (value) {
-                        if (value == null || !value.contains('@') || !value.contains('.')) {
-                          return 'Enter a valid email address';
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Enter your email address';
+                        }
+                        final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+                        if (!emailRegex.hasMatch(value.trim())) {
+                          return 'Enter a valid email address (e.g. user@domain.com)';
                         }
                         return null;
                       },
@@ -250,7 +308,7 @@ class _AuthSheetState extends State<AuthSheet> {
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
                         labelText: 'Password',
-                        hintText: 'Enter your password',
+                        hintText: 'Minimum 8 characters',
                         prefixIcon: const Icon(Icons.lock_outline, size: 20),
                         isDense: true,
                         suffixIcon: IconButton(
@@ -261,11 +319,79 @@ class _AuthSheetState extends State<AuthSheet> {
                           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                         ),
                       ),
-                      validator: (value) => value == null || value.length < 6
-                          ? 'Password must be at least 6 characters'
-                          : null,
+                      validator: (value) {
+                        if (value == null || value.length < 8) {
+                          return 'Password must be at least 8 characters';
+                        }
+                        return null;
+                      },
                     ),
-                    const SizedBox(height: 12),
+
+                    // Password Strength Indicator (Signup mode)
+                    if (_createAccount && _password.text.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                value: passwordStrength / 3.0,
+                                minHeight: 4,
+                                backgroundColor: const Color(0xFFE0E0E0),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  passwordStrength == 1
+                                      ? const Color(0xFFE53935)
+                                      : passwordStrength == 2
+                                          ? const Color(0xFFFB8C00)
+                                          : const Color(0xFF2E7D32),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            passwordStrength == 1
+                                ? 'Weak (Add numbers & symbols)'
+                                : passwordStrength == 2
+                                    ? 'Medium'
+                                    : 'Strong password',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: passwordStrength == 1
+                                  ? const Color(0xFFE53935)
+                                  : passwordStrength == 2
+                                      ? const Color(0xFFFB8C00)
+                                      : const Color(0xFF2E7D32),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    // Forgot Password Link in Login mode
+                    if (!_createAccount) ...[
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _isSubmitting ? null : _handleForgotPassword,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          child: const Text(
+                            'Forgot password?',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF2E7D32),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ] else
+                      const SizedBox(height: 12),
 
                     // Confirm Password in Signup mode
                     if (_createAccount) ...[
@@ -336,61 +462,61 @@ class _AuthHeader extends StatelessWidget {
   const _AuthHeader({
     required this.title,
     required this.subtitle,
-    required this.onClose,
+    this.onClose,
   });
 
   final String title;
   final String subtitle;
-  final VoidCallback onClose;
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8F5E9),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFA5D6A7)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: const BoxDecoration(
-              color: Color(0xFF2E7D32),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.recycling_rounded, color: Colors.white, size: 24),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
               children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2EAD65).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.eco_rounded, size: 20, color: Color(0xFF2E7D32)),
+                ),
+                const SizedBox(width: 10),
                 Text(
                   title,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF1B5E20),
+                    color: Color(0xFF1B2E23),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF2E7D32)),
                 ),
               ],
             ),
+            if (onClose != null)
+              IconButton(
+                icon: const Icon(Icons.close_rounded, size: 20),
+                onPressed: onClose,
+                visualDensity: VisualDensity.compact,
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF557060),
+            height: 1.3,
           ),
-          IconButton(
-            icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF2E7D32)),
-            onPressed: onClose,
-            tooltip: 'Close',
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -403,20 +529,24 @@ class _AuthError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFFFFEBEE),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFEF9A9A)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFFFCDD2)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded, color: Color(0xFFC62828), size: 20),
-          const SizedBox(width: 10),
+          const Icon(Icons.error_outline_rounded, size: 16, color: Color(0xFFC62828)),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: Color(0xFFC62828), fontSize: 12, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFFC62828),
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

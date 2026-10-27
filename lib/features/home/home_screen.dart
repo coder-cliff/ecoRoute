@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -65,34 +66,69 @@ class _EcoRouteSplashScreenState extends State<EcoRouteSplashScreen>
   late final AnimationController _controller;
   late final Animation<double> _scaleAnimation;
   late final Animation<double> _opacityAnimation;
+  late final Animation<double> _brightnessAnimation;
+  late final Animation<double> _glowAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 1800),
     );
 
     _scaleAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.9, end: 1.05)
-            .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 60,
+        tween: Tween<double>(begin: 0.86, end: 1.02)
+            .chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 65,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.05, end: 1.6)
+        tween: Tween<double>(begin: 1.02, end: 1.15)
             .chain(CurveTween(curve: Curves.easeInCubic)),
-        weight: 40,
+        weight: 35,
       ),
     ]).animate(_controller);
 
     _opacityAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: ConstantTween<double>(1.0), weight: 75),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeIn)),
+        weight: 20,
+      ),
+      TweenSequenceItem(tween: ConstantTween<double>(1.0), weight: 60),
       TweenSequenceItem(
         tween: Tween<double>(begin: 1.0, end: 0.0)
             .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 25,
+        weight: 20,
+      ),
+    ]).animate(_controller);
+
+    // Dynamic brightness & exposure sweep across logo as it launches
+    _brightnessAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.65, end: 1.35)
+            .chain(CurveTween(curve: Curves.easeInOutCubic)),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.35, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 50,
+      ),
+    ]).animate(_controller);
+
+    // Subtle breathing halo glow
+    _glowAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.15, end: 0.55)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.55, end: 0.25)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 50,
       ),
     ]).animate(_controller);
 
@@ -105,7 +141,7 @@ class _EcoRouteSplashScreenState extends State<EcoRouteSplashScreen>
               authService: widget.authService,
               wasteApiService: widget.wasteApiService,
             ),
-            transitionDuration: const Duration(milliseconds: 300),
+            transitionDuration: const Duration(milliseconds: 350),
             transitionsBuilder: (context, animation, secondaryAnimation, child) =>
                 FadeTransition(opacity: animation, child: child),
           ),
@@ -124,28 +160,109 @@ class _EcoRouteSplashScreenState extends State<EcoRouteSplashScreen>
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
-        statusBarColor: Color(0xFF2EAD65),
+        statusBarColor: Color(0xFF141D26),
         statusBarIconBrightness: Brightness.light,
         statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: Color(0xFF2EAD65),
+        systemNavigationBarColor: Color(0xFF141D26),
         systemNavigationBarIconBrightness: Brightness.light,
         systemNavigationBarDividerColor: Colors.transparent,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFF2EAD65),
-        body: Center(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              return FadeTransition(
-                opacity: _opacityAnimation,
-                child: Transform.scale(
-                  scale: _scaleAnimation.value,
-                  child: child,
-                ),
-              );
-            },
-            child: const BrandLockup(splash: true),
+        backgroundColor: const Color(0xFF141D26),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment(0.0, -0.1),
+              radius: 1.1,
+              colors: [
+                Color(0xFF1B2836),
+                Color(0xFF141D26),
+                Color(0xFF0C1218),
+              ],
+            ),
+          ),
+          child: Center(
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, _) {
+                final b = _brightnessAnimation.value;
+                return FadeTransition(
+                  opacity: _opacityAnimation,
+                  child: Transform.scale(
+                    scale: _scaleAnimation.value,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Soft breathing glowing aura behind logo
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: 280,
+                              height: 280,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF2EAD65).withValues(alpha: _glowAnimation.value),
+                                    blurRadius: 70,
+                                    spreadRadius: 10,
+                                  ),
+                                  BoxShadow(
+                                    color: const Color(0xFF1E88E5).withValues(alpha: _glowAnimation.value * 0.6),
+                                    blurRadius: 90,
+                                    spreadRadius: 5,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Uploaded EcoRoute emblem with dynamic animated brightness sweep
+                            ColorFiltered(
+                              colorFilter: ColorFilter.matrix([
+                                b, 0, 0, 0, 0,
+                                0, b, 0, 0, 0,
+                                0, 0, b, 0, 0,
+                                0, 0, 0, 1, 0,
+                              ]),
+                              child: Image.asset(
+                                'assets/EcoRoute_splash.png',
+                                width: 280,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const BrandLockup(splash: true),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        // Modern tagline & loading bar
+                        const Text(
+                          'Sustainable Waste Logistics • Arua',
+                          style: TextStyle(
+                            color: Color(0xFF8BA296),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: 140,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: LinearProgressIndicator(
+                              value: _controller.value,
+                              minHeight: 3,
+                              backgroundColor: Colors.white.withValues(alpha: 0.1),
+                              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2EAD65)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -273,28 +390,30 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
     setState(() => _invitingRider = true);
     try {
+      String inviteCode = 'RIDER-INVITE';
       if (widget.authService != null) {
-        await widget.authService!.inviteRider(
+        inviteCode = await widget.authService!.inviteRider(
           email: email,
           fullName: name,
-          phone: phone,
+          phone: phone.isNotEmpty ? phone : '+256 700 000 000',
         );
       }
       _riderEmailController.clear();
       _riderNameController.clear();
       _riderPhoneController.clear();
+      await _loadRiders();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: const Color(0xFF2E8B57),
-            content: Text('Rider invite sent successfully to ! Password: #ecorute26'),
+            content: Text('Rider invite sent successfully to $email! Invite code: $inviteCode'),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to invite rider: ')),
+          SnackBar(content: Text('Failed to invite rider: $e')),
         );
       }
     } finally {
@@ -305,10 +424,11 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   Future<void> _removeRider(String email) async {
     if (widget.authService != null) {
       await widget.authService!.removeRider(email);
+      await _loadRiders();
       if (mounted) {
         setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Rider  removed.')),
+          SnackBar(content: Text('Rider $email removed.')),
         );
       }
     }
@@ -317,6 +437,10 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   void _openOrder() {
     if (!_signedIn) {
       _showAuth();
+      return;
+    }
+    if (widget.authService != null && !widget.authService!.isEmailVerified()) {
+      _promptEmailVerification();
       return;
     }
     Navigator.of(context).push(
@@ -329,12 +453,49 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       _showAuth();
       return;
     }
+    if (widget.authService != null && !widget.authService!.isEmailVerified()) {
+      _promptEmailVerification();
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => OrderPage(
           onSubmitted: _addOrder,
           autoTriggerCamera: true,
         ),
+      ),
+    );
+  }
+
+  void _promptEmailVerification() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Email Verification Required'),
+        content: const Text(
+          'To protect municipal routing and prevent unverified orders, please verify your email address before ordering a waste collection.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Later'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await widget.authService?.sendEmailVerification();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Verification email sent! Please check your inbox.'),
+                    backgroundColor: Color(0xFF2E7D32),
+                  ),
+                );
+              }
+            },
+            child: const Text('Send Verification Email'),
+          ),
+        ],
       ),
     );
   }
@@ -371,12 +532,58 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     );
   }
 
-  Future<void> _deleteOrder(PickupRequest request) async {
-    await widget.repository.delete(request.id);
+  Future<void> _cancelOrder(PickupRequest request) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel Pickup Request?'),
+        content: const Text(
+          'Are you sure you want to cancel this instant waste pickup request?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Keep Request'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC62828)),
+            child: const Text('Cancel Request'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await widget.repository.updateStatus(request.id, RequestStatus.cancelled);
     if (!mounted) return;
-    setState(() => _orders.removeWhere((o) => o.id == request.id));
+    setState(() {
+      final index = _orders.indexWhere((o) => o.id == request.id);
+      if (index != -1) {
+        _orders[index] = request.copyWith(status: RequestStatus.cancelled);
+      }
+    });
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Collection request cancelled.')),
+      SnackBar(
+        content: const Text('Collection request cancelled.'),
+        action: SnackBarAction(
+          label: 'Undo',
+          textColor: const Color(0xFFA5D6A7),
+          onPressed: () async {
+            await widget.repository.updateStatus(request.id, RequestStatus.requested);
+            if (mounted) {
+              setState(() {
+                final idx = _orders.indexWhere((o) => o.id == request.id);
+                if (idx != -1) {
+                  _orders[idx] = request.copyWith(status: RequestStatus.requested);
+                }
+              });
+            }
+          },
+        ),
+      ),
     );
   }
 
@@ -971,7 +1178,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Riders are strictly invited via email by municipal admins. Default password is #ecorute26.',
+                  'Riders are invited via verified email by municipal admins. A secure invite code is generated upon dispatch.',
                   style: TextStyle(fontSize: 11, color: Color(0xFF557060)),
                 ),
                 const SizedBox(height: 10),
@@ -1411,7 +1618,58 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_orders.isEmpty) {
+    // Guest protection: Guests cannot see resident private orders, addresses or contacts
+    if (!_signedIn) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2EAD65).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.lock_outline_rounded, size: 34, color: Color(0xFF2E7D32)),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Sign In to View Orders',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF1B2E23)),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Collection orders contain private resident locations and phone numbers. Please sign in or register to view and track your pickup requests.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Color(0xFF557060), height: 1.4),
+              ),
+              const SizedBox(height: 22),
+              FilledButton.icon(
+                onPressed: () => _showAuth(),
+                icon: const Icon(Icons.login_rounded, size: 18),
+                label: const Text('Sign in / Register', style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Filter requests for residents: residents only see requests from their own account
+    final scopedOrders = _role == AppRole.resident
+        ? _orders.where((o) =>
+            _currentUser == null ||
+            o.residentId == _currentUser!.id ||
+            o.residentPhone == _currentUser!.phone ||
+            o.residentName == _currentUser!.fullName ||
+            o.residentId == 'resident-1'
+          ).toList()
+        : _orders;
+
+    if (scopedOrders.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(28),
@@ -1439,7 +1697,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       );
     }
 
-    final filteredOrders = _orders.where((order) {
+    final filteredOrders = scopedOrders.where((order) {
       final matchesStatus =
           _statusFilter == null || order.status == _statusFilter;
       final matchesSearch = _searchQuery.isEmpty ||
@@ -1568,7 +1826,8 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                                           backgroundColor:
                                               const Color(0xFFE8F5E9),
                                         ),
-                                        if (_signedIn)
+                                        // Status modifier visible strictly to Riders and Municipal Admins
+                                        if (_signedIn && (_role == AppRole.rider || _role == AppRole.admin))
                                           _StatusSelector(
                                             currentStatus: order.status,
                                             onChanged: (status) {
@@ -1577,8 +1836,10 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                                               }
                                             },
                                           ),
-                                        // MoMo Pay Button for unpaid orders
-                                        if (order.status != RequestStatus.paid &&
+                                        // MoMo Pay Button visible strictly to owning resident
+                                        if (_signedIn &&
+                                            _role == AppRole.resident &&
+                                            order.status != RequestStatus.paid &&
                                             order.status != RequestStatus.cancelled)
                                           ActionChip(
                                             avatar: const Icon(Icons.payment, size: 16, color: Color(0xFF2E7D32)),
@@ -1595,7 +1856,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                                             ),
                                             tooltip: 'Cancel Request',
                                             onPressed: () =>
-                                                _deleteOrder(order),
+                                                _cancelOrder(order),
                                           ),
                                       ],
                                     ),
@@ -1762,42 +2023,69 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                   onTap: _showWasteDatabase,
                 ),
                 const SizedBox(height: 10),
-                ListTile(
-                  tileColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: const BorderSide(color: Color(0xFFE2EAE1)),
+                if (kDebugMode && _role == AppRole.admin) ...[
+                  ListTile(
+                    tileColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(color: Color(0xFFE2EAE1)),
+                    ),
+                    leading: const Icon(Icons.refresh_rounded, color: Color(0xFF2E7D32)),
+                    title: const Text(
+                      'Reset / Re-seed Demo Municipal Records',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: const Text(
+                      'Debug Admin only: Re-populates demonstration requests across Arua',
+                      style: TextStyle(fontSize: 11),
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_rounded),
+                    onTap: () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Reset Demo Records?'),
+                          content: const Text(
+                            'This will overwrite current local pickup requests with default municipal demo data. Continue?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC62828)),
+                              child: const Text('Reset'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true) {
+                        await widget.repository.seedDemoData(force: true);
+                        await _loadOrders();
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Demonstration instant collection orders restored.'),
+                            backgroundColor: Color(0xFF2E7D32),
+                          ),
+                        );
+                      }
+                    },
                   ),
-                  leading: const Icon(Icons.refresh_rounded, color: Color(0xFF2E7D32)),
-                  title: const Text(
-                    'Reset / Re-seed Demo Municipal Records',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                  ),
-                  subtitle: const Text(
-                    'Populates demonstration instant collection requests across Arua',
-                    style: TextStyle(fontSize: 11),
-                  ),
-                  trailing: const Icon(Icons.arrow_forward_rounded),
-                  onTap: () async {
-                    await widget.repository.seedDemoData(force: true);
-                    await _loadOrders();
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Demonstration instant collection orders restored.'),
-                        backgroundColor: Color(0xFF2E7D32),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 18),
+                  const SizedBox(height: 18),
+                ],
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     FilledButton.icon(
-                      onPressed: _showAuth,
+                      onPressed: () async {
+                        await _signOut();
+                        _showAuth();
+                      },
                       icon: const Icon(Icons.swap_horiz_rounded),
-                      label: const Text('Switch role'),
+                      label: const Text('Switch account'),
                     ),
                     const SizedBox(width: 12),
                     OutlinedButton.icon(
