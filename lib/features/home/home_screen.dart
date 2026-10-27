@@ -413,7 +413,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
       // Dispatch invitation email via Google Apps Script MailApp API
       final inviteLink = '${RiderInviteService.defaultAppUrl}?invite=$inviteCode&email=${Uri.encodeComponent(email)}';
-      await RiderInviteService.sendRiderInviteEmail(
+      final emailSent = await RiderInviteService.sendRiderInviteEmail(
         riderEmail: email,
         riderName: name,
         inviteLink: inviteLink,
@@ -424,12 +424,21 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       _riderPhoneController.clear();
       await _loadRiders();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: const Color(0xFF2E8B57),
-            content: Text('Rider invite sent successfully to $email! Invite code: $inviteCode'),
-          ),
-        );
+        if (emailSent) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: const Color(0xFF2E8B57),
+              content: Text('Official invite email dispatched to $email! Invite code: $inviteCode'),
+            ),
+          );
+        } else {
+          _showInviteLinkDialog(
+            email: email,
+            name: name,
+            inviteCode: inviteCode,
+            inviteLink: inviteLink,
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -440,6 +449,185 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     } finally {
       if (mounted) setState(() => _invitingRider = false);
     }
+  }
+
+  void _showInviteLinkDialog({
+    required String email,
+    required String name,
+    required String inviteCode,
+    required String inviteLink,
+  }) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.mark_email_read_outlined, color: Color(0xFF2E7D32)),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Rider Invitation Ready',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Rider $name has been authorized with code $inviteCode.'),
+              const SizedBox(height: 10),
+              const Text(
+                'Direct Google MailApp delivery requires an active Apps Script Deployment URL. You can send the official email right now via your mail client (Gmail/Outlook) or copy the onboarding link:',
+                style: TextStyle(fontSize: 12, color: Color(0xFF556958)),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F8F2),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFC8E6C9)),
+                ),
+                child: SelectableText(
+                  inviteLink,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                    color: Color(0xFF1B5E20),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.copy_rounded, size: 16),
+            label: const Text('Copy Link'),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: inviteLink));
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Invitation link copied to clipboard!')),
+              );
+            },
+          ),
+          FilledButton.icon(
+            icon: const Icon(Icons.mail_outline_rounded, size: 16),
+            label: const Text('Send via Email App'),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await RiderInviteService.openEmailClient(
+                riderEmail: email,
+                riderName: name,
+                inviteLink: inviteLink,
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openEmailClientForRider(Map<String, dynamic> rider) {
+    final email = rider['email'] as String? ?? '';
+    final name = rider['fullName'] as String? ?? 'Rider';
+    final code = rider['inviteCode'] as String? ?? 'RIDER-INVITE';
+    final link = '${RiderInviteService.defaultAppUrl}?invite=$code&email=${Uri.encodeComponent(email)}';
+
+    RiderInviteService.openEmailClient(
+      riderEmail: email,
+      riderName: name,
+      inviteLink: link,
+    );
+  }
+
+  void _copyRiderInviteLink(Map<String, dynamic> rider) {
+    final email = rider['email'] as String? ?? '';
+    final code = rider['inviteCode'] as String? ?? 'RIDER-INVITE';
+    final link = '${RiderInviteService.defaultAppUrl}?invite=$code&email=${Uri.encodeComponent(email)}';
+
+    Clipboard.setData(ClipboardData(text: link));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Invite link for $email copied to clipboard!')),
+    );
+  }
+
+  void _showConfigureEmailGatewayDialog() {
+    final controller = TextEditingController(text: RiderInviteService.scriptUrl);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.settings_suggest_rounded, color: Color(0xFF2E7D32)),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Google Apps Script Gateway',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'To automatically send official emails from ecoroute.waste@gmail.com without opening your local mail app:',
+                style: TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '1. Open Google Apps Script (script.google.com) under ecoroute.waste@gmail.com.\n2. Paste Code.gs from the project repo.\n3. Deploy as Web App (Execute as: Me, Access: Anyone).\n4. Paste the resulting /exec URL below:',
+                style: TextStyle(fontSize: 11, color: Color(0xFF556958)),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  labelText: 'Web App URL (/exec)',
+                  hintText: 'https://script.google.com/macros/s/.../exec',
+                  isDense: true,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final newUrl = controller.text.trim();
+              if (newUrl.isNotEmpty) {
+                await RiderInviteService.saveScriptUrl(newUrl);
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Google Apps Script URL saved successfully!'),
+                      backgroundColor: Color(0xFF2E7D32),
+                    ),
+                  );
+                }
+              }
+            },
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
+            child: const Text('Save Gateway URL'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _removeRider(String email) async {
@@ -1211,13 +1399,25 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Invite New Collection Rider',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: Color(0xFF1B5E3B),
-                  ),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Invite New Collection Rider',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: Color(0xFF1B5E3B),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.settings_suggest_outlined, size: 18, color: Color(0xFF2E7D32)),
+                      tooltip: 'Configure MailApp Gateway URL',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: _showConfigureEmailGatewayDialog,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 const Text(
@@ -1329,7 +1529,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                               ),
                             ),
                             Text(
-                              '${riders[i]['email']} ΓÇó ${riders[i]['phone'] ?? ''}',
+                              '${riders[i]['email']} • ${riders[i]['phone'] ?? ''}',
                               style: const TextStyle(
                                 fontSize: 11,
                                 color: Color(0xFF647568),
@@ -1352,6 +1552,16 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                             color: Color(0xFF1B5E20),
                           ),
                         ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.mail_outline_rounded, size: 20, color: Color(0xFF2E7D32)),
+                        tooltip: 'Send invite via Email App',
+                        onPressed: () => _openEmailClientForRider(riders[i]),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy_rounded, size: 18, color: Color(0xFF556958)),
+                        tooltip: 'Copy onboarding link',
+                        onPressed: () => _copyRiderInviteLink(riders[i]),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),

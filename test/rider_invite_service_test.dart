@@ -25,6 +25,7 @@ void main() {
         riderEmail: 'rider@ecorute.ug',
         riderName: 'John Baptist',
         inviteLink: 'https://coder-cliff.github.io/ecoRoute/?invite=TEST123',
+        customScriptUrl: 'https://script.google.com/macros/s/TEST_DEPLOYED_MACRO_ID/exec',
         httpClient: mockClient,
       );
 
@@ -45,6 +46,7 @@ void main() {
       final success = await RiderInviteService.sendRiderInviteEmail(
         riderEmail: 'rider@ecorute.ug',
         riderName: 'Rider Two',
+        customScriptUrl: 'https://script.google.com/macros/s/TEST_DEPLOYED_MACRO_ID/exec',
         httpClient: mockClient,
       );
 
@@ -59,7 +61,18 @@ void main() {
       final success = await RiderInviteService.sendRiderInviteEmail(
         riderEmail: 'error@ecorute.ug',
         riderName: 'Error Rider',
+        customScriptUrl: 'https://script.google.com/macros/s/TEST_DEPLOYED_MACRO_ID/exec',
         httpClient: mockClient,
+      );
+
+      expect(success, isFalse);
+    });
+
+    test('returns false immediately when script URL is still placeholder', () async {
+      final success = await RiderInviteService.sendRiderInviteEmail(
+        riderEmail: 'unconfigured@ecorute.ug',
+        riderName: 'Pending Deploy Rider',
+        customScriptUrl: 'https://script.google.com/macros/s/AKfycbyEcoRouteRiderInviteGateway/exec',
       );
 
       expect(success, isFalse);
