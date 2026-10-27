@@ -40,7 +40,9 @@ class AnalyticsRow extends StatelessWidget {
                       child: SizedBox.expand(),
                     ),
                     FractionallySizedBox(
+                      alignment: Alignment.centerLeft,
                       widthFactor: proportion,
+                      heightFactor: 1.0,
                       child: const ColoredBox(color: Color(0xFF2E8B57)),
                     ),
                   ],

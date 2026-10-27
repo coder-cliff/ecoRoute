@@ -13,10 +13,10 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const EcoRouteApp());
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
 
     expect(find.text('EcoRoute'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pumpAndSettle();
 
     expect(find.text('Arua waste pickup'), findsOneWidget);
     expect(find.text('Arua service radius: 12 km'), findsOneWidget);
@@ -66,12 +66,13 @@ void main() {
     );
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Password'),
-      'secret1',
+      'secret123',
     );
     await tester.tap(find.widgetWithText(FilledButton, 'Login'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('REPORT AN ISSUE'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Submit collection order'));
     await tester.tap(find.text('Submit collection order'));
     await tester.pump();
 
@@ -179,7 +180,14 @@ void main() {
 }
 
 Future<void> _signInAs(WidgetTester tester, String role) async {
-  await tester.tap(find.byIcon(Icons.notifications_none_rounded));
+  final authBtn = find.byWidgetPredicate(
+    (w) =>
+        w is Icon &&
+        (w.icon == Icons.account_circle_outlined ||
+            w.icon == Icons.account_circle_rounded ||
+            w.icon == Icons.notifications_none_rounded),
+  );
+  await tester.tap(authBtn);
   await tester.pumpAndSettle();
   if (role.toLowerCase() == 'rider') {
     await tester.enterText(
@@ -204,6 +212,10 @@ class _TestPickupRequestRepository implements PickupRequestRepository {
   _TestPickupRequestRepository(this._requests);
 
   final List<PickupRequest> _requests;
+
+  @override
+  Stream<List<PickupRequest>> watchRequests({int limit = 50}) =>
+      Stream.value(List<PickupRequest>.of(_requests));
 
   @override
   Future<List<PickupRequest>> loadAll() async =>

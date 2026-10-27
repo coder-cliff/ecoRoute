@@ -14,7 +14,14 @@ class AuthService {
   static const String _sessionKey = 'ecoroute_current_user_v1';
   static const String _usersKey = 'ecoroute_registered_users_v1';
   static const String _invitedRidersKey = 'ecoroute_invited_riders_v1';
+  static const String _remindersKey = 'ecoroute_reminders_enabled_v1';
   static const String supportEmail = 'ecoroute.waste@gmail.com';
+
+  SharedPreferences get preferences => _preferences;
+
+  bool getRemindersEnabled() => _preferences.getBool(_remindersKey) ?? true;
+  Future<void> setRemindersEnabled(bool enabled) =>
+      _preferences.setBool(_remindersKey, enabled);
 
   /// Salted SHA-256 password hash generator
   static String hashPassword(String password) {
@@ -45,7 +52,7 @@ class AuthService {
       'email': 'saviordeogratius@gmail.com',
       'phone': '+256 782 555 111',
       'role': 'admin',
-      'passwordHash': '8253199c086111be1ce87d0c3eb1a473c4ab5cb58d4a46059d4791e8477ff962',
+      'passwordHash': '5eed36da52d095e2dd723bf28011f81874046719af0ace742178877a4989c32c',
       'address': 'Muni University, Arua',
     },
     {
@@ -54,7 +61,7 @@ class AuthService {
       'email': 'techcliff451@gmail.com',
       'phone': '+256 701 987 654',
       'role': 'admin',
-      'passwordHash': '8253199c086111be1ce87d0c3eb1a473c4ab5cb58d4a46059d4791e8477ff962',
+      'passwordHash': '5eed36da52d095e2dd723bf28011f81874046719af0ace742178877a4989c32c',
       'address': 'Muni University, Arua',
     },
   ];

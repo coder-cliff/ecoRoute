@@ -14,11 +14,15 @@ import 'widgets/waste_camera_scanner.dart';
 class OrderPage extends StatefulWidget {
   const OrderPage({
     required this.onSubmitted,
+    this.initialPhone = '',
+    this.initialAddress = '',
     this.autoTriggerCamera = false,
     super.key,
   });
 
   final Future<void> Function(PickupRequest request) onSubmitted;
+  final String initialPhone;
+  final String initialAddress;
   final bool autoTriggerCamera;
 
   @override
@@ -35,9 +39,8 @@ class _OrderPageState extends State<OrderPage> {
 
   final _description = TextEditingController();
   final _sackCountController = TextEditingController(text: '2');
-  final _addressController = TextEditingController(text: 'Muni University, Arua');
-  // Requested default mobile number
-  final _phoneController = TextEditingController(text: '+256394880352');
+  late final TextEditingController _addressController;
+  late final TextEditingController _phoneController;
 
   double? _latitude;
   double? _longitude;
@@ -48,6 +51,8 @@ class _OrderPageState extends State<OrderPage> {
   @override
   void initState() {
     super.initState();
+    _addressController = TextEditingController(text: widget.initialAddress);
+    _phoneController = TextEditingController(text: widget.initialPhone);
     if (widget.autoTriggerCamera) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _capturedPhotoLabel == null) {
@@ -227,7 +232,7 @@ class _OrderPageState extends State<OrderPage> {
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final shouldPop = await _confirmDiscard();
-        if (shouldPop && mounted) {
+        if (shouldPop && context.mounted) {
           Navigator.of(context).pop();
         }
       },
@@ -600,6 +605,7 @@ class _OrderPageState extends State<OrderPage> {
           ],
         ),
       ),
+    ),
     ),
   );
 }

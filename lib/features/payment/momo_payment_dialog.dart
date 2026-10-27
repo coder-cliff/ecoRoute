@@ -21,7 +21,7 @@ class MoMoPaymentDialog extends StatefulWidget {
   const MoMoPaymentDialog({
     required this.request,
     required this.onPaymentSuccess,
-    this.initialPhone = '+256394880352',
+    this.initialPhone = '',
     super.key,
   });
 
@@ -36,47 +36,65 @@ class MoMoPaymentDialog extends StatefulWidget {
 class _MoMoPaymentDialogState extends State<MoMoPaymentDialog> {
   MoMoProvider _provider = MoMoProvider.mtn;
   late final TextEditingController _phoneController;
-  final TextEditingController _pinController = TextEditingController();
 
-  int _step = 0; // 0: Enter Details, 1: USSD Push Waiting, 2: Receipt
+  int _step = 0; // 0: Enter Details, 1: USSD Push Waiting, 2: Receipt, 3: Failed
   String? _transactionId;
   DateTime? _paidAt;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _phoneController = TextEditingController(text: widget.initialPhone);
+    final defaultPhone = widget.initialPhone.isNotEmpty
+        ? widget.initialPhone
+        : widget.request.residentPhone;
+    _phoneController = TextEditingController(text: defaultPhone);
   }
 
   @override
   void dispose() {
     _phoneController.dispose();
-    _pinController.dispose();
     super.dispose();
   }
 
   Future<void> _simulatePayment() async {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty || phone.length < 9) {
+      setState(() {
+        _errorMessage = 'Please enter a valid mobile number (min 9 digits) to receive the USSD prompt.';
+        _step = 3;
+      });
+      return;
+    }
+
     setState(() => _step = 1);
 
     // Simulate network USSD push delay
     await Future<void>.delayed(const Duration(milliseconds: 1600));
 
-    final txId = 'TX-${_provider == MoMoProvider.mtn ? 'MTN' : 'AIR'}-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+    final txId = 'DEMO-TX-${_provider == MoMoProvider.mtn ? 'MTN' : 'AIR'}-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
     final now = DateTime.now();
 
     final updated = widget.request.copyWith(
       status: RequestStatus.paid,
-      residentPhone: _phoneController.text.trim(),
+      residentPhone: phone,
     );
 
-    await widget.onPaymentSuccess(updated);
-
-    if (!mounted) return;
-    setState(() {
-      _transactionId = txId;
-      _paidAt = now;
-      _step = 2; // Show receipt
-    });
+    try {
+      await widget.onPaymentSuccess(updated);
+      if (!mounted) return;
+      setState(() {
+        _transactionId = txId;
+        _paidAt = now;
+        _step = 2; // Show receipt
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Payment confirmation could not be verified: $e';
+        _step = 3;
+      });
+    }
   }
 
   @override
@@ -90,7 +108,8 @@ class _MoMoPaymentDialogState extends State<MoMoPaymentDialog> {
           child: switch (_step) {
             0 => _buildInputStep(),
             1 => _buildProcessingStep(),
-            _ => _buildReceiptStep(),
+            2 => _buildReceiptStep(),
+            _ => _buildFailedStep(),
           },
         ),
       ),
@@ -125,7 +144,7 @@ class _MoMoPaymentDialogState extends State<MoMoPaymentDialog> {
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                     ),
                     Text(
-                      'Official Arua Municipal Gateway',
+                      'EcoRoute Demo Payment Gateway • Test Mode',
                       style: TextStyle(fontSize: 11, color: Color(0xFF647568)),
                     ),
                   ],
@@ -327,10 +346,10 @@ class _MoMoPaymentDialogState extends State<MoMoPaymentDialog> {
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.verified_outlined, size: 16, color: Color(0xFF2E7D32)),
+                Icon(Icons.receipt_long_rounded, size: 16, color: Color(0xFF2E7D32)),
                 SizedBox(width: 6),
                 Text(
-                  'AUDITED & CLEARED • ARUA CITY',
+                  'DEMO TRANSACTION • ECOROUTE',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -351,6 +370,51 @@ class _MoMoPaymentDialogState extends State<MoMoPaymentDialog> {
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Done & Close Receipt'),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFailedStep() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 54),
+          const SizedBox(height: 12),
+          const Text(
+            'Payment Unsuccessful',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1B2E23)),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _errorMessage ?? 'The demo transaction could not be processed. Please verify your phone number and try again.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 13, color: Color(0xFF647568)),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
+                  onPressed: () => setState(() {
+                    _errorMessage = null;
+                    _step = 0;
+                  }),
+                  child: const Text('Retry'),
+                ),
+              ),
+            ],
           ),
         ],
       ),

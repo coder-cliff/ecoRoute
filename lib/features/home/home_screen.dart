@@ -228,7 +228,7 @@ class _EcoRouteSplashScreenState extends State<EcoRouteSplashScreen>
                                 'assets/EcoRoute_splash.png',
                                 width: 280,
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => const BrandLockup(splash: true),
+                                errorBuilder: (context, error, stackTrace) => const BrandLockup(splash: true),
                               ),
                             ),
                           ],
@@ -335,10 +335,12 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     _loadUserSession();
     _loadOrders();
     _loadWeather();
+    _loadRiders();
   }
 
   void _loadUserSession() {
     if (widget.authService != null) {
+      _remindersEnabled = widget.authService!.getRemindersEnabled();
       final user = widget.authService!.getCurrentUser();
       if (user != null) {
         _signedIn = true;
@@ -368,6 +370,15 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         ..addAll(orders);
       _loadingOrders = false;
     });
+  }
+
+  Future<void> _loadRiders() async {
+    if (widget.authService != null) {
+      await widget.authService!.fetchInvitedRidersAsync();
+    }
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _inviteRider() async {
@@ -444,7 +455,13 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       return;
     }
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => OrderPage(onSubmitted: _addOrder)),
+      MaterialPageRoute(
+        builder: (_) => OrderPage(
+          onSubmitted: _addOrder,
+          initialPhone: _currentUser?.phone ?? '',
+          initialAddress: _currentUser?.address ?? '',
+        ),
+      ),
     );
   }
 
@@ -461,6 +478,8 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       MaterialPageRoute(
         builder: (_) => OrderPage(
           onSubmitted: _addOrder,
+          initialPhone: _currentUser?.phone ?? '',
+          initialAddress: _currentUser?.address ?? '',
           autoTriggerCamera: true,
         ),
       ),
@@ -510,15 +529,16 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   }
 
   Future<void> _addOrder(PickupRequest request) async {
+    final user = _currentUser;
     final requestWithUser = request.copyWith(
-      residentId: _currentUser?.id ?? 'resident-1',
-      residentName: _currentUser?.fullName ?? 'Amina Dranzoa',
+      residentId: user?.id ?? 'res_${DateTime.now().millisecondsSinceEpoch}',
+      residentName: user?.fullName ?? 'EcoRoute Resident',
       residentPhone: request.residentPhone.isNotEmpty
           ? request.residentPhone
-          : (_currentUser?.phone ?? '+256394880352'),
-      address: (request.address.isNotEmpty && request.address != 'Arua Municipality')
+          : (user?.phone ?? ''),
+      address: request.address.isNotEmpty
           ? request.address
-          : (_currentUser?.address ?? request.address),
+          : (user?.address ?? 'Arua Municipality'),
     );
 
     await widget.repository.save(requestWithUser);
@@ -743,8 +763,16 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                     .toList(),
               ),
               IconButton(
+                tooltip: _signedIn
+                    ? 'My Account (${_currentUser?.fullName ?? 'User'})'
+                    : 'Sign in or Register',
                 onPressed: _showAuth,
-                icon: const Icon(Icons.notifications_none_rounded),
+                icon: Icon(
+                  _signedIn
+                      ? Icons.account_circle_rounded
+                      : Icons.account_circle_outlined,
+                  color: _signedIn ? const Color(0xFF1B5E20) : null,
+                ),
               ),
               const SizedBox(width: 8),
             ],
@@ -1027,7 +1055,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        isOnline ? 'REST API Live' : 'Cached',
+                        isOnline ? 'Open-Meteo Live' : 'Offline Cache',
                         style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w700,
@@ -1042,8 +1070,8 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                 const SizedBox(height: 2),
                 Text(
                   report != null
-                      ? '${report.temperatureC.toStringAsFixed(1)}┬░C ΓÇó ${report.conditionSummary}'
-                      : 'Connecting to Arua meteorological service...',
+                      ? '${report.temperatureC.toStringAsFixed(1)}°C • ${report.conditionSummary}'
+                      : 'Connecting to Open-Meteo weather service...',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -1898,23 +1926,51 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Signed in as ${_role.label}',
+                  _currentUser?.fullName.isNotEmpty == true
+                      ? _currentUser!.fullName.trim().split(RegExp(r'\s+')).map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}' : '').join(' ')
+                      : 'EcoRoute User',
                   style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF183B20),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFA5D6A7)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _role == AppRole.admin
+                            ? Icons.admin_panel_settings_rounded
+                            : _role == AppRole.rider
+                                ? Icons.two_wheeler_rounded
+                                : Icons.person_rounded,
+                        size: 14,
+                        color: const Color(0xFF2E7D32),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Signed in as ${_role.label}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 if (_currentUser != null) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
-                    _currentUser!.fullName,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    '${_currentUser!.email} ΓÇó ${_currentUser!.phone}',
+                    '${_currentUser!.email} • ${_currentUser!.phone}',
                     style: const TextStyle(fontSize: 12, color: Color(0xFF71877D)),
                   ),
                 ],
@@ -1997,8 +2053,10 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                       ),
                       Switch(
                         value: _remindersEnabled,
-                        onChanged: (val) =>
-                            setState(() => _remindersEnabled = val),
+                        onChanged: (val) {
+                          setState(() => _remindersEnabled = val);
+                          widget.authService?.setRemindersEnabled(val);
+                        },
                       ),
                     ],
                   ),

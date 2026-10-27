@@ -195,10 +195,8 @@ class _WasteCameraScannerState extends State<WasteCameraScanner> {
       capturedAt: DateTime.now(),
       locationResult: _locationResult ??
           const UserLocationResult(
-            status: LocationServiceStatus.success,
-            latitude: 3.0512,
-            longitude: 30.9114,
-            isWithinServiceArea: true,
+            status: LocationServiceStatus.servicesDisabled,
+            message: 'GPS location not locked. Please calibrate or enter address manually.',
           ),
       isAutoCaptured: false,
       photoPath: _photoPath,

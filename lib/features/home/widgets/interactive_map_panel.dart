@@ -217,8 +217,8 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                           const SizedBox(width: 5),
                           Text(
                             _mapType == GoogleMapType.roadmap
-                                ? 'Google Maps • Streets'
-                                : 'Google Maps • Satellite',
+                                ? 'Arua Municipal Zones • Map View'
+                                : 'Arua Municipal Zones • Satellite',
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
@@ -335,76 +335,92 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
             ),
           ),
 
-          // User Location Marker (EcoRoute Green GPS Dot)
-          if (hasGps)
-            Positioned(
-              left: 140,
-              top: 180,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: const Color(0xFF2EAD65).withValues(alpha: 0.25),
-                    ),
-                  ),
-                  Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2E7D32),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x33000000),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Interactive Landmark Pins
+          // Interactive Landmark Pins & Proportional GPS Position
           LayoutBuilder(
             builder: (context, constraints) {
-              return Stack(
-                children: landmarks.map((landmark) {
-                  final left = constraints.maxWidth * landmark.offsetFactor.dx - 14;
-                  final top = constraints.maxHeight * landmark.offsetFactor.dy - 14;
+              final w = constraints.maxWidth;
+              final h = constraints.maxHeight;
 
-                  return Positioned(
-                    left: left,
-                    top: top,
-                    child: GestureDetector(
-                      onTap: () => setState(() => _selectedLandmark = landmark),
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: _selectedLandmark == landmark
-                              ? const Color(0xFFEA4335) // Google Maps Red pin
-                              : const Color(0xFF1B5E20),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2.5),
-                          boxShadow: const [
-                            BoxShadow(color: Color(0x33000000), blurRadius: 4),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.location_on_rounded,
-                          size: 15,
-                          color: Colors.white,
+              // Proportional coordinates within Arua's municipal boundary
+              const minLat = 2.980;
+              const maxLat = 3.060;
+              const minLng = 30.870;
+              const maxLng = 30.940;
+
+              final clampedLat = lat.clamp(minLat, maxLat);
+              final clampedLng = lng.clamp(minLng, maxLng);
+              final xNorm = (clampedLng - minLng) / (maxLng - minLng);
+              final yNorm = 1.0 - ((clampedLat - minLat) / (maxLat - minLat));
+              final gpsLeft = (xNorm * w - 17.0).clamp(10.0, w - 36.0);
+              final gpsTop = (yNorm * h - 17.0).clamp(10.0, h - 36.0);
+
+              return Stack(
+                children: [
+                  ...landmarks.map((landmark) {
+                    final left = w * landmark.offsetFactor.dx - 14;
+                    final top = h * landmark.offsetFactor.dy - 14;
+
+                    return Positioned(
+                      left: left,
+                      top: top,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _selectedLandmark = landmark),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: _selectedLandmark == landmark
+                                ? const Color(0xFFEA4335) // Highlight pin
+                                : const Color(0xFF1B5E20),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2.5),
+                            boxShadow: const [
+                              BoxShadow(color: Color(0x33000000), blurRadius: 4),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.location_on_rounded,
+                            size: 15,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
+                    );
+                  }),
+                  if (hasGps)
+                    Positioned(
+                      left: gpsLeft,
+                      top: gpsTop,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF2EAD65).withValues(alpha: 0.25),
+                            ),
+                          ),
+                          Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2E7D32),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x33000000),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  );
-                }).toList(),
+                ],
               );
             },
           ),
