@@ -23,7 +23,6 @@ class ProfileSettingsView extends StatefulWidget {
     this.onOpenWasteDatabase,
     this.onRefreshOrders,
     this.onSignOut,
-    this.onSwitchAccount,
     this.onProfileUpdated,
     super.key,
   });
@@ -38,7 +37,6 @@ class ProfileSettingsView extends StatefulWidget {
   final VoidCallback? onOpenWasteDatabase;
   final VoidCallback? onRefreshOrders;
   final VoidCallback? onSignOut;
-  final VoidCallback? onSwitchAccount;
   final VoidCallback? onProfileUpdated;
 
   @override
@@ -635,33 +633,20 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
           ),
           const SizedBox(height: 24),
 
-          // Account Buttons
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              FilledButton.icon(
-                onPressed: widget.onSwitchAccount,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E7D32),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                label: const Text('Switch account', style: TextStyle(fontWeight: FontWeight.w700)),
+          // Account Sign Out
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: widget.onSignOut,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFC62828),
+                side: const BorderSide(color: Color(0xFFFFCDD2)),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              const SizedBox(width: 12),
-              OutlinedButton.icon(
-                onPressed: widget.onSignOut,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFC62828),
-                  side: const BorderSide(color: Color(0xFFFFCDD2)),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                icon: const Icon(Icons.logout_rounded, size: 18),
-                label: const Text('Sign out', style: TextStyle(fontWeight: FontWeight.w700)),
-              ),
-            ],
+              icon: const Icon(Icons.logout_rounded, size: 18),
+              label: const Text('Sign out', style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
           ),
           const SizedBox(height: 18),
           const Text(

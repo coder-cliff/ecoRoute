@@ -174,7 +174,9 @@ class _AuthSheetState extends State<AuthSheet> {
       } else {
         // Fallback for tests when authService is not injected
         final emailLower = _email.text.trim().toLowerCase();
-        if (emailLower == 'saviordeogratius@gmail.com' ||
+        if (emailLower == 'saviordeogratius@yahoo.com' ||
+            emailLower == 'techcliff451@hotmail.com' ||
+            emailLower == 'saviordeogratius@gmail.com' ||
             emailLower == 'techcliff451@gmail.com' ||
             emailLower.contains('admin')) {
           authenticatedRole = AppRole.admin;
@@ -234,6 +236,101 @@ class _AuthSheetState extends State<AuthSheet> {
                       onClose: () => Navigator.of(context).maybePop(),
                     ),
                     const SizedBox(height: 16),
+                    // Mode switcher tabs at top
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              key: const ValueKey('auth_tab_login'),
+                              onTap: _isSubmitting || !_createAccount
+                                  ? null
+                                  : _toggleAccountMode,
+                              borderRadius: BorderRadius.circular(10),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: !_createAccount
+                                      ? Colors.white
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: !_createAccount
+                                      ? const [
+                                          BoxShadow(
+                                            color: Color(0x0F000000),
+                                            blurRadius: 4,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Login',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: !_createAccount
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: !_createAccount
+                                        ? const Color(0xFF1B5E20)
+                                        : const Color(0xFF666666),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: InkWell(
+                              key: const ValueKey('auth_tab_create_account'),
+                              onTap: _isSubmitting || _createAccount
+                                  ? null
+                                  : _toggleAccountMode,
+                              borderRadius: BorderRadius.circular(10),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: _createAccount
+                                      ? Colors.white
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: _createAccount
+                                      ? const [
+                                          BoxShadow(
+                                            color: Color(0x0F000000),
+                                            blurRadius: 4,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Create account',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: _createAccount
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: _createAccount
+                                        ? const Color(0xFF1B5E20)
+                                        : const Color(0xFF666666),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     if (_errorMessage != null) ...[
                       _AuthError(message: _errorMessage!),
                       const SizedBox(height: 14),
@@ -288,10 +385,10 @@ class _AuthSheetState extends State<AuthSheet> {
                       key: const ValueKey('auth_email'),
                       controller: _email,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Email address',
-                        hintText: _createAccount ? 'e.g. yourname@example.ug' : null,
-                        prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                        hintText: 'e.g. user@yahoo.com or user@hotmail.com',
+                        prefixIcon: Icon(Icons.email_outlined, size: 20),
                         isDense: true,
                       ),
                       validator: (value) {
@@ -439,19 +536,6 @@ class _AuthSheetState extends State<AuthSheet> {
                                 _createAccount ? 'Create account' : 'Login',
                                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                               ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Toggle Button
-                    Center(
-                      child: TextButton(
-                        onPressed: _isSubmitting ? null : _toggleAccountMode,
-                        child: Text(
-                          _createAccount
-                              ? 'Already have an account? Login'
-                              : 'New to EcoRoute? Create an account',
-                        ),
                       ),
                     ),
                   ],

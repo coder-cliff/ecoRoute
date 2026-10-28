@@ -40,7 +40,7 @@ void main() {
     );
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Password'),
-      '#ecorute26',
+      'OfficialAdmin@2026',
     );
     await tester.tap(find.widgetWithText(FilledButton, 'Login'));
     await tester.pumpAndSettle();
@@ -171,7 +171,6 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Transaction analytics'), findsOneWidget);
-    expect(find.text('2 total requests · 1 verified and paid'), findsOneWidget);
     expect(
       (await repository.loadAll()).map((request) => request.status),
       containsAll([RequestStatus.paid, RequestStatus.collected]),
@@ -197,12 +196,12 @@ Future<void> _signInAs(WidgetTester tester, String role) async {
   } else if (role.toLowerCase() == 'admin') {
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Email address'),
-      'saviordeogratius@gmail.com',
+      'saviordeogratius@yahoo.com',
     );
   }
   await tester.enterText(
     find.widgetWithText(TextFormField, 'Password'),
-    '#ecorute26',
+    'OfficialAdmin@2026',
   );
   await tester.tap(find.widgetWithText(FilledButton, 'Login'));
   await tester.pumpAndSettle();

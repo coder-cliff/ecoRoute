@@ -20,8 +20,8 @@ void main() {
 
     test('logs in built-in admin accounts successfully', () async {
       final admin1 = await authService.login(
-        email: 'saviordeogratius@gmail.com',
-        password: '#ecorute26',
+        email: 'saviordeogratius@yahoo.com',
+        password: 'OfficialAdmin@2026',
       );
 
       expect(admin1, isNotNull);
@@ -29,8 +29,8 @@ void main() {
       expect(admin1.fullName, 'Savior Deo (Admin)');
 
       final admin2 = await authService.login(
-        email: 'techcliff451@gmail.com',
-        password: '#ecorute26',
+        email: 'techcliff451@hotmail.com',
+        password: 'OfficialAdmin@2026',
       );
 
       expect(admin2, isNotNull);
@@ -39,7 +39,7 @@ void main() {
 
       // Verify persistent session
       final restored = authService.getCurrentUser();
-      expect(restored?.email, 'techcliff451@gmail.com');
+      expect(restored?.email, 'techcliff451@hotmail.com');
     });
 
     test('rejects incorrect credentials', () async {
@@ -188,8 +188,9 @@ void main() {
       expect(find.text('Full name'), findsNothing);
 
       // Tap toggle to create account
-      await tester.ensureVisible(find.text('New to EcoRoute? Create an account'));
-      await tester.tap(find.text('New to EcoRoute? Create an account'));
+      final createAccountTab = find.byKey(const ValueKey('auth_tab_create_account'));
+      await tester.ensureVisible(createAccountTab);
+      await tester.tap(createAccountTab);
       await tester.pumpAndSettle();
 
       // Now in Create account mode
@@ -200,7 +201,7 @@ void main() {
       expect(find.text('Email address'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Confirm password'), findsOneWidget);
-      expect(find.text('Create account'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Create account'), findsOneWidget);
     });
 
     testWidgets('validates matching passwords during signup', (

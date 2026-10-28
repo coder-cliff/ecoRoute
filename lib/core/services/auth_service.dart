@@ -44,24 +44,42 @@ class AuthService {
   static final Map<String, DateTime> _lockoutUntil = {};
 
   /// Municipal administrator accounts configured with Muni University, Arua defaults.
-  /// Passwords are never stored in plaintext; salted SHA-256 hashes are used.
+  /// Official Yahoo, Hotmail, and verified email accounts with salted SHA-256 hashes.
   static const List<Map<String, dynamic>> _adminAccounts = [
     {
-      'id': 'admin-deo',
+      'id': 'admin-deo-yahoo',
+      'fullName': 'Savior Deo (Admin)',
+      'email': 'saviordeogratius@yahoo.com',
+      'phone': '+256 782 555 111',
+      'role': 'admin',
+      'passwordHash': 'cb53b43d9f921182930e102fbe62db01fe75b21e5da546c80586e45ff541a17c',
+      'address': 'Muni University, Arua',
+    },
+    {
+      'id': 'admin-cliff-hotmail',
+      'fullName': 'Tech Cliff (Admin)',
+      'email': 'techcliff451@hotmail.com',
+      'phone': '+256 701 987 654',
+      'role': 'admin',
+      'passwordHash': 'cb53b43d9f921182930e102fbe62db01fe75b21e5da546c80586e45ff541a17c',
+      'address': 'Muni University, Arua',
+    },
+    {
+      'id': 'admin-deo-gmail',
       'fullName': 'Savior Deo (Admin)',
       'email': 'saviordeogratius@gmail.com',
       'phone': '+256 782 555 111',
       'role': 'admin',
-      'passwordHash': '5eed36da52d095e2dd723bf28011f81874046719af0ace742178877a4989c32c',
+      'passwordHash': 'cb53b43d9f921182930e102fbe62db01fe75b21e5da546c80586e45ff541a17c',
       'address': 'Muni University, Arua',
     },
     {
-      'id': 'admin-cliff',
+      'id': 'admin-cliff-gmail',
       'fullName': 'Tech Cliff (Admin)',
       'email': 'techcliff451@gmail.com',
       'phone': '+256 701 987 654',
       'role': 'admin',
-      'passwordHash': '5eed36da52d095e2dd723bf28011f81874046719af0ace742178877a4989c32c',
+      'passwordHash': 'cb53b43d9f921182930e102fbe62db01fe75b21e5da546c80586e45ff541a17c',
       'address': 'Muni University, Arua',
     },
   ];

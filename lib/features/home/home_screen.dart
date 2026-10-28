@@ -1674,46 +1674,6 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     );
   }
 
-  void _copyAuditReport() {
-    final total = _orders.length;
-    final paid = _countStatus(RequestStatus.paid);
-    final totalSacks = _orders.fold<int>(0, (sum, o) => sum + o.sackCount);
-    final totalKg = totalSacks * 25;
-    final totalCo2 = (totalKg * 0.45).toStringAsFixed(1);
-    final totalRevenue = _orders
-        .where((o) => o.status == RequestStatus.paid)
-        .fold<int>(0, (sum, o) => sum + o.priceUgx);
-
-    final summary = '''
-ECOROUTE ARUA — MUNICIPAL LOGISTICS AUDIT REPORT
-Generated: ${DateTime.now().toLocal().toString().split('.').first}
-City Jurisdiction: Arua Central & Ayivu Division, Uganda
-
---- OPERATIONAL KPIS ---
-Total Pickups Logged: $total
-Verified & Settled: $paid (${total > 0 ? (paid / total * 100).toStringAsFixed(1) : 0}%)
-Total Solid Waste Diverted: ~$totalKg kg ($totalSacks sacks)
-Estimated CO₂ Avoided: $totalCo2 kg CO₂
-Municipal Revenue Settled: ${formatUgx(totalRevenue)}
-
---- STATUS BREAKDOWN ---
-Requested / Open: ${_countStatus(RequestStatus.requested)}
-Collected in Transit: ${_countStatus(RequestStatus.collected)}
-Awaiting Depot Scale Review: ${_countStatus(RequestStatus.awaitingVerification)}
-Paid & Completed: $paid
-Cancelled: ${_countStatus(RequestStatus.cancelled)}
-''';
-
-    Clipboard.setData(ClipboardData(text: summary));
-    HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Audit report copied to clipboard for municipal reporting!'),
-        backgroundColor: Color(0xFF2E7D32),
-      ),
-    );
-  }
-
   Widget _buildAnalytics() {
     final statuses = [
       RequestStatus.requested,
@@ -1741,26 +1701,6 @@ Cancelled: ${_countStatus(RequestStatus.cancelled)}
                     count: _countStatus(status),
                     total: _orders.length,
                   ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${_orders.length} total requests \u00B7 ${_countStatus(RequestStatus.paid)} verified and paid',
-                        style: const TextStyle(
-                          color: Color(0xFF647568),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    FilledButton.icon(
-                      onPressed: _copyAuditReport,
-                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
-                      icon: const Icon(Icons.copy_rounded, size: 14),
-                      label: const Text('Export Audit', style: TextStyle(fontSize: 11)),
-                    ),
-                  ],
-                ),
               ],
             ),
     );
@@ -1785,7 +1725,7 @@ Cancelled: ${_countStatus(RequestStatus.cancelled)}
       _QuickActionCard(
         icon: Icons.manage_accounts_outlined,
         title: 'Account & role',
-        subtitle: 'Manage account & login',
+        subtitle: 'Account settings',
         accent: const Color(0xFF1B5E20),
         onTap: _showAuth,
       ),
@@ -2411,10 +2351,6 @@ Cancelled: ${_countStatus(RequestStatus.cancelled)}
             onOpenWasteDatabase: _showWasteDatabase,
             onRefreshOrders: _loadOrders,
             onSignOut: _signOut,
-            onSwitchAccount: () async {
-              await _signOut();
-              _showAuth();
-            },
             onProfileUpdated: () {
               if (widget.authService != null) {
                 setState(() {

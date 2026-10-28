@@ -52,11 +52,11 @@ void main() {
 
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Email address'),
-      'saviordeogratius@gmail.com',
+      'saviordeogratius@yahoo.com',
     );
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Password'),
-      '#ecorute26',
+      'OfficialAdmin@2026',
     );
     final loginButton = find.widgetWithText(FilledButton, 'Login');
     await tester.ensureVisible(loginButton);

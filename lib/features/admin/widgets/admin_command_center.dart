@@ -173,46 +173,6 @@ class _AdminCommandCenterState extends State<AdminCommandCenter> {
     );
   }
 
-  void _copyAuditSummary() {
-    final total = widget.orders.length;
-    final paid = _countStatus(RequestStatus.paid);
-    final totalSacks = widget.orders.fold<int>(0, (sum, o) => sum + o.sackCount);
-    final totalKg = totalSacks * 25;
-    final totalCo2 = (totalKg * 0.45).toStringAsFixed(1);
-    final totalRevenue = widget.orders
-        .where((o) => o.status == RequestStatus.paid)
-        .fold<int>(0, (sum, o) => sum + o.priceUgx);
-
-    final summary = '''
-ECOROUTE ARUA — MUNICIPAL LOGISTICS AUDIT REPORT
-Generated: ${DateTime.now().toLocal().toString().split('.').first}
-City Jurisdiction: Arua Central & Ayivu Division, Uganda
-
---- OPERATIONAL KPIS ---
-Total Pickups Logged: $total
-Verified & Settled: $paid (${total > 0 ? (paid / total * 100).toStringAsFixed(1) : 0}%)
-Total Solid Waste Diverted: ~$totalKg kg ($totalSacks sacks)
-Estimated CO₂ Avoided: $totalCo2 kg CO₂
-Municipal Revenue Settled: ${formatUgx(totalRevenue)}
-
---- STATUS BREAKDOWN ---
-Requested / Open: ${_countStatus(RequestStatus.requested)}
-Collected in Transit: ${_countStatus(RequestStatus.collected)}
-Awaiting Depot Scale Review: ${_countStatus(RequestStatus.awaitingVerification)}
-Paid & Completed: $paid
-Cancelled: ${_countStatus(RequestStatus.cancelled)}
-''';
-
-    Clipboard.setData(ClipboardData(text: summary));
-    HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Audit summary copied to clipboard for reporting!'),
-        backgroundColor: Color(0xFF2E7D32),
-      ),
-    );
-  }
-
   Future<void> _makePhoneCall(String phone) async {
     final clean = phone.replaceAll(RegExp(r'\s+'), '');
     final uri = Uri(scheme: 'tel', path: clean);
@@ -820,23 +780,6 @@ Cancelled: ${_countStatus(RequestStatus.cancelled)}
             count: _countStatus(s),
             total: widget.orders.length,
           ),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '${widget.orders.length} total municipal requests logged across Arua.',
-                style: const TextStyle(fontSize: 11, color: Color(0xFF647568)),
-              ),
-            ),
-            FilledButton.icon(
-              onPressed: _copyAuditSummary,
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
-              icon: const Icon(Icons.copy_rounded, size: 14),
-              label: const Text('Export Audit', style: TextStyle(fontSize: 11)),
-            ),
-          ],
-        ),
       ],
     );
   }
