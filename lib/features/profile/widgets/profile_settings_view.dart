@@ -1,0 +1,791 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../../core/pickup_request_repository.dart';
+import '../../../core/services/auth_service.dart';
+import '../../../core/services/language_service.dart';
+import '../../../domain/entities/app_user.dart';
+import '../../../domain/entities/pickup_request.dart';
+import '../../../domain/enums/request_status.dart';
+import '../../../domain/enums/role.dart';
+import '../../../domain/rules/reminder_policy.dart';
+
+class ProfileSettingsView extends StatefulWidget {
+  const ProfileSettingsView({
+    required this.currentUser,
+    required this.role,
+    required this.orders,
+    required this.repository,
+    this.authService,
+    this.remindersEnabled = true,
+    this.onRemindersToggled,
+    this.onOpenWasteDatabase,
+    this.onRefreshOrders,
+    this.onSignOut,
+    this.onSwitchAccount,
+    this.onProfileUpdated,
+    super.key,
+  });
+
+  final AppUser? currentUser;
+  final AppRole role;
+  final List<PickupRequest> orders;
+  final PickupRequestRepository repository;
+  final AuthService? authService;
+  final bool remindersEnabled;
+  final ValueChanged<bool>? onRemindersToggled;
+  final VoidCallback? onOpenWasteDatabase;
+  final VoidCallback? onRefreshOrders;
+  final VoidCallback? onSignOut;
+  final VoidCallback? onSwitchAccount;
+  final VoidCallback? onProfileUpdated;
+
+  @override
+  State<ProfileSettingsView> createState() => _ProfileSettingsViewState();
+}
+
+class _ProfileSettingsViewState extends State<ProfileSettingsView> {
+  final _reminderPolicy = const ReminderPolicy();
+  final _langService = LanguageService.instance;
+
+  String _formatName(String raw) {
+    if (raw.isEmpty) return 'EcoRoute User';
+    return raw
+        .trim()
+        .split(RegExp(r'\s+'))
+        .map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}' : '')
+        .join(' ');
+  }
+
+  void _showEditProfileDialog() {
+    final user = widget.currentUser;
+    final nameCtrl = TextEditingController(text: user?.fullName ?? '');
+    final phoneCtrl = TextEditingController(text: user?.phone ?? '');
+    final addressCtrl = TextEditingController(text: user?.address ?? '');
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.edit_note_rounded, color: Color(0xFF2E7D32)),
+            SizedBox(width: 8),
+            Text('Edit Contact Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Update your profile information for collection riders and dispatch dispatchers.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF647568)),
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Full name',
+                    prefixIcon: const Icon(Icons.person_outline, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    isDense: true,
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter your name' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Phone number',
+                    prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    isDense: true,
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter your phone number' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: addressCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Default pickup address / zone',
+                    hintText: 'e.g. Muni University, Arua Central',
+                    prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    isDense: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (formKey.currentState?.validate() != true) return;
+              if (widget.authService != null) {
+                try {
+                  await widget.authService!.updateUserProfile(
+                    fullName: nameCtrl.text.trim(),
+                    phone: phoneCtrl.text.trim(),
+                    address: addressCtrl.text.trim(),
+                  );
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  widget.onProfileUpdated?.call();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Profile updated successfully!'),
+                        backgroundColor: Color(0xFF2E7D32),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error updating profile: $e')),
+                    );
+                  }
+                }
+              }
+            },
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
+            child: const Text('Save Profile'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPasswordResetDialog() {
+    final email = widget.currentUser?.email ?? '';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.lock_reset_rounded, color: Color(0xFF2E7D32)),
+            SizedBox(width: 8),
+            Text('Reset Password', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: Text(
+          'Send a secure password reset link to $email?',
+          style: const TextStyle(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await widget.authService?.sendPasswordResetEmail(email);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Password reset link sent to $email.'),
+                      backgroundColor: const Color(0xFF2E7D32),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Could not send reset link: $e')),
+                  );
+                }
+              }
+            },
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
+            child: const Text('Send Reset Email'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLanguageSelector() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.language_rounded, color: Color(0xFF2E7D32)),
+                const SizedBox(width: 8),
+                const Text(
+                  'Select App Language',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            for (final lang in AppLanguage.values) ...[
+              Material(
+                color: Colors.transparent,
+                child: ListTile(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: _langService.currentLanguage == lang
+                          ? const Color(0xFF2E7D32)
+                          : const Color(0xFFE8F5E9),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        lang.code.toUpperCase(),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                          color: _langService.currentLanguage == lang
+                              ? Colors.white
+                              : const Color(0xFF2E7D32),
+                        ),
+                      ),
+                    ),
+                  ),
+                  title: Text(lang.label, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  trailing: _langService.currentLanguage == lang
+                      ? const Icon(Icons.check_circle_rounded, color: Color(0xFF2E7D32))
+                      : null,
+                  onTap: () {
+                    _langService.setLanguage(lang);
+                    Navigator.pop(ctx);
+                    setState(() {});
+                  },
+                ),
+              ),
+              const SizedBox(height: 6),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = widget.currentUser;
+    final role = widget.role;
+
+    // Environmental metrics calculation
+    final totalRequests = widget.orders.length;
+    final totalSacks = widget.orders.fold<int>(0, (sum, o) => sum + o.sackCount);
+    final totalKg = totalSacks * 25;
+    final totalCo2 = (totalKg * 0.45).toStringAsFixed(1);
+
+    final openCount = widget.orders.where((o) => o.status == RequestStatus.requested).length;
+    final collectedCount = widget.orders.where((o) => o.status == RequestStatus.collected).length;
+    final paidCount = widget.orders.where((o) => o.status == RequestStatus.paid).length;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 32),
+      child: Column(
+        children: [
+          // Header Card
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFFFFF), Color(0xFFF7FBF8)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFE2EAE1)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0C000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    Container(
+                      width: 86,
+                      height: 86,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF2E8B57), Color(0xFF135D39)],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x22135D39),
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          user?.fullName.isNotEmpty == true
+                              ? user!.fullName.trim()[0].toUpperCase()
+                              : 'U',
+                          style: const TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: _showEditProfileDialog,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1B5E20),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Icon(Icons.edit_rounded, size: 14, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  _formatName(user?.fullName ?? ''),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF183B20),
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                // Crucial requirement: 'Signed in as ${_role.label}' exact matching
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFA5D6A7)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        role == AppRole.admin
+                            ? Icons.admin_panel_settings_rounded
+                            : role == AppRole.rider
+                                ? Icons.two_wheeler_rounded
+                                : Icons.person_rounded,
+                        size: 14,
+                        color: const Color(0xFF2E7D32),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Signed in as ${role.label}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                if (user != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '${user.email} • ${user.phone}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF71877D)),
+                  ),
+                  if (user.address?.isNotEmpty == true) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.location_on_outlined, size: 13, color: Color(0xFF2E7D32)),
+                        const SizedBox(width: 3),
+                        Text(
+                          user.address!,
+                          style: const TextStyle(fontSize: 11, color: Color(0xFF556958)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Environmental & Operation Impact
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFE2EAE1)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.eco_rounded, color: Color(0xFF2E7D32), size: 18),
+                    SizedBox(width: 6),
+                    Text(
+                      'Environmental & Lifecycle Impact',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF183B20),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildMetricCol('Pickups', '$totalRequests', Icons.local_shipping_outlined),
+                    Container(width: 1, height: 32, color: const Color(0xFFE2EAE1)),
+                    _buildMetricCol('Sacks', '$totalSacks', Icons.shopping_bag_outlined),
+                    Container(width: 1, height: 32, color: const Color(0xFFE2EAE1)),
+                    _buildMetricCol('CO₂ Avoided', '$totalCo2 kg', Icons.cloud_done_outlined, const Color(0xFF2E7D32)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Request Stats
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFE2EAE1)),
+            ),
+            child: Column(
+              children: [
+                _buildMetricRow('Open requests', '$openCount', const Color(0xFFE65100)),
+                const Divider(height: 20),
+                _buildMetricRow('Collected', '$collectedCount', const Color(0xFF0288D1)),
+                const Divider(height: 20),
+                _buildMetricRow('Paid & Settled', '$paidCount', const Color(0xFF2E7D32)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Group 1: Preferences & Service
+          _buildSettingsSection(
+            title: 'Service & Notifications',
+            icon: Icons.tune_rounded,
+            items: [
+              _buildSettingTile(
+                icon: Icons.notifications_active_outlined,
+                title: 'Pickup schedule reminders',
+                subtitle: _reminderPolicy.shouldSendReminder(
+                  successfulRequests: paidCount,
+                  remindersEnabled: widget.remindersEnabled,
+                )
+                    ? 'Active: Free onboarding reminder policy enabled.'
+                    : 'Reminders inactive or onboarding threshold met.',
+                trailing: Switch(
+                  value: widget.remindersEnabled,
+                  onChanged: (val) {
+                    widget.onRemindersToggled?.call(val);
+                    widget.authService?.setRemindersEnabled(val);
+                  },
+                ),
+              ),
+              const Divider(height: 1),
+              _buildSettingTile(
+                icon: Icons.language_rounded,
+                title: 'App Language',
+                subtitle: _langService.currentLanguage.label,
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: _showLanguageSelector,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Group 2: Intelligence & Knowledge Base
+          _buildSettingsSection(
+            title: 'Waste Intelligence & Resources',
+            icon: Icons.dataset_outlined,
+            items: [
+              _buildSettingTile(
+                icon: Icons.auto_awesome_outlined,
+                title: 'Municipal Solid Waste & Recycling Data',
+                subtitle: 'World Bank benchmarks, Lugbara terms & scrap rates',
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: widget.onOpenWasteDatabase,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Group 3: Security & Synchronization
+          _buildSettingsSection(
+            title: 'Security & Synchronization',
+            icon: Icons.security_rounded,
+            items: [
+              _buildSettingTile(
+                icon: Icons.lock_reset_rounded,
+                title: 'Send password reset email',
+                subtitle: 'Receive a secure link to change your password',
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                onTap: _showPasswordResetDialog,
+              ),
+              const Divider(height: 1),
+              _buildSettingTile(
+                icon: Icons.sync_rounded,
+                title: 'Refresh & Sync Local Database',
+                subtitle: 'Ensure offline orders match municipal dispatch records',
+                trailing: const Icon(Icons.refresh_rounded),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  widget.onRefreshOrders?.call();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Database refreshed successfully.'),
+                      backgroundColor: Color(0xFF2E7D32),
+                    ),
+                  );
+                },
+              ),
+              if (kDebugMode && role == AppRole.admin) ...[
+                const Divider(height: 1),
+                _buildSettingTile(
+                  icon: Icons.replay_rounded,
+                  title: 'Reset / Re-seed Demo Municipal Records',
+                  subtitle: 'Debug Admin only: Restores demo pickups across Arua',
+                  trailing: const Icon(Icons.delete_sweep_rounded, color: Color(0xFFC62828)),
+                  onTap: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Reset Demo Records?'),
+                        content: const Text(
+                          'This will overwrite current local pickup requests with default municipal demo data. Continue?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(false),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.of(ctx).pop(true),
+                            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC62828)),
+                            child: const Text('Reset'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true) {
+                      await widget.repository.seedDemoData(force: true);
+                      widget.onRefreshOrders?.call();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Demonstration instant collection orders restored.'),
+                            backgroundColor: Color(0xFF2E7D32),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Account Buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FilledButton.icon(
+                onPressed: widget.onSwitchAccount,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E7D32),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                label: const Text('Switch account', style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: widget.onSignOut,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFC62828),
+                  side: const BorderSide(color: Color(0xFFFFCDD2)),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.logout_rounded, size: 18),
+                label: const Text('Sign out', style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'EcoRoute Arua v2.4.0 • Municipal Waste Logistics Platform',
+            style: TextStyle(fontSize: 11, color: Color(0xFF8B9D90)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricCol(String label, String value, IconData icon, [Color? color]) {
+    return Column(
+      children: [
+        Icon(icon, size: 18, color: color ?? const Color(0xFF556958)),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: color ?? const Color(0xFF183B20),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: Color(0xFF71877D)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetricRow(String label, String value, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF333333)),
+        ),
+        const Spacer(),
+        Text(
+          value,
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSettingsSection({
+    required String title,
+    required IconData icon,
+    required List<Widget> items,
+  }) {
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: Color(0xFFE2EAE1)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+            child: Row(
+              children: [
+                Icon(icon, size: 16, color: const Color(0xFF2E7D32)),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF183B20),
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          ...items,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    Widget? trailing,
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F8F2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: const Color(0xFF2E7D32), size: 18),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF183B20)),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(fontSize: 11, color: Color(0xFF647568)),
+        ),
+        trailing: trailing,
+        onTap: onTap,
+      ),
+    );
+  }
+}

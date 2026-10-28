@@ -438,6 +438,56 @@ class AuthService {
     }
   }
 
+  /// Updates the profile attributes of the currently logged-in user
+  Future<AppUser> updateUserProfile({
+    required String fullName,
+    required String phone,
+    String? address,
+  }) async {
+    final current = getCurrentUser();
+    if (current == null) {
+      throw StateError('No user is currently signed in.');
+    }
+
+    final updated = AppUser(
+      id: current.id,
+      fullName: fullName.trim(),
+      email: current.email,
+      phone: phone.trim(),
+      role: current.role,
+      address: address?.trim().isNotEmpty == true ? address!.trim() : null,
+    );
+
+    await _saveSession(updated);
+
+    // Update in registered users list if present
+    final registered = _getRegisteredUsers();
+    final index = registered.indexWhere(
+      (u) => (u['email'] as String).toLowerCase() == current.email.toLowerCase(),
+    );
+    if (index != -1) {
+      registered[index]['fullName'] = updated.fullName;
+      registered[index]['phone'] = updated.phone;
+      registered[index]['address'] = updated.address;
+      await _preferences.setString(_usersKey, jsonEncode(registered));
+    }
+
+    // Sync to Firestore if active
+    final firestore = _firestore;
+    if (firestore != null) {
+      try {
+        await firestore.collection('profiles').doc(current.id).update({
+          'fullName': updated.fullName,
+          'phone': updated.phone,
+          'address': updated.address,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {}
+    }
+
+    return updated;
+  }
+
   List<AppUser> getRegisteredResidents() {
     final registered = _getRegisteredUsers();
     final users = <AppUser>[];

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -16,14 +15,15 @@ import '../../domain/entities/pickup_request.dart';
 import '../../domain/enums/request_status.dart';
 import '../../domain/enums/role.dart';
 import '../../domain/enums/waste_type.dart';
-import '../../domain/rules/reminder_policy.dart';
 import '../../domain/rules/status_machine.dart';
 import '../admin/widgets/analytics_breakdown.dart';
 import '../admin/widgets/approval_item_tile.dart';
 import '../auth/auth_sheet.dart';
 import '../database/waste_database_sheet.dart';
 import '../payment/momo_payment_dialog.dart';
+import '../profile/widgets/profile_settings_view.dart';
 import '../request/order_page.dart';
+import '../request/widgets/request_detail_sheet.dart';
 import '../rider/widgets/route_stop_tile.dart';
 import 'widgets/brand_lockup.dart';
 import 'widgets/interactive_map_panel.dart';
@@ -41,7 +41,6 @@ typedef _ApprovalItem = ApprovalItemTile;
 typedef _AnalyticsRow = AnalyticsRow;
 typedef _MetricCard = MetricCard;
 typedef _QuickActionCard = QuickActionCard;
-typedef _ProfileMetric = ProfileMetric;
 typedef _DashboardPanel = DashboardPanel;
 typedef _EmptyPanelMessage = EmptyPanelMessage;
 typedef _StatusSelector = StatusSelector;
@@ -312,7 +311,6 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
   // Reminders
   bool _remindersEnabled = true;
-  static const _reminderPolicy = ReminderPolicy();
 
   final LanguageService _langService = LanguageService.instance;
 
@@ -830,6 +828,20 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Request updated to ${status.label}.')),
+    );
+  }
+
+  void _openRequestDetails(PickupRequest order) {
+    RequestDetailSheet.show(
+      context,
+      request: order,
+      userRole: _role,
+      isOwner: _currentUser == null ||
+          order.residentId == _currentUser!.id ||
+          order.residentPhone == _currentUser!.phone,
+      onPayMoMo: () => _openMoMoPayment(order),
+      onStatusChange: (newStatus) => _updateOrderStatus(order, newStatus),
+      onCancel: () => _cancelOrder(order),
     );
   }
 
@@ -1622,7 +1634,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                               ),
                             ),
                             Text(
-                              '${residents[i].email} ΓÇó ${residents[i].phone}',
+                              '${residents[i].email} • ${residents[i].phone}',
                               style: const TextStyle(
                                 fontSize: 11,
                                 color: Color(0xFF647568),
@@ -1662,6 +1674,46 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     );
   }
 
+  void _copyAuditReport() {
+    final total = _orders.length;
+    final paid = _countStatus(RequestStatus.paid);
+    final totalSacks = _orders.fold<int>(0, (sum, o) => sum + o.sackCount);
+    final totalKg = totalSacks * 25;
+    final totalCo2 = (totalKg * 0.45).toStringAsFixed(1);
+    final totalRevenue = _orders
+        .where((o) => o.status == RequestStatus.paid)
+        .fold<int>(0, (sum, o) => sum + o.priceUgx);
+
+    final summary = '''
+ECOROUTE ARUA — MUNICIPAL LOGISTICS AUDIT REPORT
+Generated: ${DateTime.now().toLocal().toString().split('.').first}
+City Jurisdiction: Arua Central & Ayivu Division, Uganda
+
+--- OPERATIONAL KPIS ---
+Total Pickups Logged: $total
+Verified & Settled: $paid (${total > 0 ? (paid / total * 100).toStringAsFixed(1) : 0}%)
+Total Solid Waste Diverted: ~$totalKg kg ($totalSacks sacks)
+Estimated CO₂ Avoided: $totalCo2 kg CO₂
+Municipal Revenue Settled: ${formatUgx(totalRevenue)}
+
+--- STATUS BREAKDOWN ---
+Requested / Open: ${_countStatus(RequestStatus.requested)}
+Collected in Transit: ${_countStatus(RequestStatus.collected)}
+Awaiting Depot Scale Review: ${_countStatus(RequestStatus.awaitingVerification)}
+Paid & Completed: $paid
+Cancelled: ${_countStatus(RequestStatus.cancelled)}
+''';
+
+    Clipboard.setData(ClipboardData(text: summary));
+    HapticFeedback.lightImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Audit report copied to clipboard for municipal reporting!'),
+        backgroundColor: Color(0xFF2E7D32),
+      ),
+    );
+  }
+
   Widget _buildAnalytics() {
     final statuses = [
       RequestStatus.requested,
@@ -1690,15 +1742,24 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                     total: _orders.length,
                   ),
                 const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '${_orders.length} total requests \u00B7 ${_countStatus(RequestStatus.paid)} verified and paid',
-                    style: const TextStyle(
-                      color: Color(0xFF647568),
-                      fontSize: 12,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${_orders.length} total requests \u00B7 ${_countStatus(RequestStatus.paid)} verified and paid',
+                        style: const TextStyle(
+                          color: Color(0xFF647568),
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
-                  ),
+                    FilledButton.icon(
+                      onPressed: _copyAuditReport,
+                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
+                      icon: const Icon(Icons.copy_rounded, size: 14),
+                      label: const Text('Export Audit', style: TextStyle(fontSize: 11)),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -2047,7 +2108,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           child: Row(
             children: [
               FilterChip(
-                label: const Text('All'),
+                label: Text('All (${scopedOrders.length})'),
                 selected: _statusFilter == null,
                 onSelected: (_) {
                   HapticFeedback.selectionClick();
@@ -2057,7 +2118,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
               const SizedBox(width: 8),
               for (final status in RequestStatus.values) ...[
                 FilterChip(
-                  label: Text(status.label),
+                  label: Text('${status.label} (${scopedOrders.where((o) => o.status == status).length})'),
                   selected: _statusFilter == status,
                   onSelected: (selected) {
                     HapticFeedback.selectionClick();
@@ -2135,112 +2196,194 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                     itemCount: filteredOrders.length,
                     itemBuilder: (context, index) {
                       final order = filteredOrders[index];
+                      final shortId = order.id.length > 6
+                          ? order.id.substring(order.id.length - 6).toUpperCase()
+                          : order.id.toUpperCase();
+
+                      final stepIndex = switch (order.status) {
+                        RequestStatus.requested => 0,
+                        RequestStatus.collected => 1,
+                        RequestStatus.awaitingVerification => 2,
+                        RequestStatus.paid => 3,
+                        RequestStatus.cancelled => -1,
+                      };
+
                       return Card(
                         margin: const EdgeInsets.only(bottom: 14),
                         elevation: 1.5,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Padding(
-                                padding: EdgeInsets.only(top: 8),
-                                child: Icon(
-                                  Icons.pending_actions,
-                                  color: Color(0xFF2E7D32),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => _openRequestDetails(order),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Icon(
+                                    order.status == RequestStatus.paid
+                                        ? Icons.verified_rounded
+                                        : order.status == RequestStatus.collected
+                                            ? Icons.local_shipping_rounded
+                                            : order.status == RequestStatus.awaitingVerification
+                                                ? Icons.fact_check_rounded
+                                                : Icons.pending_actions,
+                                    color: order.status == RequestStatus.paid
+                                        ? const Color(0xFF2E7D32)
+                                        : order.status == RequestStatus.collected
+                                            ? const Color(0xFF0288D1)
+                                            : const Color(0xFFE65100),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          order.wasteType.label,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                        const Spacer(),
-                                        Text(
-                                          formatUgx(order.priceUgx),
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            color: Color(0xFF2E7D32),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      '${order.sackCount} sack(s) • Instant Pickup • ${order.address}',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF556958),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      order.description,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      crossAxisAlignment: WrapCrossAlignment.center,
-                                      children: [
-                                        Chip(
-                                          label: Text(order.status.label),
-                                          backgroundColor:
-                                              const Color(0xFFE8F5E9),
-                                        ),
-                                        // Status modifier visible strictly to Riders and Municipal Admins
-                                        if (_signedIn && (_role == AppRole.rider || _role == AppRole.admin))
-                                          _StatusSelector(
-                                            currentStatus: order.status,
-                                            onChanged: (status) {
-                                              if (status != null) {
-                                                _updateOrderStatus(order, status);
-                                              }
-                                            },
-                                          ),
-                                        // MoMo Pay Button visible strictly to owning resident
-                                        if (_signedIn &&
-                                            _role == AppRole.resident &&
-                                            order.status != RequestStatus.paid &&
-                                            order.status != RequestStatus.cancelled)
-                                          ActionChip(
-                                            avatar: const Icon(Icons.payment, size: 16, color: Color(0xFF2E7D32)),
-                                            label: const Text('Pay MoMo'),
-                                            onPressed: () => _openMoMoPayment(order),
-                                          ),
-                                        if (order.status ==
-                                            RequestStatus.requested)
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.delete_outline_rounded,
-                                              size: 20,
-                                              color: Colors.redAccent,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF1F8F2),
+                                              borderRadius: BorderRadius.circular(6),
                                             ),
-                                            tooltip: 'Cancel Request',
-                                            onPressed: () =>
-                                                _cancelOrder(order),
+                                            child: Text(
+                                              '#$shortId',
+                                              style: const TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w800,
+                                                color: Color(0xFF1B5E3B),
+                                              ),
+                                            ),
                                           ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            order.wasteType.label,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 15,
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          Text(
+                                            formatUgx(order.priceUgx),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              color: Color(0xFF2E7D32),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        '${order.sackCount} sack(s) • Instant Pickup • ${order.address}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF556958),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        order.description,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                      if (stepIndex >= 0) ...[
+                                        const SizedBox(height: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF7FBF8),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              for (int s = 0; s < 4; s++) ...[
+                                                Icon(
+                                                  s <= stepIndex
+                                                      ? Icons.check_circle_rounded
+                                                      : Icons.radio_button_unchecked_rounded,
+                                                  size: 11,
+                                                  color: s <= stepIndex
+                                                      ? const Color(0xFF2E7D32)
+                                                      : const Color(0xFFB0BEC5),
+                                                ),
+                                                if (s < 3)
+                                                  Expanded(
+                                                    child: Container(
+                                                      height: 1.5,
+                                                      color: s < stepIndex
+                                                          ? const Color(0xFF2E7D32)
+                                                          : const Color(0xFFE0E0E0),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
                                       ],
-                                    ),
-                                  ],
+                                      const SizedBox(height: 8),
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        crossAxisAlignment: WrapCrossAlignment.center,
+                                        children: [
+                                          Chip(
+                                            label: Text(order.status.label),
+                                            backgroundColor:
+                                                const Color(0xFFE8F5E9),
+                                          ),
+                                          ActionChip(
+                                            avatar: const Icon(Icons.timeline_rounded, size: 15, color: Color(0xFF2E7D32)),
+                                            label: const Text('Tracker & Details'),
+                                            onPressed: () => _openRequestDetails(order),
+                                          ),
+                                          // Status modifier visible strictly to Riders and Municipal Admins
+                                          if (_signedIn && (_role == AppRole.rider || _role == AppRole.admin))
+                                            _StatusSelector(
+                                              currentStatus: order.status,
+                                              onChanged: (status) {
+                                                if (status != null) {
+                                                  _updateOrderStatus(order, status);
+                                                }
+                                              },
+                                            ),
+                                          // MoMo Pay Button visible strictly to owning resident
+                                          if (_signedIn &&
+                                              _role == AppRole.resident &&
+                                              order.status != RequestStatus.paid &&
+                                              order.status != RequestStatus.cancelled)
+                                            ActionChip(
+                                              avatar: const Icon(Icons.payment, size: 16, color: Color(0xFF2E7D32)),
+                                              label: const Text('Pay MoMo'),
+                                              onPressed: () => _openMoMoPayment(order),
+                                            ),
+                                          if (order.status ==
+                                              RequestStatus.requested)
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.delete_outline_rounded,
+                                                size: 20,
+                                                color: Colors.redAccent,
+                                              ),
+                                              tooltip: 'Cancel Request',
+                                              onPressed: () =>
+                                                  _cancelOrder(order),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -2254,257 +2397,31 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
   Widget _buildProfile() => Center(
     child: _signedIn
-        ? SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF2E8B57), Color(0xFF135D39)],
-                    ),
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                  child: const Icon(
-                    Icons.person_pin_circle_rounded,
-                    size: 52,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _currentUser?.fullName.isNotEmpty == true
-                      ? _currentUser!.fullName.trim().split(RegExp(r'\s+')).map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}' : '').join(' ')
-                      : 'EcoRoute User',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF183B20),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFA5D6A7)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _role == AppRole.admin
-                            ? Icons.admin_panel_settings_rounded
-                            : _role == AppRole.rider
-                                ? Icons.two_wheeler_rounded
-                                : Icons.person_rounded,
-                        size: 14,
-                        color: const Color(0xFF2E7D32),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Signed in as ${_role.label}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF2E7D32),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (_currentUser != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    '${_currentUser!.email} • ${_currentUser!.phone}',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF71877D)),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                Text(
-                  _role == AppRole.rider
-                      ? 'Dispatch and route checks are active.'
-                      : _role == AppRole.admin
-                      ? 'Admin review and approval controls are active.'
-                      : 'Resident requests and service updates are active.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Color(0xFF5E6F60)),
-                ),
-                const SizedBox(height: 18),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        _ProfileMetric(
-                          label: 'Open requests',
-                          value:
-                              '${_orders.where((order) => order.status == RequestStatus.requested).length}',
-                        ),
-                        const Divider(),
-                        _ProfileMetric(
-                          label: 'Collected',
-                          value:
-                              '${_orders.where((order) => order.status == RequestStatus.collected).length}',
-                        ),
-                        const Divider(),
-                        _ProfileMetric(
-                          label: 'Paid',
-                          value:
-                              '${_orders.where((order) => order.status == RequestStatus.paid).length}',
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Reminder Policy toggle
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFE2EAE1)),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Pickup schedule reminders',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _reminderPolicy.shouldSendReminder(
-                                successfulRequests:
-                                    _countStatus(RequestStatus.paid),
-                                remindersEnabled: _remindersEnabled,
-                              )
-                                  ? 'Active: Free onboarding reminder policy enabled.'
-                                  : 'Reminders inactive or onboarding threshold met.',
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Switch(
-                        value: _remindersEnabled,
-                        onChanged: (val) {
-                          setState(() => _remindersEnabled = val);
-                          widget.authService?.setRemindersEnabled(val);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-                ListTile(
-                  tileColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: const BorderSide(color: Color(0xFFE2EAE1)),
-                  ),
-                  leading: const Icon(Icons.dataset_outlined, color: Color(0xFF2E7D32)),
-                  title: const Text(
-                    'Municipal Solid Waste & Recycling Data',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                  ),
-                  subtitle: const Text(
-                    'World Bank benchmarks, Lugbara terms & scrap rates',
-                    style: TextStyle(fontSize: 11),
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _showWasteDatabase,
-                ),
-                const SizedBox(height: 10),
-                if (kDebugMode && _role == AppRole.admin) ...[
-                  ListTile(
-                    tileColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: const BorderSide(color: Color(0xFFE2EAE1)),
-                    ),
-                    leading: const Icon(Icons.refresh_rounded, color: Color(0xFF2E7D32)),
-                    title: const Text(
-                      'Reset / Re-seed Demo Municipal Records',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: const Text(
-                      'Debug Admin only: Re-populates demonstration requests across Arua',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                    trailing: const Icon(Icons.arrow_forward_rounded),
-                    onTap: () async {
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Reset Demo Records?'),
-                          content: const Text(
-                            'This will overwrite current local pickup requests with default municipal demo data. Continue?',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(ctx).pop(false),
-                              child: const Text('Cancel'),
-                            ),
-                            FilledButton(
-                              onPressed: () => Navigator.of(ctx).pop(true),
-                              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC62828)),
-                              child: const Text('Reset'),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirmed == true) {
-                        await widget.repository.seedDemoData(force: true);
-                        await _loadOrders();
-                        if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Demonstration instant collection orders restored.'),
-                            backgroundColor: Color(0xFF2E7D32),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 18),
-                ],
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    FilledButton.icon(
-                      onPressed: () async {
-                        await _signOut();
-                        _showAuth();
-                      },
-                      icon: const Icon(Icons.swap_horiz_rounded),
-                      label: const Text('Switch account'),
-                    ),
-                    const SizedBox(width: 12),
-                    OutlinedButton.icon(
-                      onPressed: _signOut,
-                      icon: const Icon(Icons.logout_rounded),
-                      label: const Text('Sign out'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+        ? ProfileSettingsView(
+            currentUser: _currentUser,
+            role: _role,
+            orders: _orders,
+            repository: widget.repository,
+            authService: widget.authService,
+            remindersEnabled: _remindersEnabled,
+            onRemindersToggled: (val) {
+              setState(() => _remindersEnabled = val);
+              widget.authService?.setRemindersEnabled(val);
+            },
+            onOpenWasteDatabase: _showWasteDatabase,
+            onRefreshOrders: _loadOrders,
+            onSignOut: _signOut,
+            onSwitchAccount: () async {
+              await _signOut();
+              _showAuth();
+            },
+            onProfileUpdated: () {
+              if (widget.authService != null) {
+                setState(() {
+                  _currentUser = widget.authService!.getCurrentUser();
+                });
+              }
+            },
           )
         : FilledButton.icon(
             onPressed: _showAuth,
