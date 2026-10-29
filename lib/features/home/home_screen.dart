@@ -28,11 +28,13 @@ import '../rider/widgets/route_stop_tile.dart';
 import 'widgets/brand_lockup.dart';
 import 'widgets/interactive_map_panel.dart';
 import 'widgets/metric_cards.dart';
+import 'widgets/resident_dashboard_widgets.dart';
 import 'widgets/status_selector.dart';
 
 export 'widgets/brand_lockup.dart';
 export 'widgets/interactive_map_panel.dart';
 export 'widgets/metric_cards.dart';
+export 'widgets/resident_dashboard_widgets.dart';
 export 'widgets/status_selector.dart';
 
 // Backward compatibility aliases
@@ -1087,12 +1089,44 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       ],
     };
 
+    // Resident scoped orders for personalized tracking & impact
+    final residentOrders = _role == AppRole.resident
+        ? _orders.where((o) =>
+            _currentUser == null ||
+            o.residentId == _currentUser!.id ||
+            o.residentPhone == _currentUser!.phone ||
+            o.residentName == _currentUser!.fullName ||
+            o.residentId == 'resident-1'
+          ).toList()
+        : _orders;
+
+    final activeResidentOrder = residentOrders.cast<PickupRequest?>().firstWhere(
+      (o) => o != null && o.status != RequestStatus.paid && o.status != RequestStatus.cancelled,
+      orElse: () => null,
+    );
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildWelcome(),
+          if (_role == AppRole.resident) ...[
+            const SizedBox(height: 12),
+            ResidentHeroGreeting(
+              user: _currentUser,
+              activeRequestsCount: residentOrders.where((o) => o.status != RequestStatus.paid && o.status != RequestStatus.cancelled).length,
+              onTapProfile: () => setState(() => _tab = 2),
+            ),
+            if (activeResidentOrder != null) ...[
+              const SizedBox(height: 12),
+              ActivePickupTrackerCard(
+                request: activeResidentOrder,
+                onTapDetails: () => _openRequestDetails(activeResidentOrder),
+                onPayMoMo: () => _openMoMoPayment(activeResidentOrder),
+              ),
+            ],
+          ],
           const SizedBox(height: 16),
 
           _buildWeatherSafetyCard(),
@@ -1202,6 +1236,10 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           ),
 
           if (_role == AppRole.resident) ...[
+            const SizedBox(height: 16),
+            ResidentEcoImpactCard(personalRequests: residentOrders),
+            const SizedBox(height: 12),
+            WasteSegregationTipsCard(onTapDatabase: _showWasteDatabase),
             const SizedBox(height: 16),
             _buildReportButton(),
           ],
@@ -2340,7 +2378,15 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         ? ProfileSettingsView(
             currentUser: _currentUser,
             role: _role,
-            orders: _orders,
+            orders: _role == AppRole.resident
+                ? _orders.where((o) =>
+                    _currentUser == null ||
+                    o.residentId == _currentUser!.id ||
+                    o.residentPhone == _currentUser!.phone ||
+                    o.residentName == _currentUser!.fullName ||
+                    o.residentId == 'resident-1'
+                  ).toList()
+                : _orders,
             repository: widget.repository,
             authService: widget.authService,
             remindersEnabled: _remindersEnabled,

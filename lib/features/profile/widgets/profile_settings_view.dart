@@ -446,6 +446,58 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
           ),
           const SizedBox(height: 16),
 
+          if (role == AppRole.resident) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFE8F5E9), Color(0xFFD4EED8)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFA5D6A7)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF2E7D32),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          paidCount >= 5 ? 'Arua Eco Champion 🌟' : paidCount >= 2 ? 'Green Guardian 🌿' : 'Arua Clean Citizen 🌱',
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1B5E20),
+                          ),
+                        ),
+                        Text(
+                          '$totalSacks sack(s) collected & recycled • Thank you for keeping Arua green!',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF2E7D32),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
           // Environmental & Operation Impact
           Container(
             padding: const EdgeInsets.all(16),

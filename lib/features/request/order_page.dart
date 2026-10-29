@@ -237,378 +237,564 @@ class _OrderPageState extends State<OrderPage> {
         }
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Color(0xFF2EAD65),
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: Color(0xFF2EAD65),
-        systemNavigationBarIconBrightness: Brightness.light,
-        systemNavigationBarDividerColor: Colors.transparent,
-      ),
-      child: Scaffold(
-        appBar: AppBar(
-          systemOverlayStyle: const SystemUiOverlayStyle(
-            statusBarColor: Color(0xFF2EAD65),
-            statusBarIconBrightness: Brightness.light,
-            statusBarBrightness: Brightness.dark,
-            systemNavigationBarColor: Color(0xFF2EAD65),
-            systemNavigationBarIconBrightness: Brightness.light,
-            systemNavigationBarDividerColor: Colors.transparent,
-          ),
-          title: const Text('Order a collection'),
-        actions: [
-          IconButton(
-            tooltip: 'Waste Database & Rates',
-            icon: const Icon(Icons.dataset_outlined),
-            onPressed: () {
-              showModalBottomSheet<void>(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) => const WasteDatabaseSheet(),
-              );
-            },
-          ),
-          IconButton(
-            tooltip: 'Waste Photo Scanner',
-            icon: Icon(
-              _capturedPhotoLabel != null
-                  ? Icons.check_circle_rounded
-                  : Icons.camera_alt_outlined,
-              color: _capturedPhotoLabel != null ? const Color(0xFF2E7D32) : null,
+        value: const SystemUiOverlayStyle(
+          statusBarColor: Color(0xFF2EAD65),
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: Color(0xFF2EAD65),
+          systemNavigationBarIconBrightness: Brightness.light,
+          systemNavigationBarDividerColor: Colors.transparent,
+        ),
+        child: Scaffold(
+          appBar: AppBar(
+            systemOverlayStyle: const SystemUiOverlayStyle(
+              statusBarColor: Color(0xFF2EAD65),
+              statusBarIconBrightness: Brightness.light,
+              statusBarBrightness: Brightness.dark,
+              systemNavigationBarColor: Color(0xFF2EAD65),
+              systemNavigationBarIconBrightness: Brightness.light,
+              systemNavigationBarDividerColor: Colors.transparent,
             ),
-            onPressed: _openCameraScanner,
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          children: [
-            // Instant On-Demand Dispatch Notice
-            Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFA5D6A7)),
+            title: const Text('Order a collection'),
+            actions: [
+              IconButton(
+                tooltip: 'Waste Database & Rates',
+                icon: const Icon(Icons.dataset_outlined),
+                onPressed: () {
+                  showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => const WasteDatabaseSheet(),
+                  );
+                },
               ),
-              child: const Row(
-                children: [
-                  Icon(Icons.bolt_rounded, color: Color(0xFF2E7D32), size: 24),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              IconButton(
+                tooltip: 'Waste Photo Scanner',
+                icon: Icon(
+                  _capturedPhotoLabel != null
+                      ? Icons.check_circle_rounded
+                      : Icons.camera_alt_outlined,
+                  color: _capturedPhotoLabel != null ? const Color(0xFF2E7D32) : null,
+                ),
+                onPressed: _openCameraScanner,
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+          body: Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              children: [
+                // Instant On-Demand Dispatch Notice
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFA5D6A7)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.bolt_rounded, color: Color(0xFF2E7D32), size: 24),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Instant On-Demand Collection',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                                color: Color(0xFF1B5E20),
+                              ),
+                            ),
+                            Text(
+                              'Collections operate upon instant request across Arua municipality without zone delays.',
+                              style: TextStyle(fontSize: 11, color: Color(0xFF2E7D32)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Tell us what to collect',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF183B20),
+                            ),
+                          ),
+                          Text(
+                            _capturedPhotoLabel != null
+                                ? 'Photo attached • GPS locked'
+                                : 'Give details or use camera scanner',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF556958)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ActionChip(
+                      avatar: Icon(
+                        _capturedPhotoLabel != null
+                            ? Icons.check_circle_rounded
+                            : Icons.camera_alt_rounded,
+                        size: 16,
+                        color: const Color(0xFF2E7D32),
+                      ),
+                      label: Text(_capturedPhotoLabel != null ? 'Retake' : 'Scan Rubbish'),
+                      onPressed: () => _openCameraScanner(autoLaunchCamera: true),
+                    ),
+                  ],
+                ),
+                if (_capturedPhotoLabel != null || _capturedPhotoBytes != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF81C784)),
+                    ),
+                    child: Row(
                       children: [
-                        Text(
-                          'Instant On-Demand Collection',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                            color: Color(0xFF1B5E20),
+                        if (_capturedPhotoBytes != null)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.memory(
+                              _capturedPhotoBytes!,
+                              width: 44,
+                              height: 44,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        else
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2E7D32),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.verified_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _capturedPhotoLabel ?? 'waste_evidence.jpg',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                _latitude != null && _longitude != null
+                                    ? 'GPS: ${_latitude!.toStringAsFixed(4)}, ${_longitude!.toStringAsFixed(4)} (Locked)'
+                                    : 'Location verified for instant dispatch',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF2E7D32),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        Text(
-                          'Collections operate upon instant request across Arua municipality without zone delays.',
-                          style: TextStyle(fontSize: 11, color: Color(0xFF2E7D32)),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            size: 18,
+                            color: Colors.redAccent,
+                          ),
+                          tooltip: 'Remove photo',
+                          onPressed: () {
+                            setState(() {
+                              _capturedPhotoLabel = null;
+                              _capturedPhotoPath = null;
+                              _capturedPhotoBytes = null;
+                            });
+                          },
                         ),
                       ],
                     ),
                   ),
                 ],
-              ),
-            ),
+                const SizedBox(height: 12),
 
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Tell us what to collect',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF183B20),
-                        ),
-                      ),
-                      Text(
-                        _capturedPhotoLabel != null
-                            ? 'Photo attached • GPS locked'
-                            : 'Give details or use camera scanner',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF556958)),
-                      ),
-                    ],
-                  ),
-                ),
-                ActionChip(
-                  avatar: Icon(
-                    _capturedPhotoLabel != null
-                        ? Icons.check_circle_rounded
-                        : Icons.camera_alt_rounded,
-                    size: 16,
-                    color: const Color(0xFF2E7D32),
-                  ),
-                  label: Text(_capturedPhotoLabel != null ? 'Retake' : 'Scan Rubbish'),
-                  onPressed: () => _openCameraScanner(autoLaunchCamera: true),
-                ),
-              ],
-            ),
-            if (_capturedPhotoLabel != null || _capturedPhotoBytes != null) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF81C784)),
-                ),
-                child: Row(
+                // Waste category selector chips & dropdown
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (_capturedPhotoBytes != null)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.memory(
-                          _capturedPhotoBytes!,
-                          width: 44,
-                          height: 44,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    else
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2E7D32),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.verified_rounded,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
                         children: [
-                          Text(
-                            _capturedPhotoLabel ?? 'waste_evidence.jpg',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
+                          ChoiceChip(
+                            avatar: Icon(
+                              Icons.home_rounded,
+                              size: 16,
+                              color: _wasteType == WasteType.household ? Colors.white : const Color(0xFF2E7D32),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            _latitude != null && _longitude != null
-                                ? 'GPS: ${_latitude!.toStringAsFixed(4)}, ${_longitude!.toStringAsFixed(4)} (Locked)'
-                                : 'Location verified for instant dispatch',
-                            style: const TextStyle(
+                            label: const Text('Household (1.5k)'),
+                            selected: _wasteType == WasteType.household,
+                            selectedColor: const Color(0xFF2E7D32),
+                            labelStyle: TextStyle(
                               fontSize: 11,
-                              color: Color(0xFF2E7D32),
+                              fontWeight: FontWeight.w700,
+                              color: _wasteType == WasteType.household ? Colors.white : const Color(0xFF1B5E20),
                             ),
+                            onSelected: (_) => setState(() => _wasteType = WasteType.household),
+                          ),
+                          const SizedBox(width: 6),
+                          ChoiceChip(
+                            avatar: Icon(
+                              Icons.storefront_rounded,
+                              size: 16,
+                              color: _wasteType == WasteType.tradingCenter ? Colors.white : const Color(0xFF2E7D32),
+                            ),
+                            label: const Text('Commercial (2.5k)'),
+                            selected: _wasteType == WasteType.tradingCenter,
+                            selectedColor: const Color(0xFF2E7D32),
+                            labelStyle: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: _wasteType == WasteType.tradingCenter ? Colors.white : const Color(0xFF1B5E20),
+                            ),
+                            onSelected: (_) => setState(() => _wasteType = WasteType.tradingCenter),
+                          ),
+                          const SizedBox(width: 6),
+                          ChoiceChip(
+                            avatar: Icon(
+                              Icons.inventory_2_rounded,
+                              size: 16,
+                              color: _wasteType == WasteType.unknown ? Colors.white : const Color(0xFF2E7D32),
+                            ),
+                            label: const Text('Bulky / Other (2k)'),
+                            selected: _wasteType == WasteType.unknown,
+                            selectedColor: const Color(0xFF2E7D32),
+                            labelStyle: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: _wasteType == WasteType.unknown ? Colors.white : const Color(0xFF1B5E20),
+                            ),
+                            onSelected: (_) => setState(() => _wasteType = WasteType.unknown),
                           ),
                         ],
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.close_rounded,
-                        size: 18,
-                        color: Colors.redAccent,
-                      ),
-                      tooltip: 'Remove photo',
-                      onPressed: () {
-                        setState(() {
-                          _capturedPhotoLabel = null;
-                          _capturedPhotoPath = null;
-                          _capturedPhotoBytes = null;
-                        });
-                      },
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<WasteType>(
+                      initialValue: _wasteType,
+                      decoration: const InputDecoration(labelText: 'Waste type', isDense: true),
+                      items: WasteType.values
+                          .map(
+                            (type) => DropdownMenuItem(
+                              value: type,
+                              child: Text(type.label),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) => setState(() => _wasteType = value),
+                      validator: (value) =>
+                          value == null ? 'Select a waste type' : null,
                     ),
                   ],
                 ),
-              ),
-            ],
-            const SizedBox(height: 10),
+                const SizedBox(height: 8),
 
-            // Waste type dropdown
-            DropdownButtonFormField<WasteType>(
-              initialValue: _wasteType,
-              decoration: const InputDecoration(labelText: 'Waste type'),
-              items: WasteType.values
-                  .map(
-                    (type) => DropdownMenuItem(
-                      value: type,
-                      child: Text(type.label),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) => setState(() => _wasteType = value),
-              validator: (value) =>
-                  value == null ? 'Select a waste type' : null,
-            ),
-            const SizedBox(height: 10),
-
-            // Collection details
-            TextFormField(
-              controller: _description,
-              maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Collection details',
-                hintText: 'Describe the waste and where it can be collected.',
-              ),
-              validator: (value) => value == null || value.trim().length < 10
-                  ? 'Please enter at least 10 characters'
-                  : null,
-            ),
-            const SizedBox(height: 10),
-
-            // Compact sacks & live price calculation row
-            Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: TextFormField(
-                    controller: _sackCountController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Sacks (1-50)',
-                      isDense: true,
-                    ),
-                    onChanged: (_) => setState(() {}),
-                    validator: (val) {
-                      final n = int.tryParse(val ?? '');
-                      if (n == null || n < 1 || n > 50) return '1-50';
-                      return null;
-                    },
+                // Collection details
+                TextFormField(
+                  controller: _description,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Collection details',
+                    hintText: 'Describe the waste and where it can be collected.',
+                    isDense: true,
                   ),
+                  validator: (value) => value == null || value.trim().length < 10
+                      ? 'Please enter at least 10 characters'
+                      : null,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 3,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 10,
+                const SizedBox(height: 8),
+
+                // Compact sacks & live price calculation row with stepper
+                Row(
+                  children: [
+                    IconButton.filledTonal(
+                      onPressed: _sackCount > 1
+                          ? () {
+                              HapticFeedback.selectionClick();
+                              setState(() => _sackCountController.text = (_sackCount - 1).toString());
+                            }
+                          : null,
+                      icon: const Icon(Icons.remove, size: 16),
+                      constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+                      padding: EdgeInsets.zero,
                     ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
-                      borderRadius: BorderRadius.circular(12),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      flex: 2,
+                      child: TextFormField(
+                        controller: _sackCountController,
+                        textAlign: TextAlign.center,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Sacks (1-50)',
+                          isDense: true,
+                        ),
+                        onChanged: (_) => setState(() {}),
+                        validator: (val) {
+                          final n = int.tryParse(val ?? '');
+                          if (n == null || n < 1 || n > 50) return '1-50';
+                          return null;
+                        },
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Estimated Price',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF2E7D32),
+                    const SizedBox(width: 4),
+                    IconButton.filledTonal(
+                      onPressed: _sackCount < 50
+                          ? () {
+                              HapticFeedback.selectionClick();
+                              setState(() => _sackCountController.text = (_sackCount + 1).toString());
+                            }
+                          : null,
+                      icon: const Icon(Icons.add, size: 16),
+                      constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+                      padding: EdgeInsets.zero,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      flex: 3,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFA5D6A7)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Estimated Price',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF2E7D32),
+                              ),
+                            ),
+                            Text(
+                              formatUgx(_totalPrice),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF1B5E20),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Instant Pickup Address & Landmark with GPS Autofill
+                TextFormField(
+                  controller: _addressController,
+                  decoration: InputDecoration(
+                    labelText: 'Instant pickup address / landmark',
+                    hintText: 'e.g. Near Market Stall #14, Arua Hill or Exact Gate',
+                    isDense: true,
+                    prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
+                    suffixIcon: IconButton(
+                      onPressed: _locating ? null : _detectLocation,
+                      tooltip: 'GPS Autofill',
+                      icon: _locating
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.my_location_rounded, size: 20),
+                    ),
+                  ),
+                  validator: (val) =>
+                      val == null || val.trim().isEmpty ? 'Enter pickup location' : null,
+                ),
+                // Landmark suggestions chips for Arua
+                const SizedBox(height: 6),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Landmarks: ',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF556958)),
+                      ),
+                      for (final landmark in [
+                        'Muni University',
+                        'Arua Hill',
+                        'Central Market',
+                        'Rhino Camp Rd',
+                        'Ediofe',
+                        'Onduparaka',
+                      ]) ...[
+                        InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _addressController.text = landmark);
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F8F2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFD0E4D4)),
+                            ),
+                            child: Text(
+                              landmark,
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1B5E20),
+                              ),
+                            ),
                           ),
                         ),
-                        Text(
-                          formatUgx(_totalPrice),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1B5E20),
+                      ],
+                    ],
+                  ),
+                ),
+                if (_latitude != null && _longitude != null) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFA5D6A7)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF2E7D32)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'GPS Locked: ${_latitude!.toStringAsFixed(5)}°N, ${_longitude!.toStringAsFixed(5)}°E (Instant Pin)',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1B5E20),
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
+                ],
+                const SizedBox(height: 12),
+
+                // Price Breakdown Summary & Payment Note
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7FBF8),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2EAE1)),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '$_sackCount sack(s) × ${formatUgx(_ratePerSack)}',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF556958)),
+                          ),
+                          Text(
+                            formatUgx(_totalPrice),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF183B20),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      const Divider(height: 1),
+                      const SizedBox(height: 6),
+                      const Row(
+                        children: [
+                          Icon(Icons.payment_rounded, size: 14, color: Color(0xFF2E7D32)),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Pay on collection with Cash or via MTN/Airtel Mobile Money',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF2E7D32)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(height: 16),
               ],
             ),
-            const SizedBox(height: 10),
-
-            // Instant Pickup Address & Landmark with GPS Autofill
-            TextFormField(
-              controller: _addressController,
-              decoration: InputDecoration(
-                labelText: 'Instant pickup address / landmark',
-                hintText: 'e.g. Near Market Stall #14, Arua Hill or Exact Gate',
-                isDense: true,
-                prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
-                suffixIcon: IconButton(
-                  onPressed: _locating ? null : _detectLocation,
-                  tooltip: 'GPS Autofill',
-                  icon: _locating
+          ),
+          bottomNavigationBar: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+              child: SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: _submitting ? null : _submit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF1B5E3B),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  icon: _submitting
                       ? const SizedBox.square(
-                          dimension: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
-                      : const Icon(Icons.my_location_rounded, size: 20),
-                ),
-              ),
-              validator: (val) =>
-                  val == null || val.trim().isEmpty ? 'Enter pickup location' : null,
-            ),
-            if (_latitude != null && _longitude != null) ...[
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFA5D6A7)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF2E7D32)),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'GPS Locked: ${_latitude!.toStringAsFixed(5)}°N, ${_longitude!.toStringAsFixed(5)}°E (Instant Pin)',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1B5E20),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-
-            // Submit Button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: FilledButton.icon(
-                onPressed: _submitting ? null : _submit,
-                icon: _submitting
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.send_outlined),
-                label: Text(
-                  _submitting
-                      ? 'Saving request...'
-                      : 'Submit collection order',
+                      : const Icon(Icons.send_rounded),
+                  label: Text(
+                    _submitting
+                        ? 'Saving request...'
+                        : 'Submit collection order',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                  ),
                 ),
               ),
             ),
-          ],
+          ),
         ),
       ),
-    ),
-    ),
-  );
-}
-
-
+    );
+  }
 }
