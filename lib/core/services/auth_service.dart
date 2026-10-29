@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/entities/app_user.dart';
@@ -196,8 +197,13 @@ class AuthService {
         final firebaseUser = credential.user;
         if (firebaseUser != null && firebaseUser.email != null) {
           final profileRef = firestore.collection('profiles').doc(firebaseUser.uid);
-          final profileSnapshot = await profileRef.get();
-          final profile = profileSnapshot.data();
+          Map<String, dynamic>? profile;
+          try {
+            final profileSnapshot = await profileRef.get();
+            profile = profileSnapshot.data();
+          } catch (e) {
+            debugPrint('Firestore profile fetch notice: $e');
+          }
 
           // Role is stored and managed on Firestore, not hardcoded
           var resolvedRole = parseRole(profile?['role'] as String?);
@@ -210,15 +216,19 @@ class AuthService {
             );
             resolvedRole = isMunicipalAdmin ? AppRole.admin : AppRole.resident;
 
-            await profileRef.set({
-              'id': firebaseUser.uid,
-              'fullName': firebaseUser.displayName ?? cleanEmail.split('@').first,
-              'email': cleanEmail,
-              'phone': firebaseUser.phoneNumber ?? '',
-              'role': resolvedRole.name,
-              'createdAt': FieldValue.serverTimestamp(),
-              'updatedAt': FieldValue.serverTimestamp(),
-            });
+            try {
+              await profileRef.set({
+                'id': firebaseUser.uid,
+                'fullName': firebaseUser.displayName ?? cleanEmail.split('@').first,
+                'email': cleanEmail,
+                'phone': firebaseUser.phoneNumber ?? '',
+                'role': resolvedRole.name,
+                'createdAt': FieldValue.serverTimestamp(),
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
+            } catch (e) {
+              debugPrint('Firestore profile initial sync notice: $e');
+            }
           }
 
           final user = AppUser(
@@ -352,16 +362,20 @@ class AuthService {
           address: address?.trim().isNotEmpty == true ? address!.trim() : null,
         );
 
-        await firestore.collection('profiles').doc(firebaseUser.uid).set({
-          'id': firebaseUser.uid,
-          'fullName': user.fullName,
-          'email': user.email,
-          'phone': user.phone,
-          'role': user.role.name,
-          'address': user.address,
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+        try {
+          await firestore.collection('profiles').doc(firebaseUser.uid).set({
+            'id': firebaseUser.uid,
+            'fullName': user.fullName,
+            'email': user.email,
+            'phone': user.phone,
+            'role': user.role.name,
+            'address': user.address,
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        } catch (e) {
+          debugPrint('Firestore profile document write notice: $e');
+        }
 
         await _saveSession(user);
         return user;

@@ -27,6 +27,7 @@ import '../payment/momo_payment_dialog.dart';
 import '../profile/widgets/profile_settings_view.dart';
 import '../request/order_page.dart';
 import '../request/widgets/request_detail_sheet.dart';
+import '../rider/widgets/active_trip_sheet.dart';
 import '../rider/widgets/route_stop_tile.dart';
 import 'widgets/brand_lockup.dart';
 import 'widgets/interactive_map_panel.dart';
@@ -936,6 +937,50 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       child: ListenableBuilder(
         listenable: _langService,
         builder: (context, _) {
+          final isWideScreen = MediaQuery.sizeOf(context).width >= 768;
+
+          Widget bodyContent = IndexedStack(
+            index: _tab,
+            children: [_buildBrowse(), _buildOrders(), _buildProfile()],
+          );
+
+          if (isWideScreen) {
+            bodyContent = Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: _tab,
+                  indicatorColor: const Color(0xFFDCEFE0),
+                  labelType: NavigationRailLabelType.all,
+                  onDestinationSelected: (value) {
+                    if (value != _tab) {
+                      HapticFeedback.selectionClick();
+                      setState(() => _tab = value);
+                    }
+                  },
+                  destinations: const [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.home_outlined),
+                      selectedIcon: Icon(Icons.home),
+                      label: Text('Home'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.receipt_long_outlined),
+                      selectedIcon: Icon(Icons.receipt_long),
+                      label: Text('Requests'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.person_outline),
+                      selectedIcon: Icon(Icons.person),
+                      label: Text('Profile'),
+                    ),
+                  ],
+                ),
+                const VerticalDivider(thickness: 1, width: 1),
+                Expanded(child: bodyContent),
+              ],
+            );
+          }
+
           return Scaffold(
             appBar: AppBar(
               systemOverlayStyle: const SystemUiOverlayStyle(
@@ -1007,40 +1052,39 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
               const SizedBox(width: 8),
             ],
           ),
-          body: IndexedStack(
-            index: _tab,
-            children: [_buildBrowse(), _buildOrders(), _buildProfile()],
-          ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _tab,
-            indicatorColor: const Color(0xFFDCEFE0),
-            labelBehavior: MediaQuery.sizeOf(context).width < 360
-                ? NavigationDestinationLabelBehavior.onlyShowSelected
-                : NavigationDestinationLabelBehavior.alwaysShow,
-            onDestinationSelected: (value) {
-              if (value != _tab) {
-                HapticFeedback.selectionClick();
-                setState(() => _tab = value);
-              }
-            },
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home),
-                label: 'Home',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.receipt_long_outlined),
-                selectedIcon: Icon(Icons.receipt_long),
-                label: 'Requests',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.person_outline),
-                selectedIcon: Icon(Icons.person),
-                label: 'Profile',
-              ),
-            ],
-          ),
+          body: bodyContent,
+          bottomNavigationBar: isWideScreen
+              ? null
+              : NavigationBar(
+                  selectedIndex: _tab,
+                  indicatorColor: const Color(0xFFDCEFE0),
+                  labelBehavior: MediaQuery.sizeOf(context).width < 360
+                      ? NavigationDestinationLabelBehavior.onlyShowSelected
+                      : NavigationDestinationLabelBehavior.alwaysShow,
+                  onDestinationSelected: (value) {
+                    if (value != _tab) {
+                      HapticFeedback.selectionClick();
+                      setState(() => _tab = value);
+                    }
+                  },
+                  destinations: const [
+                    NavigationDestination(
+                      icon: Icon(Icons.home_outlined),
+                      selectedIcon: Icon(Icons.home),
+                      label: 'Home',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.receipt_long_outlined),
+                      selectedIcon: Icon(Icons.receipt_long),
+                      label: 'Requests',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.person_outline),
+                      selectedIcon: Icon(Icons.person),
+                      label: 'Profile',
+                    ),
+                  ],
+                ),
         );
       },
     ),
@@ -1374,34 +1418,67 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         )
         .toList();
 
-    return _DashboardPanel(
-      title: 'Today\'s route',
-      subtitle:
-          '${stops.length} active ${stops.length == 1 ? 'stop' : 'stops'}',
-      icon: Icons.route_rounded,
-      child: stops.isEmpty
-          ? const _EmptyPanelMessage(
-              icon: Icons.check_circle_outline_rounded,
-              text:
-                  'No active stops. New collection requests will appear here.',
-            )
-          : Column(
-              children: [
-                for (var index = 0; index < stops.length; index++) ...[
-                  if (index > 0) const Divider(height: 20),
-                  _RouteStop(
-                    index: index + 1,
-                    request: stops[index],
-                    onAdvance: () => _updateOrderStatus(
-                      stops[index],
-                      stops[index].status == RequestStatus.requested
-                          ? RequestStatus.collected
-                          : RequestStatus.awaitingVerification,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (stops.isNotEmpty) ...[
+          ActiveTripBanner(
+            activeStop: stops.first,
+            totalStops: stops.length,
+            currentIndex: 1,
+            onTap: () => _openActiveTripSheet(stops, 0),
+          ),
+          const SizedBox(height: 14),
+        ],
+        _DashboardPanel(
+          title: 'Today\'s route',
+          subtitle:
+              '${stops.length} active ${stops.length == 1 ? 'stop' : 'stops'}',
+          icon: Icons.route_rounded,
+          child: stops.isEmpty
+              ? const _EmptyPanelMessage(
+                  icon: Icons.check_circle_outline_rounded,
+                  text:
+                      'No active stops. New collection requests will appear here.',
+                )
+              : Column(
+                  children: [
+                    for (var index = 0; index < stops.length; index++) ...[
+                      if (index > 0) const Divider(height: 20),
+                      _RouteStop(
+                        index: index + 1,
+                        request: stops[index],
+                        onAdvance: () => _updateOrderStatus(
+                          stops[index],
+                          stops[index].status == RequestStatus.requested
+                              ? RequestStatus.collected
+                              : RequestStatus.awaitingVerification,
+                        ),
+                        onOpenConsole: () => _openActiveTripSheet(stops, index),
+                      ),
+                    ],
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+
+  void _openActiveTripSheet(List<PickupRequest> stops, int initialIndex) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => ActiveTripSheet(
+        stops: stops,
+        initialIndex: initialIndex,
+        onAdvanceOrder: (request, nextStatus) => _updateOrderStatus(request, nextStatus),
+        onUpdateSackCount: (request, newCount, newPrice) async {
+          final updated = request.copyWith(sackCount: newCount, priceUgx: newPrice);
+          await widget.repository.save(updated);
+          await _loadOrders();
+        },
+      ),
     );
   }
 

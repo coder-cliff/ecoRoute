@@ -67,6 +67,8 @@ class RiderInviteService {
           'email': riderEmail.trim().toLowerCase(),
           'name': riderName.trim(),
           'inviteLink': effectiveInviteLink,
+          'subject': 'EcoRoute Collection Team Onboarding: Arua Operations',
+          'senderName': 'EcoRoute Municipal Operations',
         }),
       );
 
@@ -95,17 +97,28 @@ class RiderInviteService {
     required String riderName,
     required String inviteLink,
   }) async {
-    final subject = 'EcoRoute Arua — Official Rider Invitation';
+    final subject = 'EcoRoute Collection Team Onboarding: Arua Operations';
     final body = '''
 Hello $riderName,
 
-You have been officially invited to join the EcoRoute Municipal Waste Logistics team as an authorized collection rider serving Arua City.
+Welcome to the EcoRoute collection team for Arua City.
 
-Click the link below to accept your invitation, verify your credentials, and access your live rider dispatch board:
+Your rider dispatch account has been authorized for the municipal tricycle waste collection fleet serving Ayivu, Central Division, and Muni University.
+
+Your live dispatch portal is ready at:
 $inviteLink
 
-Sent officially by EcoRoute Waste Management (ecoroute.waste@gmail.com)
-Arua City, West Nile, Uganda
+Collection operations reminder:
+1. Ensure your tricycle cargo bay is securely fastened before transit.
+2. Confirm sack counts and waste categories at resident pickup locations.
+3. Transport loaded sacks to designated municipal sorting hubs for scale weighing.
+
+If you have questions, contact municipal dispatch or reply directly to this email.
+
+EcoRoute Municipal Waste Operations
+Muni University & Arua City Council Logistics
+Arua, West Nile, Uganda
+ecoroute.waste@gmail.com
 ''';
 
     final emailLaunchUri = Uri(

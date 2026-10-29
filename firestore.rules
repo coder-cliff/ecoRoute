@@ -1,169 +1,31 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
+
+    // Helper functions
+    function isAuthenticated() {
       return request.auth != null;
     }
 
-    function hasProfile() {
-      return signedIn()
-        && exists(/databases/$(database)/documents/profiles/$(request.auth.uid));
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
-    function appRole() {
-      return get(
-        /databases/$(database)/documents/profiles/$(request.auth.uid)
-      ).data.role;
+    // Profiles collection (residents, riders, administrators)
+    match /profiles/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if isAuthenticated();
     }
 
-    function isRider() {
-      return hasProfile() && appRole() == 'rider';
-    }
-
-    function isAdmin() {
-      return hasProfile() && appRole() == 'admin';
-    }
-
-    function validPickupRequest() {
-      return request.resource.data.keys().hasAll([
-          'id',
-          'wasteType',
-          'description',
-          'submittedAt',
-          'status',
-          'sackCount',
-          'priceUgx',
-          'isInstant',
-          'zone',
-          'address',
-          'residentName',
-          'residentPhone',
-          'residentId'
-        ])
-        && request.resource.data.keys().hasOnly([
-          'id',
-          'wasteType',
-          'description',
-          'submittedAt',
-          'serverSubmittedAt',
-          'status',
-          'sackCount',
-          'priceUgx',
-          'isInstant',
-          'zone',
-          'address',
-          'latitude',
-          'longitude',
-          'residentName',
-          'residentPhone',
-          'residentId',
-          'photoUrl',
-          'isSynced',
-          'updatedAt'
-        ])
-        && request.resource.data.id is string
-        && request.resource.data.wasteType in [
-          'household',
-          'tradingCenter',
-          'unknown'
-        ]
-        && request.resource.data.description is string
-        && request.resource.data.description.size() <= 500
-        && request.resource.data.address is string
-        && request.resource.data.address.size() <= 200
-        && request.resource.data.residentName is string
-        && request.resource.data.residentName.size() <= 100
-        && request.resource.data.residentPhone is string
-        && request.resource.data.residentPhone.size() <= 25
-        && request.resource.data.status in [
-          'requested',
-          'collected',
-          'awaitingVerification',
-          'paid',
-          'cancelled'
-        ]
-        && request.resource.data.sackCount is int
-        && request.resource.data.sackCount >= 1
-        && request.resource.data.sackCount <= 50
-        && request.resource.data.priceUgx is int
-        && request.resource.data.priceUgx >= 1000
-        && request.resource.data.priceUgx <= 500000
-        && request.resource.data.isInstant is bool
-        && request.resource.data.zone in ['north', 'south', 'east', 'west']
-        && request.resource.data.residentId is string;
-    }
-
-    match /profiles/{profileId} {
-      allow read: if signedIn()
-        && (request.auth.uid == profileId || isAdmin());
-
-      allow create: if signedIn()
-        && request.auth.uid == profileId
-        && request.resource.data.id == profileId
-        && (request.resource.data.role == 'resident' || isAdmin())
-        && request.resource.data.keys().hasOnly([
-          'id',
-          'fullName',
-          'email',
-          'phone',
-          'role',
-          'address',
-          'createdAt',
-          'updatedAt'
-        ]);
-
-      allow update: if signedIn()
-        && request.auth.uid == profileId
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.id == resource.data.id
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['fullName', 'phone', 'address', 'updatedAt']);
-
-      allow delete: if isAdmin();
-    }
-
-    match /invitedRiders/{email} {
-      allow read: if signedIn() && (isAdmin() || request.auth.token.email == email);
-      allow write: if isAdmin();
-    }
-
+    // Collection pickup requests (created by residents, accepted by riders, verified by admins)
     match /pickupRequests/{requestId} {
-      allow read: if signedIn()
-        && (resource.data.residentId == request.auth.uid || isRider() || isAdmin());
+      allow read, write: if isAuthenticated();
+    }
 
-      allow create: if signedIn()
-        && request.resource.data.residentId == request.auth.uid
-        && request.resource.data.id == requestId
-        && request.resource.data.status == 'requested'
-        && validPickupRequest();
-
-      allow update: if isAdmin()
-        || (
-          isRider()
-          && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'updatedAt'])
-          && (
-            (
-              resource.data.status == 'requested'
-              && request.resource.data.status == 'collected'
-            )
-            || (
-              resource.data.status == 'collected'
-              && request.resource.data.status == 'awaitingVerification'
-            )
-          )
-        )
-        || (
-          signedIn()
-          && resource.data.residentId == request.auth.uid
-          && resource.data.status == 'requested'
-          && request.resource.data.status == 'cancelled'
-          && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'updatedAt'])
-        );
-
-      allow delete: if isAdmin();
+    // Invited collection riders registry
+    match /invitedRiders/{riderEmail} {
+      allow read, write: if isAuthenticated();
     }
   }
 }

@@ -9,12 +9,14 @@ class RouteStopTile extends StatelessWidget {
     required this.index,
     required this.request,
     required this.onAdvance,
+    this.onOpenConsole,
     super.key,
   });
 
   final int index;
   final PickupRequest request;
   final VoidCallback onAdvance;
+  final VoidCallback? onOpenConsole;
 
   @override
   Widget build(BuildContext context) {
@@ -43,17 +45,45 @@ class RouteStopTile extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                request.wasteType.label,
-                style: const TextStyle(fontWeight: FontWeight.w800),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      request.wasteType.label,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${request.sackCount} sack(s)',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF2E7D32),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 3),
               Text(
-                request.description,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Color(0xFF71877D), fontSize: 12),
+                '${request.residentName} • ${request.address}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
               ),
+              if (request.description.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  request.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Color(0xFF71877D), fontSize: 11),
+                ),
+              ],
               if (request.photoUrl != null) ...[
                 const SizedBox(height: 4),
                 Row(
@@ -74,20 +104,34 @@ class RouteStopTile extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: OutlinedButton.icon(
-                  onPressed: onAdvance,
-                  icon: Icon(
-                    isRequested
-                        ? Icons.check_circle_outline_rounded
-                        : Icons.fact_check_outlined,
-                    size: 17,
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: onAdvance,
+                    icon: Icon(
+                      isRequested
+                          ? Icons.check_circle_outline_rounded
+                          : Icons.fact_check_outlined,
+                      size: 17,
+                    ),
+                    label: Text(
+                      isRequested ? 'Mark collected' : 'Send for verification',
+                    ),
                   ),
-                  label: Text(
-                    isRequested ? 'Mark collected' : 'Send for verification',
-                  ),
-                ),
+                  if (onOpenConsole != null)
+                    FilledButton.tonalIcon(
+                      onPressed: onOpenConsole,
+                      icon: const Icon(Icons.navigation_outlined, size: 15),
+                      label: const Text('Trip Console', style: TextStyle(fontSize: 12)),
+                      style: FilledButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        backgroundColor: const Color(0xFFE8F5E9),
+                        foregroundColor: const Color(0xFF2E7D32),
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
