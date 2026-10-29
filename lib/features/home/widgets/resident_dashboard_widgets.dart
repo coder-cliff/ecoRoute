@@ -871,9 +871,9 @@ class WasteSegregationTipsCard extends StatelessWidget {
           const SizedBox(height: 8),
           const Row(
             children: [
-              _TipBadge(label: '🌿 Organic (Gboo)', desc: 'UGX 1,500/sack • Compost'),
+              _TipBadge(label: 'Organic (Gboo)', desc: 'UGX 1,500/sack • Compost'),
               SizedBox(width: 8),
-              _TipBadge(label: '🍾 Plastics & Glass', desc: 'Recycled at Oli Depot'),
+              _TipBadge(label: 'Plastics & Glass', desc: 'Recycled at Oli Depot'),
             ],
           ),
         ],

@@ -7,6 +7,7 @@ import '../../../domain/entities/pickup_request.dart';
 import '../../../domain/enums/request_status.dart';
 import '../../../domain/enums/role.dart';
 import '../../../domain/enums/waste_type.dart';
+import '../../payment/digital_receipt_dialog.dart';
 
 class RequestDetailSheet extends StatelessWidget {
   const RequestDetailSheet({
@@ -234,9 +235,32 @@ class RequestDetailSheet extends StatelessWidget {
                         ),
                         icon: const Icon(Icons.payment_rounded, size: 20),
                         label: Text(
-                          'Pay ${formatUgx(request.priceUgx)} via Mobile Money',
+                          'Pay ${formatUgx(request.priceUgx)} (Cash or MoMo)',
                           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+
+                  if (request.receiptNumber != null || isSettled || request.paymentMethod == 'cash') ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          showDialog<void>(
+                            context: context,
+                            builder: (_) => DigitalReceiptDialog(request: request),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF2E7D32)),
+                          foregroundColor: const Color(0xFF2E7D32),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                        label: const Text('View / Print Digital Receipt'),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -564,7 +588,16 @@ class RequestDetailSheet extends StatelessWidget {
   }
 
   Widget _buildPricingCard(BuildContext context) {
-    final isPaid = request.status == RequestStatus.paid;
+    final isPaid = request.status == RequestStatus.paid || request.cashReceivedByRider;
+    final isCashPending = request.paymentMethod == 'cash' && !request.cashReceivedByRider;
+
+    final statusText = isPaid
+        ? (request.paymentMethod == 'cash' ? 'Settled (Cash)' : 'Settled (MoMo)')
+        : (isCashPending ? 'Cash at Gate' : 'Unpaid');
+
+    final badgeColor = isPaid
+        ? const Color(0xFF2E7D32)
+        : (isCashPending ? const Color(0xFFE65100) : const Color(0xFF757575));
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -597,10 +630,14 @@ class RequestDetailSheet extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: isPaid ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
+              color: isPaid
+                  ? const Color(0xFFE8F5E9)
+                  : (isCashPending ? const Color(0xFFFFF3E0) : const Color(0xFFF5F5F5)),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: isPaid ? const Color(0xFFA5D6A7) : const Color(0xFFFFCC80),
+                color: isPaid
+                    ? const Color(0xFFA5D6A7)
+                    : (isCashPending ? const Color(0xFFFFCC80) : const Color(0xFFE0E0E0)),
               ),
             ),
             child: Row(
@@ -609,15 +646,15 @@ class RequestDetailSheet extends StatelessWidget {
                 Icon(
                   isPaid ? Icons.check_circle_rounded : Icons.pending_rounded,
                   size: 14,
-                  color: isPaid ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                  color: badgeColor,
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  isPaid ? 'Settled (MoMo)' : 'Unpaid',
+                  statusText,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: isPaid ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                    color: badgeColor,
                   ),
                 ),
               ],

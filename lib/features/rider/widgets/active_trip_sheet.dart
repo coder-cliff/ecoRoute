@@ -6,6 +6,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../domain/entities/pickup_request.dart';
 import '../../../domain/enums/request_status.dart';
 import '../../../domain/enums/waste_type.dart';
+import '../../payment/digital_receipt_dialog.dart';
 
 /// Floating Trip Banner docked on the rider dashboard (Option B)
 class ActiveTripBanner extends StatelessWidget {
@@ -156,6 +157,7 @@ class ActiveTripSheet extends StatefulWidget {
     required this.initialIndex,
     required this.onAdvanceOrder,
     required this.onUpdateSackCount,
+    this.onUpdateCashReceived,
     super.key,
   });
 
@@ -163,6 +165,7 @@ class ActiveTripSheet extends StatefulWidget {
   final int initialIndex;
   final Future<void> Function(PickupRequest request, RequestStatus nextStatus) onAdvanceOrder;
   final Future<void> Function(PickupRequest request, int newCount, int newPrice) onUpdateSackCount;
+  final Future<void> Function(PickupRequest request)? onUpdateCashReceived;
 
   @override
   State<ActiveTripSheet> createState() => _ActiveTripSheetState();
@@ -217,6 +220,39 @@ class _ActiveTripSheetState extends State<ActiveTripSheet> {
 
     widget.onUpdateSackCount(current, newCount, newPrice);
     setState(() {});
+  }
+
+  Future<void> _handleConfirmCash() async {
+    final current = _currentStop;
+    final txId = 'REC-${DateTime.now().year}-ARU-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+    final now = DateTime.now();
+    final updated = current.copyWith(
+      paymentMethod: 'cash',
+      cashReceivedByRider: true,
+      receiptNumber: txId,
+      paidAt: now,
+    );
+
+    if (widget.onUpdateCashReceived != null) {
+      await widget.onUpdateCashReceived!(updated);
+    } else {
+      await widget.onAdvanceOrder(updated, updated.status);
+    }
+
+    if (!mounted) return;
+    setState(() {});
+
+    showDialog<void>(
+      context: context,
+      builder: (_) => DigitalReceiptDialog(request: updated),
+    );
+  }
+
+  void _showReceipt() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => DigitalReceiptDialog(request: _currentStop),
+    );
   }
 
   Future<void> _handleAdvance() async {
@@ -567,6 +603,101 @@ class _ActiveTripSheetState extends State<ActiveTripSheet> {
                           ),
                         ],
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // 3b. Physical Hard Cash Collection & Digital Receipt (Commercial Micro-Fleet)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: current.cashReceivedByRider
+                        ? (isDark ? const Color(0xFF132A18) : const Color(0xFFE8F5E9))
+                        : (isDark ? const Color(0xFF262111) : const Color(0xFFFFF9E6)),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: current.cashReceivedByRider
+                          ? (isDark ? const Color(0xFF254B2C) : const Color(0xFFA5D6A7))
+                          : (isDark ? const Color(0xFF4A3E1E) : const Color(0xFFFFE082)),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            current.cashReceivedByRider
+                                ? Icons.verified_rounded
+                                : Icons.payments_outlined,
+                            size: 18,
+                            color: current.cashReceivedByRider
+                                ? const Color(0xFF2E7D32)
+                                : const Color(0xFFE65100),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              current.cashReceivedByRider
+                                  ? 'Cash Handover Confirmed'
+                                  : 'Cash Collection at Gate',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: current.cashReceivedByRider
+                                    ? const Color(0xFF1B5E20)
+                                    : const Color(0xFFB78103),
+                              ),
+                            ),
+                          ),
+                          Text(
+                            formatUgx(current.priceUgx),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              color: current.cashReceivedByRider
+                                  ? const Color(0xFF1B5E20)
+                                  : const Color(0xFFE65100),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        current.cashReceivedByRider
+                            ? 'Physical cash received into rider custody. Receipt generated and credited to trip ledger.'
+                            : 'Collect physical cash from resident upon loading sacks. Tap below to confirm and issue digital receipt.',
+                        style: TextStyle(fontSize: 11, color: subtextColor),
+                      ),
+                      const SizedBox(height: 10),
+                      if (!current.cashReceivedByRider)
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF1B5E3B),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: _handleConfirmCash,
+                            icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
+                            label: Text('Confirm Cash Received (${formatUgx(current.priceUgx)})'),
+                          ),
+                        )
+                      else
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFF2E7D32)),
+                              foregroundColor: const Color(0xFF2E7D32),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: _showReceipt,
+                            icon: const Icon(Icons.receipt_long_rounded, size: 16),
+                            label: const Text('View / Print Digital Receipt'),
+                          ),
+                        ),
                     ],
                   ),
                 ),

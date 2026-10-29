@@ -861,7 +861,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             ? request.residentPhone
             : '+256394880352',
         onPaymentSuccess: (paid) async {
-          await widget.repository.updateStatus(paid.id, RequestStatus.paid);
+          await widget.repository.save(paid);
           if (!mounted) return;
           setState(() {
             final idx = _orders.indexWhere((o) => o.id == paid.id);
@@ -1126,6 +1126,11 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           hint: 'in progress',
         ),
         _MetricCard(label: 'Completed', value: '$paidCount', hint: 'verified'),
+        _MetricCard(
+          label: 'Pocket Cash',
+          value: formatUgx(_orders.where((o) => o.cashReceivedByRider).fold<int>(0, (sum, o) => sum + o.priceUgx)),
+          hint: 'held in hand',
+        ),
       ],
       AppRole.admin => [
         _MetricCard(
@@ -1476,6 +1481,10 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         onUpdateSackCount: (request, newCount, newPrice) async {
           final updated = request.copyWith(sackCount: newCount, priceUgx: newPrice);
           await widget.repository.save(updated);
+          await _loadOrders();
+        },
+        onUpdateCashReceived: (request) async {
+          await widget.repository.save(request);
           await _loadOrders();
         },
       ),

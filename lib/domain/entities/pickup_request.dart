@@ -21,6 +21,10 @@ class PickupRequest {
     this.residentId = 'resident-1',
     this.photoUrl,
     this.isSynced = true,
+    this.paymentMethod = 'unpaid',
+    this.cashReceivedByRider = false,
+    this.receiptNumber,
+    this.paidAt,
   });
 
   final String id;
@@ -40,6 +44,14 @@ class PickupRequest {
   final String residentId;
   final String? photoUrl;
   final bool isSynced;
+  final String paymentMethod; // 'unpaid', 'cash', 'momo'
+  final bool cashReceivedByRider;
+  final String? receiptNumber;
+  final DateTime? paidAt;
+
+  bool get isPaidInCash => paymentMethod == 'cash' && cashReceivedByRider;
+  bool get isPaidInMoMo => paymentMethod == 'momo';
+  bool get isCashPending => paymentMethod == 'cash' && !cashReceivedByRider;
 
   PickupRequest copyWith({
     String? id,
@@ -59,6 +71,10 @@ class PickupRequest {
     String? residentId,
     String? photoUrl,
     bool? isSynced,
+    String? paymentMethod,
+    bool? cashReceivedByRider,
+    String? receiptNumber,
+    DateTime? paidAt,
   }) {
     return PickupRequest(
       id: id ?? this.id,
@@ -78,6 +94,10 @@ class PickupRequest {
       residentId: residentId ?? this.residentId,
       photoUrl: photoUrl ?? this.photoUrl,
       isSynced: isSynced ?? this.isSynced,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      cashReceivedByRider: cashReceivedByRider ?? this.cashReceivedByRider,
+      receiptNumber: receiptNumber ?? this.receiptNumber,
+      paidAt: paidAt ?? this.paidAt,
     );
   }
 }

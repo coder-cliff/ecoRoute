@@ -532,7 +532,7 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          paidCount >= 5 ? 'Arua Eco Champion 🌟' : paidCount >= 2 ? 'Green Guardian 🌿' : 'Arua Clean Citizen 🌱',
+                          paidCount >= 5 ? 'Arua Eco Champion' : paidCount >= 2 ? 'Green Guardian' : 'Arua Clean Citizen',
                           style: const TextStyle(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w800,

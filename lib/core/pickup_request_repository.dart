@@ -158,6 +158,10 @@ class SharedPreferencesPickupRequestRepository
     'residentId': request.residentId,
     'photoUrl': request.photoUrl,
     'isSynced': request.isSynced,
+    'paymentMethod': request.paymentMethod,
+    'cashReceivedByRider': request.cashReceivedByRider,
+    'receiptNumber': request.receiptNumber,
+    'paidAt': request.paidAt?.toIso8601String(),
   };
 
   PickupRequest _requestFromJson(Map<String, dynamic> json) => PickupRequest(
@@ -180,6 +184,10 @@ class SharedPreferencesPickupRequestRepository
     residentId: json['residentId'] as String? ?? 'resident-1',
     photoUrl: json['photoUrl'] as String?,
     isSynced: (json['isSynced'] as bool?) ?? true,
+    paymentMethod: json['paymentMethod'] as String? ?? 'unpaid',
+    cashReceivedByRider: (json['cashReceivedByRider'] as bool?) ?? false,
+    receiptNumber: json['receiptNumber'] as String?,
+    paidAt: json['paidAt'] != null ? DateTime.tryParse(json['paidAt'] as String) : null,
   );
 }
 
@@ -322,6 +330,10 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
     'residentPhone': request.residentPhone,
     'residentId': request.residentId,
     'photoUrl': request.photoUrl,
+    'paymentMethod': request.paymentMethod,
+    'cashReceivedByRider': request.cashReceivedByRider,
+    'receiptNumber': request.receiptNumber,
+    'paidAt': request.paidAt != null ? Timestamp.fromDate(request.paidAt!) : null,
     'updatedAt': FieldValue.serverTimestamp(),
   };
 
@@ -330,6 +342,15 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
   ) {
     final data = document.data();
     final submittedAt = data['serverSubmittedAt'] ?? data['submittedAt'];
+    final paidAtRaw = data['paidAt'];
+    final paidAt = paidAtRaw is Timestamp
+        ? paidAtRaw.toDate()
+        : paidAtRaw is int
+            ? DateTime.fromMillisecondsSinceEpoch(paidAtRaw)
+            : paidAtRaw != null
+                ? DateTime.tryParse(paidAtRaw.toString())
+                : null;
+
     return PickupRequest(
       id: data['id'] as String? ?? document.id,
       wasteType: WasteType.values.byName(data['wasteType'] as String),
@@ -352,6 +373,10 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
       residentId: data['residentId'] as String,
       photoUrl: data['photoUrl'] as String?,
       isSynced: true,
+      paymentMethod: data['paymentMethod'] as String? ?? 'unpaid',
+      cashReceivedByRider: (data['cashReceivedByRider'] as bool?) ?? false,
+      receiptNumber: data['receiptNumber'] as String?,
+      paidAt: paidAt,
     );
   }
 }

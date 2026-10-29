@@ -44,6 +44,15 @@ class AdminAnalyticsView extends StatelessWidget {
                 100)
             .round();
 
+    // Commercial Private Ledger: Cash in Hand vs Direct MoMo vs 70/30 Split
+    final cashCollected = orders
+        .where((o) => o.cashReceivedByRider)
+        .fold<int>(0, (sum, o) => sum + o.priceUgx);
+    final momoCollected = (settledRevenue - cashCollected).clamp(0, 999999999);
+    final riderPayout = (settledRevenue * 0.70).round();
+    final companyGrossMargin = settledRevenue - riderPayout;
+    final netRiderRemittance = cashCollected - riderPayout;
+
     final cardBg = isDark ? const Color(0xFF192A1D) : Colors.white;
     final cardBorder = isDark ? const Color(0xFF2A3F2F) : const Color(0xFFE2EAE1);
     final subtextColor = isDark ? const Color(0xFF9EABA1) : const Color(0xFF647568);
@@ -212,6 +221,145 @@ class AdminAnalyticsView extends StatelessWidget {
                     isDark: isDark,
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // 2b. Commercial Net Margin & Cash-in-Hand Reconciliation (Private Logistics Model)
+        _ChartCard(
+          title: 'Commercial Profit Margin & Cash Reconciliation',
+          subtitle: 'Private micro-fleet settlement: 30% EcoRoute margin vs 70% rider commission',
+          icon: Icons.pie_chart_outline_rounded,
+          isDark: isDark,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1B5E3B).withValues(alpha: isDark ? 0.25 : 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF2E8B57).withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'EcoRoute Margin (30%)',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF2E7D32)),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            formatUgx(companyGrossMargin),
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF1B5E20)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0288D1).withValues(alpha: isDark ? 0.25 : 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF0288D1).withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Rider Payout (70%)',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF0277BD)),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            formatUgx(riderPayout),
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF01579B)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF222B24) : const Color(0xFFF7FAF7),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: cardBorder),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Rider Cash in Hand', style: TextStyle(fontSize: 10.5, color: subtextColor)),
+                          const SizedBox(height: 2),
+                          Text(
+                            formatUgx(cashCollected),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF222B24) : const Color(0xFFF7FAF7),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: cardBorder),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Direct MoMo (+256394880352)', style: TextStyle(fontSize: 10.5, color: subtextColor)),
+                          const SizedBox(height: 2),
+                          Text(
+                            formatUgx(momoCollected),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E281F) : const Color(0xFFEEF5EF),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, size: 14, color: subtextColor),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        netRiderRemittance > 0
+                            ? 'Riders hold excess cash: ${formatUgx(netRiderRemittance)} to remit to EcoRoute collection line (+256 394 880 352).'
+                            : netRiderRemittance < 0
+                                ? 'EcoRoute payable to riders: ${formatUgx(netRiderRemittance.abs())} to disburse via MoMo.'
+                                : 'Cash and digital accounts are fully balanced.',
+                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: subtextColor),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
