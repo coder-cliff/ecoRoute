@@ -86,6 +86,38 @@ void main() {
       expect(find.text('Waste Categories'), findsOneWidget);
       expect(find.text('Arua Municipal Zones'), findsOneWidget);
       expect(find.text('Order Status Lifecycle'), findsOneWidget);
+      expect(find.text('Commercial B2B Accounts & Multi-Sack Revenue'), findsOneWidget);
+    });
+
+    testWidgets('renders commercial B2B breakdown with active accounts', (
+      WidgetTester tester,
+    ) async {
+      final mixedOrders = [
+        sampleOrders[0],
+        sampleOrders[1].copyWith(
+          isCommercial: true,
+          businessName: 'Oasis 24/7 Restaurant',
+          tinNumber: '100889922',
+          serviceTier: 'Medium Commercial (Tier 2)',
+          priceUgx: 12500,
+          sackCount: 5,
+        ),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: AdminAnalyticsView(orders: mixedOrders),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Commercial B2B Revenue'), findsOneWidget);
+      expect(find.text('Oasis 24/7 Restaurant'), findsOneWidget);
+      expect(find.text('Medium Commercial (Tier 2) • 5 sacks • TIN: 100889922'), findsOneWidget);
     });
 
     testWidgets('renders graceful empty state when no orders exist', (

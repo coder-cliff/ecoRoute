@@ -153,5 +153,37 @@ void main() {
       await tester.pump();
       expect(find.text('Receipt details copied to clipboard. Ready to paste or share.'), findsOneWidget);
     });
+
+    testWidgets('DigitalReceiptDialog renders B2B Tax Invoice with TIN, Business Name, and Wholesale Tier', (
+      WidgetTester tester,
+    ) async {
+      final b2bRequest = sampleRequest.copyWith(
+        isCommercial: true,
+        businessName: 'Desert Breeze Hotel Arua',
+        tinNumber: '1004567890',
+        serviceTier: 'Full Tricycle / Hospitality (Tier 3)',
+        sackCount: 15,
+        priceUgx: 30000,
+        paymentMethod: 'cash',
+        cashReceivedByRider: true,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: DigitalReceiptDialog(request: b2bRequest),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Commercial B2B Tax Invoice • Arua Hub'), findsOneWidget);
+      expect(find.text('TAX INVOICE NUMBER'), findsOneWidget);
+      expect(find.text('Desert Breeze Hotel Arua'), findsOneWidget);
+      expect(find.text('1004567890'), findsOneWidget);
+      expect(find.text('Full Tricycle / Hospitality (Tier 3)'), findsOneWidget);
+      expect(find.text('30,000 UGX'), findsOneWidget);
+      expect(find.text('VERIFIED B2B TAX INVOICE • ECOROUTE LOGISTICS LTD'), findsOneWidget);
+    });
   });
 }

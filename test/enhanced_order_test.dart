@@ -97,6 +97,10 @@ void main() {
     testWidgets('OrderPage displays instant collection mode and has no zone dropdown', (
       WidgetTester tester,
     ) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
       await tester.pumpWidget(
         MaterialApp(
           home: OrderPage(onSubmitted: (_) async {}),
@@ -113,6 +117,10 @@ void main() {
         findsOneWidget,
       );
 
+      // Account Type Toggle
+      expect(find.text('Residential / Household'), findsOneWidget);
+      expect(find.text('Commercial B2B Bulk'), findsOneWidget);
+
       // Dedicated Instant pickup address input with GPS autofill
       expect(find.text('Instant pickup address / landmark'), findsOneWidget);
 
@@ -121,6 +129,65 @@ void main() {
       expect(find.text('South Zone'), findsNothing);
       expect(find.text('East Zone'), findsNothing);
       expect(find.text('West Zone'), findsNothing);
+    });
+
+    test('CommercialPricing computes accurate wholesale volume tiers and discounts', () {
+      // Residential Standard: 1500 UGX
+      expect(CommercialPricing.ratePerSack(sackCount: 2, isCommercial: false), 1500);
+      expect(CommercialPricing.calculateTotal(sackCount: 2, isCommercial: false), 3000);
+      expect(CommercialPricing.calculateVolumeDiscount(sackCount: 2, isCommercial: false), 0);
+
+      // Commercial Tier 1 (1 - 4 sacks): 3000 UGX / sack
+      expect(CommercialPricing.ratePerSack(sackCount: 3, isCommercial: true), 3000);
+      expect(CommercialPricing.calculateTotal(sackCount: 3, isCommercial: true), 9000);
+      expect(CommercialPricing.calculateVolumeDiscount(sackCount: 3, isCommercial: true), 0);
+      expect(CommercialPricing.getTierTitle(sackCount: 3, isCommercial: true), 'Small Enterprise (Tier 1)');
+
+      // Commercial Tier 2 (5 - 14 sacks): 2500 UGX / sack
+      expect(CommercialPricing.ratePerSack(sackCount: 10, isCommercial: true), 2500);
+      expect(CommercialPricing.calculateTotal(sackCount: 10, isCommercial: true), 25000);
+      // Saved 500 UGX * 10 = 5000 UGX
+      expect(CommercialPricing.calculateVolumeDiscount(sackCount: 10, isCommercial: true), 5000);
+      expect(CommercialPricing.getTierTitle(sackCount: 10, isCommercial: true), 'Medium Commercial (Tier 2)');
+
+      // Commercial Tier 3 (15 - 29 sacks): 2000 UGX / sack (Full Tricycle)
+      expect(CommercialPricing.ratePerSack(sackCount: 15, isCommercial: true), 2000);
+      expect(CommercialPricing.calculateTotal(sackCount: 15, isCommercial: true), 30000);
+      // Saved 1000 UGX * 15 = 15000 UGX
+      expect(CommercialPricing.calculateVolumeDiscount(sackCount: 15, isCommercial: true), 15000);
+      expect(CommercialPricing.getTierTitle(sackCount: 15, isCommercial: true), 'Full Tricycle / Hospitality (Tier 3)');
+
+      // Commercial Tier 4 (30 - 50 sacks): 1800 UGX / sack (Bulk Market / Institutional)
+      expect(CommercialPricing.ratePerSack(sackCount: 30, isCommercial: true), 1800);
+      expect(CommercialPricing.calculateTotal(sackCount: 30, isCommercial: true), 54000);
+      // Saved 1200 UGX * 30 = 36000 UGX
+      expect(CommercialPricing.calculateVolumeDiscount(sackCount: 30, isCommercial: true), 36000);
+      expect(CommercialPricing.getTierTitle(sackCount: 30, isCommercial: true), 'Bulk Market / Institutional (Tier 4)');
+    });
+
+    testWidgets('OrderPage switches to Commercial B2B Bulk mode and shows entity inputs', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OrderPage(onSubmitted: (_) async {}),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap Commercial B2B Bulk toggle
+      await tester.tap(find.text('Commercial B2B Bulk'));
+      await tester.pumpAndSettle();
+
+      // Commercial details should be rendered
+      expect(find.text('Commercial Entity Details'), findsOneWidget);
+      expect(find.text('Business / Enterprise Name *'), findsOneWidget);
+      expect(find.text('Tax Identification Number (TIN - Optional)'), findsOneWidget);
+      expect(find.text('15 (Full Tricycle)'), findsOneWidget);
     });
   });
 }

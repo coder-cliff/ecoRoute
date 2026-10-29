@@ -25,7 +25,9 @@ class DigitalReceiptDialog extends StatelessWidget {
     final suffix = rawSuffix.length >= 6
         ? rawSuffix.substring(rawSuffix.length - 6)
         : rawSuffix.padLeft(6, '0');
-    return 'REC-${DateTime.now().year}-ARU-$suffix';
+    final prefix = request.isCommercial ? 'INV' : 'REC';
+    final typeCode = request.isCommercial ? 'B2B' : 'ARU';
+    return '$prefix-${DateTime.now().year}-$typeCode-$suffix';
   }
 
   String _generateReceiptText() {
@@ -33,6 +35,39 @@ class DigitalReceiptDialog extends StatelessWidget {
     final methodLabel = request.paymentMethod == 'cash'
         ? (request.cashReceivedByRider ? 'Hard Cash (Received by Rider)' : 'Hard Cash (Pay at Gate)')
         : 'Direct Mobile Money (To $collectionAccount)';
+
+    if (request.isCommercial) {
+      final unitRate = (request.priceUgx / (request.sackCount == 0 ? 1 : request.sackCount)).round();
+      return '''
+========================================
+       ECOROUTE LOGISTICS ARUA
+   Commercial B2B Tax Invoice & Receipt
+========================================
+Invoice No: $_receiptNumber
+Date & Time: $paidTime
+EcoRoute TIN: 1009876543
+Collection Line: $collectionAccount
+
+Business Client: ${request.businessName ?? request.residentName}
+Client TIN: ${request.tinNumber ?? 'N/A'}
+Service Tier: ${request.serviceTier ?? 'Commercial Wholesale'}
+Contact Phone: ${request.residentPhone}
+Pickup Address: ${request.address}
+
+Service: Bulk Tricycle Fleet Collection
+Waste Category: ${request.wasteType.label}
+Volume: ${request.sackCount} sack(s)
+Wholesale Rate: ${formatUgx(unitRate)} / sack
+Total Invoice Amount: ${formatUgx(request.priceUgx)}
+
+Payment Method: $methodLabel
+Status: ${request.cashReceivedByRider || request.paymentMethod == 'momo' ? 'VERIFIED & SETTLED' : 'CASH CONFIRMED BY CLIENT'}
+========================================
+EcoRoute Private Commercial Waste Hub
+Muni • Ayivu • Central Division • Arua
+========================================
+''';
+    }
 
     return '''
 ========================================
@@ -117,7 +152,9 @@ Muni • Ayivu • Central Division • Arua
                           style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
                         ),
                         Text(
-                          'Commercial Waste Receipt • Arua Hub',
+                          request.isCommercial
+                              ? 'Commercial B2B Tax Invoice • Arua Hub'
+                              : 'Commercial Waste Receipt • Arua Hub',
                           style: TextStyle(fontSize: 11, color: subtextColor),
                         ),
                       ],
@@ -154,7 +191,7 @@ Muni • Ayivu • Central Division • Arua
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'RECEIPT NUMBER',
+                                request.isCommercial ? 'TAX INVOICE NUMBER' : 'RECEIPT NUMBER',
                                 style: TextStyle(
                                   fontSize: 9.5,
                                   fontWeight: FontWeight.w800,
@@ -210,10 +247,22 @@ Muni • Ayivu • Central Division • Arua
                     Divider(height: 1, color: cardBorder),
                     const SizedBox(height: 12),
 
-                    // Resident & Location
-                    _receiptRow('Resident Name', request.residentName),
-                    const SizedBox(height: 6),
-                    _receiptRow('Phone Number', request.residentPhone),
+                    // Resident / Business & Location
+                    if (request.isCommercial) ...[
+                      _receiptRow('Business Entity', request.businessName ?? request.residentName),
+                      const SizedBox(height: 6),
+                      if (request.tinNumber != null && request.tinNumber!.isNotEmpty) ...[
+                        _receiptRow('Client TIN', request.tinNumber!),
+                        const SizedBox(height: 6),
+                      ],
+                      _receiptRow('EcoRoute TIN', '1009876543'),
+                      const SizedBox(height: 6),
+                      _receiptRow('Contact Phone', request.residentPhone),
+                    ] else ...[
+                      _receiptRow('Resident Name', request.residentName),
+                      const SizedBox(height: 6),
+                      _receiptRow('Phone Number', request.residentPhone),
+                    ],
                     const SizedBox(height: 6),
                     _receiptRow('Pickup Landmark', request.address),
                     const SizedBox(height: 6),
@@ -223,11 +272,27 @@ Muni • Ayivu • Central Division • Arua
                     const SizedBox(height: 12),
 
                     // Service & Waste Breakdown
-                    _receiptRow('Service Class', 'On-Demand Tricycle Collection'),
+                    _receiptRow(
+                      'Service Class',
+                      request.isCommercial
+                          ? 'Commercial Bulk Tricycle Fleet'
+                          : 'On-Demand Tricycle Collection',
+                    ),
+                    if (request.isCommercial && request.serviceTier != null) ...[
+                      const SizedBox(height: 6),
+                      _receiptRow('Wholesale Tier', request.serviceTier!),
+                    ],
                     const SizedBox(height: 6),
                     _receiptRow('Waste Category', request.wasteType.label),
                     const SizedBox(height: 6),
                     _receiptRow('Volume Cleared', '${request.sackCount} sack(s)'),
+                    if (request.isCommercial) ...[
+                      const SizedBox(height: 6),
+                      _receiptRow(
+                        'Wholesale Unit Rate',
+                        '${formatUgx((request.priceUgx / (request.sackCount == 0 ? 1 : request.sackCount)).round())} / sack',
+                      ),
+                    ],
                     const SizedBox(height: 6),
                     _receiptRow(
                       'Payment Channel',
@@ -245,12 +310,12 @@ Muni • Ayivu • Central Division • Arua
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'TOTAL AMOUNT PAID',
+                            request.isCommercial ? 'TOTAL INVOICE AMOUNT' : 'TOTAL AMOUNT PAID',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.5,
@@ -297,9 +362,13 @@ Muni • Ayivu • Central Division • Arua
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              isPaid
-                                  ? 'VERIFIED PAYMENT • ECOROUTE PRIVATE LTD'
-                                  : 'CASH COMMITMENT ACCEPTED • PAY RIDER AT GATE',
+                              request.isCommercial
+                                  ? (isPaid
+                                      ? 'VERIFIED B2B TAX INVOICE • ECOROUTE LOGISTICS LTD'
+                                      : 'PENDING B2B CLEARANCE • PAY AT GATE')
+                                  : (isPaid
+                                      ? 'VERIFIED PAYMENT • ECOROUTE PRIVATE LTD'
+                                      : 'CASH COMMITMENT ACCEPTED • PAY RIDER AT GATE'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,

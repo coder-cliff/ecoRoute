@@ -25,6 +25,10 @@ class PickupRequest {
     this.cashReceivedByRider = false,
     this.receiptNumber,
     this.paidAt,
+    this.isCommercial = false,
+    this.businessName,
+    this.tinNumber,
+    this.serviceTier,
   });
 
   final String id;
@@ -48,6 +52,10 @@ class PickupRequest {
   final bool cashReceivedByRider;
   final String? receiptNumber;
   final DateTime? paidAt;
+  final bool isCommercial;
+  final String? businessName;
+  final String? tinNumber;
+  final String? serviceTier;
 
   bool get isPaidInCash => paymentMethod == 'cash' && cashReceivedByRider;
   bool get isPaidInMoMo => paymentMethod == 'momo';
@@ -75,6 +83,10 @@ class PickupRequest {
     bool? cashReceivedByRider,
     String? receiptNumber,
     DateTime? paidAt,
+    bool? isCommercial,
+    String? businessName,
+    String? tinNumber,
+    String? serviceTier,
   }) {
     return PickupRequest(
       id: id ?? this.id,
@@ -98,6 +110,10 @@ class PickupRequest {
       cashReceivedByRider: cashReceivedByRider ?? this.cashReceivedByRider,
       receiptNumber: receiptNumber ?? this.receiptNumber,
       paidAt: paidAt ?? this.paidAt,
+      isCommercial: isCommercial ?? this.isCommercial,
+      businessName: businessName ?? this.businessName,
+      tinNumber: tinNumber ?? this.tinNumber,
+      serviceTier: serviceTier ?? this.serviceTier,
     );
   }
 }

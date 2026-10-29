@@ -366,6 +366,16 @@ class AdminAnalyticsView extends StatelessWidget {
         ),
         const SizedBox(height: 16),
 
+        // 2c. Commercial B2B Wholesale Accounts & Tier Invoicing
+        _ChartCard(
+          title: 'Commercial B2B Accounts & Multi-Sack Revenue',
+          subtitle: 'Wholesale tiered invoicing for hotels, canteens, and enterprise clients in Arua',
+          icon: Icons.business_center_rounded,
+          isDark: isDark,
+          child: _buildCommercialB2BBreakdown(orders, isDark, cardBorder, subtextColor),
+        ),
+        const SizedBox(height: 16),
+
         // 3. Daily / Period Sack Volume Bar Chart
         _ChartCard(
           title: 'Sack Collection Volume Trend',
@@ -593,6 +603,182 @@ class AdminAnalyticsView extends StatelessWidget {
             unit: 'orders',
           ),
           if (z != zones.last) const SizedBox(height: 8),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCommercialB2BBreakdown(
+    List<PickupRequest> orders,
+    bool isDark,
+    Color cardBorder,
+    Color subtextColor,
+  ) {
+    final commercialOrders = orders.where((o) => o.isCommercial).toList();
+    final commercialRevenue = commercialOrders.fold<int>(0, (sum, o) => sum + o.priceUgx);
+    final residentialRevenue = orders.where((o) => !o.isCommercial).fold<int>(0, (sum, o) => sum + o.priceUgx);
+    final commercialSacks = commercialOrders.fold<int>(0, (sum, o) => sum + o.sackCount);
+    final residentialSacks = orders.where((o) => !o.isCommercial).fold<int>(0, (sum, o) => sum + o.sackCount);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1B5E3B).withValues(alpha: isDark ? 0.25 : 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF2E8B57).withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Commercial B2B Revenue',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF2E7D32)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      formatUgx(commercialRevenue),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF1B5E20)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${commercialOrders.length} wholesale orders • $commercialSacks sacks',
+                      style: TextStyle(fontSize: 10, color: subtextColor),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF222B24) : const Color(0xFFF7FAF7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: cardBorder),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Household Revenue',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: subtextColor),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      formatUgx(residentialRevenue),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? Colors.white : const Color(0xFF183B20),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${orders.length - commercialOrders.length} residential orders • $residentialSacks sacks',
+                      style: TextStyle(fontSize: 10, color: subtextColor),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (commercialOrders.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E281F) : const Color(0xFFEEF5EF),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded, size: 16, color: subtextColor),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'No commercial bulk accounts active yet. Orders from hotels, supermarkets, and market vendors will populate here with formal tax invoices.',
+                    style: TextStyle(fontSize: 11, color: subtextColor),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else ...[
+          const Text(
+            'Active Commercial Accounts & Invoices:',
+            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 6),
+          for (final order in commercialOrders.take(5)) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF222B24) : const Color(0xFFF7FAF7),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: cardBorder),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.apartment_rounded, size: 18, color: Color(0xFF2E7D32)),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          order.businessName ?? order.residentName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                        ),
+                        Text(
+                          '${order.serviceTier ?? 'Wholesale'} • ${order.sackCount} sacks${order.tinNumber != null ? ' • TIN: ${order.tinNumber}' : ''}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 10, color: subtextColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        formatUgx(order.priceUgx),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1B5E20),
+                        ),
+                      ),
+                      Text(
+                        order.status.label,
+                        style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: subtextColor),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ],
     );

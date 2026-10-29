@@ -36,9 +36,13 @@ class _OrderPageState extends State<OrderPage> {
   WasteType? _wasteType;
   bool _submitting = false;
   bool _locating = false;
+  bool _isCommercial = false;
+  String _businessCategory = 'Hotel / Hospitality';
 
   final _description = TextEditingController();
   final _sackCountController = TextEditingController(text: '2');
+  final _businessNameController = TextEditingController();
+  final _tinController = TextEditingController();
   late final TextEditingController _addressController;
   late final TextEditingController _phoneController;
 
@@ -67,14 +71,28 @@ class _OrderPageState extends State<OrderPage> {
     return (parsed != null && parsed >= 1 && parsed <= 50) ? parsed : 1;
   }
 
-  int get _ratePerSack => switch (_wasteType) {
-        WasteType.tradingCenter => 2500,
-        WasteType.unknown => 2000,
-        _ => 1500,
-      };
+  int get _ratePerSack {
+    if (_isCommercial) {
+      return CommercialPricing.ratePerSack(
+        sackCount: _sackCount,
+        isCommercial: true,
+      );
+    }
+    return switch (_wasteType) {
+      WasteType.tradingCenter => 2500,
+      WasteType.unknown => 2000,
+      _ => 1500,
+    };
+  }
 
   int get _totalPrice {
     try {
+      if (_isCommercial) {
+        return CommercialPricing.calculateTotal(
+          sackCount: _sackCount,
+          isCommercial: true,
+        );
+      }
       return calculateAmount(
         sackCount: _sackCount,
         pricePerSackUgx: _ratePerSack,
@@ -84,12 +102,24 @@ class _OrderPageState extends State<OrderPage> {
     }
   }
 
+  int get _volumeDiscount => CommercialPricing.calculateVolumeDiscount(
+        sackCount: _sackCount,
+        isCommercial: _isCommercial,
+      );
+
+  String get _currentTierTitle => CommercialPricing.getTierTitle(
+        sackCount: _sackCount,
+        isCommercial: _isCommercial,
+      );
+
   @override
   void dispose() {
     _description.dispose();
     _sackCountController.dispose();
     _addressController.dispose();
     _phoneController.dispose();
+    _businessNameController.dispose();
+    _tinController.dispose();
     super.dispose();
   }
 
@@ -156,7 +186,8 @@ class _OrderPageState extends State<OrderPage> {
   bool get _isFormDirty =>
       _description.text.trim().isNotEmpty ||
       _capturedPhotoLabel != null ||
-      _wasteType != null;
+      _wasteType != null ||
+      _businessNameController.text.trim().isNotEmpty;
 
   Future<bool> _confirmDiscard() async {
     if (!_isFormDirty) return true;
@@ -208,6 +239,12 @@ class _OrderPageState extends State<OrderPage> {
         longitude: _longitude,
         residentPhone: _phoneController.text.trim(),
         photoUrl: _capturedPhotoPath ?? _capturedPhotoLabel,
+        isCommercial: _isCommercial,
+        businessName: _isCommercial ? _businessNameController.text.trim() : null,
+        tinNumber: _isCommercial && _tinController.text.trim().isNotEmpty
+            ? _tinController.text.trim()
+            : null,
+        serviceTier: _currentTierTitle,
       );
 
       await widget.onSubmitted(request);
@@ -322,6 +359,197 @@ class _OrderPageState extends State<OrderPage> {
                     ],
                   ),
                 ),
+
+                // Account Type Toggle: Residential vs Commercial B2B Bulk
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F6F2),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFD3E2D6)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              _isCommercial = false;
+                              _wasteType ??= WasteType.household;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(10),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            decoration: BoxDecoration(
+                              color: !_isCommercial ? const Color(0xFF1B5E3B) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.home_outlined,
+                                  size: 16,
+                                  color: !_isCommercial ? Colors.white : const Color(0xFF456149),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Residential / Household',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: !_isCommercial ? Colors.white : const Color(0xFF456149),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              _isCommercial = true;
+                              _wasteType = WasteType.tradingCenter;
+                              if (_sackCount < 5) {
+                                _sackCountController.text = '5';
+                              }
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(10),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            decoration: BoxDecoration(
+                              color: _isCommercial ? const Color(0xFF1B5E3B) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.business_center_outlined,
+                                  size: 16,
+                                  color: _isCommercial ? Colors.white : const Color(0xFF456149),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Commercial B2B Bulk',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: _isCommercial ? Colors.white : const Color(0xFF456149),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Commercial B2B Entity Profile Form
+                if (_isCommercial) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF4F9F5),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFBCE0C3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.storefront_rounded, size: 18, color: Color(0xFF1B5E20)),
+                            SizedBox(width: 6),
+                            Text(
+                              'Commercial Entity Details',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1B5E20),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          controller: _businessNameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Business / Enterprise Name *',
+                            hintText: 'e.g. Oasis 24/7, Desert Breeze Hotel, Muni Canteen',
+                            isDense: true,
+                            prefixIcon: Icon(Icons.apartment_rounded, size: 20),
+                          ),
+                          validator: (val) {
+                            if (_isCommercial && (val == null || val.trim().isEmpty)) {
+                              return 'Enter registered business name';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _tinController,
+                          decoration: const InputDecoration(
+                            labelText: 'Tax Identification Number (TIN - Optional)',
+                            hintText: 'e.g. 1002345678 (For formal B2B invoice)',
+                            isDense: true,
+                            prefixIcon: Icon(Icons.receipt_long_rounded, size: 20),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Business Category:',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF556958)),
+                        ),
+                        const SizedBox(height: 4),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              for (final cat in [
+                                'Hotel / Hospitality',
+                                'Restaurant / Eatery',
+                                'Supermarket / Shop',
+                                'Market Vendor',
+                                'Institution / Campus',
+                              ]) ...[
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: ChoiceChip(
+                                    label: Text(cat),
+                                    selected: _businessCategory == cat,
+                                    onSelected: (selected) {
+                                      if (selected) setState(() => _businessCategory = cat);
+                                    },
+                                    selectedColor: const Color(0xFF2E7D32),
+                                    labelStyle: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: _businessCategory == cat ? Colors.white : const Color(0xFF1B5E20),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
                 Row(
                   children: [
@@ -595,9 +823,11 @@ class _OrderPageState extends State<OrderPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Estimated Price',
-                              style: TextStyle(
+                            Text(
+                              _isCommercial ? _currentTierTitle : 'Estimated Price',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.w700,
                                 color: Color(0xFF2E7D32),
@@ -617,6 +847,75 @@ class _OrderPageState extends State<OrderPage> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 6),
+
+                // Bulk presets row
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Bulk Presets: ',
+                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF556958)),
+                      ),
+                      for (final count in [5, 10, 15, 25, 50]) ...[
+                        InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _sackCountController.text = count.toString());
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: _sackCount == count ? const Color(0xFF1B5E20) : const Color(0xFFF1F8F2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _sackCount == count ? const Color(0xFF1B5E20) : const Color(0xFFD0E4D4),
+                              ),
+                            ),
+                            child: Text(
+                              count == 15 ? '15 (Full Tricycle)' : '$count Sacks',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: _sackCount == count ? Colors.white : const Color(0xFF1B5E20),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (_volumeDiscount > 0) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF81C784)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.savings_rounded, size: 14, color: Color(0xFF2E7D32)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Bulk Wholesale Savings Applied: You save ${formatUgx(_volumeDiscount)} (${formatUgx(_ratePerSack)}/sack)!',
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1B5E20),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
 
                 // Instant Pickup Address & Landmark with GPS Autofill
@@ -743,6 +1042,22 @@ class _OrderPageState extends State<OrderPage> {
                           ),
                         ],
                       ),
+                      if (_volumeDiscount > 0) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Wholesale savings ($_currentTierTitle)',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF2E7D32)),
+                            ),
+                            Text(
+                              '-${formatUgx(_volumeDiscount)}',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF2E7D32)),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 6),
                       const Divider(height: 1),
                       const SizedBox(height: 6),

@@ -162,6 +162,10 @@ class SharedPreferencesPickupRequestRepository
     'cashReceivedByRider': request.cashReceivedByRider,
     'receiptNumber': request.receiptNumber,
     'paidAt': request.paidAt?.toIso8601String(),
+    'isCommercial': request.isCommercial,
+    'businessName': request.businessName,
+    'tinNumber': request.tinNumber,
+    'serviceTier': request.serviceTier,
   };
 
   PickupRequest _requestFromJson(Map<String, dynamic> json) => PickupRequest(
@@ -188,6 +192,10 @@ class SharedPreferencesPickupRequestRepository
     cashReceivedByRider: (json['cashReceivedByRider'] as bool?) ?? false,
     receiptNumber: json['receiptNumber'] as String?,
     paidAt: json['paidAt'] != null ? DateTime.tryParse(json['paidAt'] as String) : null,
+    isCommercial: (json['isCommercial'] as bool?) ?? false,
+    businessName: json['businessName'] as String?,
+    tinNumber: json['tinNumber'] as String?,
+    serviceTier: json['serviceTier'] as String?,
   );
 }
 
@@ -390,6 +398,10 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
     'cashReceivedByRider': request.cashReceivedByRider,
     'receiptNumber': request.receiptNumber,
     'paidAt': request.paidAt != null ? Timestamp.fromDate(request.paidAt!) : null,
+    'isCommercial': request.isCommercial,
+    'businessName': request.businessName,
+    'tinNumber': request.tinNumber,
+    'serviceTier': request.serviceTier,
     'updatedAt': FieldValue.serverTimestamp(),
   };
 
@@ -433,6 +445,10 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
       cashReceivedByRider: (data['cashReceivedByRider'] as bool?) ?? false,
       receiptNumber: data['receiptNumber'] as String?,
       paidAt: paidAt,
+      isCommercial: (data['isCommercial'] as bool?) ?? false,
+      businessName: data['businessName'] as String?,
+      tinNumber: data['tinNumber'] as String?,
+      serviceTier: data['serviceTier'] as String?,
     );
   }
 }

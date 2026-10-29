@@ -145,6 +145,31 @@ class RequestDetailSheet extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
+                          if (request.isCommercial) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1B5E3B),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.business_center_rounded, size: 11, color: Colors.white),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'B2B',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
@@ -540,6 +565,33 @@ class RequestDetailSheet extends StatelessWidget {
               ),
             ],
           ),
+          if (request.isCommercial && request.businessName != null && request.businessName!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F8F2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFD0E4D4)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.storefront_rounded, size: 15, color: Color(0xFF1B5E20)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${request.businessName!}${request.tinNumber != null ? ' (TIN: ${request.tinNumber})' : ''}',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1B5E20),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           const Divider(height: 1),
           const SizedBox(height: 10),
@@ -608,25 +660,31 @@ class RequestDetailSheet extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Collection Rate & Fee',
-                style: TextStyle(fontSize: 11, color: Color(0xFF647568)),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                formatUgx(request.priceUgx),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF1B5E3B),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  request.isCommercial && request.serviceTier != null
+                      ? 'Rate: ${request.serviceTier}'
+                      : 'Collection Rate & Fee',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF647568)),
                 ),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  formatUgx(request.priceUgx),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF1B5E3B),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const Spacer(),
+          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
