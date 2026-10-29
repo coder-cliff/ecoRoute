@@ -16,6 +16,9 @@ import '../../domain/enums/request_status.dart';
 import '../../domain/enums/role.dart';
 import '../../domain/enums/waste_type.dart';
 import '../../domain/rules/status_machine.dart';
+import '../../core/services/theme_service.dart';
+import '../admin/widgets/admin_analytics_view.dart';
+import '../admin/widgets/admin_settings_view.dart';
 import '../admin/widgets/analytics_breakdown.dart';
 import '../admin/widgets/approval_item_tile.dart';
 import '../auth/auth_sheet.dart';
@@ -294,6 +297,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   int _tab = 0;
   bool _signedIn = false;
   AppRole _role = AppRole.resident;
+  int _adminNavIndex = 0;
   AppUser? _currentUser;
   bool _loadingOrders = true;
   final List<PickupRequest> _orders = [];
@@ -947,6 +951,20 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
               child: BrandLockup(compact: true),
             ),
             actions: [
+              ListenableBuilder(
+                listenable: ThemeService.instance,
+                builder: (context, _) => IconButton(
+                  icon: Icon(
+                    ThemeService.instance.isDarkMode
+                        ? Icons.light_mode_outlined
+                        : Icons.dark_mode_outlined,
+                  ),
+                  tooltip: ThemeService.instance.isDarkMode
+                      ? 'Switch to light mode'
+                      : 'Switch to dark mode',
+                  onPressed: () => ThemeService.instance.toggleTheme(),
+                ),
+              ),
               IconButton(
                 icon: const Icon(Icons.dataset_outlined),
                 tooltip: _langService.translate('waste_database'),
@@ -1217,13 +1235,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           ],
           if (_role == AppRole.admin) ...[
             const SizedBox(height: 18),
-            _buildApprovalQueue(),
-            const SizedBox(height: 18),
-            _buildRiderManagement(),
-            const SizedBox(height: 18),
-            _buildResidentDirectory(),
-            const SizedBox(height: 18),
-            _buildAnalytics(),
+            _buildAdminWorkspace(),
           ],
           const SizedBox(height: 18),
 
@@ -1390,6 +1402,308 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                 ],
               ],
             ),
+    );
+  }
+
+  Widget _buildAdminWorkspace() {
+    final approvals = _orders
+        .where((order) => order.status == RequestStatus.awaitingVerification)
+        .toList();
+    final riders = widget.authService?.getInvitedRiders() ?? [];
+    final residents = widget.authService?.getRegisteredResidents() ?? [];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 720;
+        final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+
+        final sidebarBg = isDark ? const Color(0xFF192A1D) : Colors.white;
+        final sidebarBorder = isDark ? const Color(0xFF2A3F2F) : const Color(0xFFE2EAE1);
+
+        final navItems = [
+          (
+            icon: Icons.dashboard_customize_rounded,
+            label: 'Overview',
+            badge: null,
+          ),
+          (
+            icon: Icons.insights_rounded,
+            label: 'Analytics',
+            badge: null,
+          ),
+          (
+            icon: Icons.fact_check_rounded,
+            label: 'Approvals',
+            badge: approvals.isNotEmpty ? '${approvals.length}' : null,
+          ),
+          (
+            icon: Icons.two_wheeler_rounded,
+            label: 'Fleet & Riders',
+            badge: riders.isNotEmpty ? '${riders.length}' : null,
+          ),
+          (
+            icon: Icons.people_alt_outlined,
+            label: 'Residents',
+            badge: residents.isNotEmpty ? '${residents.length}' : null,
+          ),
+          (
+            icon: Icons.settings_outlined,
+            label: 'Settings',
+            badge: null,
+          ),
+        ];
+
+        Widget activeContent;
+        switch (_adminNavIndex) {
+          case 1:
+            activeContent = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AdminAnalyticsView(orders: _orders),
+                const SizedBox(height: 18),
+                _buildAnalytics(),
+              ],
+            );
+            break;
+          case 2:
+            activeContent = _buildApprovalQueue();
+            break;
+          case 3:
+            activeContent = _buildRiderManagement();
+            break;
+          case 4:
+            activeContent = _buildResidentDirectory();
+            break;
+          case 5:
+            activeContent = AdminSettingsView(
+              onShowConfigureEmailGateway: _showConfigureEmailGatewayDialog,
+              onSignOut: _signOut,
+            );
+            break;
+          case 0:
+          default:
+            activeContent = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AdminAnalyticsView(orders: _orders),
+                const SizedBox(height: 18),
+                _buildApprovalQueue(),
+                const SizedBox(height: 18),
+                _buildRiderManagement(),
+                const SizedBox(height: 18),
+                _buildResidentDirectory(),
+                const SizedBox(height: 18),
+                _buildAnalytics(),
+              ],
+            );
+            break;
+        }
+
+        if (isWide) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 210,
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: sidebarBg,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: sidebarBorder),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.admin_panel_settings_rounded, size: 20, color: Color(0xFF2E7D32)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Municipal Ops',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white : const Color(0xFF183B20),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 16),
+                    for (var i = 0; i < navItems.length; i++)
+                      _buildSidebarItem(
+                        index: i,
+                        item: navItems[i],
+                        isSelected: _adminNavIndex == i,
+                        isDark: isDark,
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(child: activeContent),
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+              decoration: BoxDecoration(
+                color: sidebarBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: sidebarBorder),
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (var i = 0; i < navItems.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 6),
+                      _buildMobileNavPill(
+                        index: i,
+                        item: navItems[i],
+                        isSelected: _adminNavIndex == i,
+                        isDark: isDark,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            activeContent,
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSidebarItem({
+    required int index,
+    required ({IconData icon, String label, String? badge}) item,
+    required bool isSelected,
+    required bool isDark,
+  }) {
+    final activeBg = const Color(0xFF2E7D32);
+    final activeText = Colors.white;
+    final inactiveText = isDark ? const Color(0xFFC7D3C9) : const Color(0xFF37474F);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() => _adminNavIndex = index);
+        },
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? activeBg : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              Icon(item.icon, size: 16, color: isSelected ? activeText : inactiveText),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  item.label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    color: isSelected ? activeText : inactiveText,
+                  ),
+                ),
+              ),
+              if (item.badge != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.white.withValues(alpha: 0.25) : const Color(0xFFE65100),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    item.badge!,
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileNavPill({
+    required int index,
+    required ({IconData icon, String label, String? badge}) item,
+    required bool isSelected,
+    required bool isDark,
+  }) {
+    final activeBg = const Color(0xFF2E7D32);
+    final inactiveBg = isDark ? const Color(0xFF233627) : const Color(0xFFF1F5F2);
+    final activeText = Colors.white;
+    final inactiveText = isDark ? const Color(0xFFC7D3C9) : const Color(0xFF556958);
+
+    return InkWell(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _adminNavIndex = index);
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? activeBg : inactiveBg,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(item.icon, size: 14, color: isSelected ? activeText : inactiveText),
+            const SizedBox(width: 6),
+            Text(
+              item.label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? activeText : inactiveText,
+              ),
+            ),
+            if (item.badge != null) ...[
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white.withValues(alpha: 0.25) : const Color(0xFFE65100),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  item.badge!,
+                  style: const TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 

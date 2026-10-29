@@ -10,6 +10,7 @@ import 'app/app.dart';
 import 'core/pickup_request_repository.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/language_service.dart';
+import 'core/services/theme_service.dart';
 import 'core/services/waste_api_service.dart';
 import 'firebase_options.dart';
 
@@ -52,6 +53,8 @@ Future<void> main() async {
         );
   // Restore user saved language preference on startup
   await LanguageService.instance.init(preferences);
+  // Restore user saved theme mode on startup
+  await ThemeService.instance.init(preferences);
 
   // Auto-seed realistic municipal demo data only in debug mode
   if (kDebugMode) {

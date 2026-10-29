@@ -43,9 +43,9 @@ class AuthService {
   static final Map<String, int> _failedAttempts = {};
   static final Map<String, DateTime> _lockoutUntil = {};
 
-  /// Municipal administrator accounts configured with Muni University, Arua defaults.
-  /// Official Yahoo, Hotmail, and verified email accounts with salted SHA-256 hashes.
-  static const List<Map<String, dynamic>> _adminAccounts = [
+  /// Default municipal administrator accounts retained strictly as offline fallback
+  /// when Firebase cloud services are unavailable or during mock unit tests.
+  static const List<Map<String, dynamic>> _defaultLocalAdmins = [
     {
       'id': 'admin-deo-yahoo',
       'fullName': 'Savior Deo (Admin)',
@@ -129,7 +129,7 @@ class AuthService {
 
   bool isEmailRegistered(String email) {
     final cleanEmail = email.trim().toLowerCase();
-    for (final admin in _adminAccounts) {
+    for (final admin in _defaultLocalAdmins) {
       if ((admin['email'] as String).toLowerCase() == cleanEmail) return true;
     }
     final riders = getInvitedRiders();
@@ -184,29 +184,7 @@ class AuthService {
 
     final inputHash = hashPassword(password);
 
-    // 1. Check Admin accounts with hashed password verification
-    for (final admin in _adminAccounts) {
-      if ((admin['email'] as String).toLowerCase() == cleanEmail &&
-          admin['passwordHash'] == inputHash) {
-        try {
-          await _firebaseAuth?.signOut();
-        } catch (_) {}
-        final user = AppUser(
-          id: admin['id'] as String,
-          fullName: admin['fullName'] as String,
-          email: admin['email'] as String,
-          phone: admin['phone'] as String,
-          role: AppRole.admin,
-          address: admin['address'] as String?,
-        );
-        _failedAttempts.remove(cleanEmail);
-        _lockoutUntil.remove(cleanEmail);
-        await _saveSession(user);
-        return user;
-      }
-    }
-
-    // 2. Firebase Auth login
+    // 1. Primary: Firebase Authentication (when cloud services are active)
     final firebaseAuth = _firebaseAuth;
     final firestore = _firestore;
     if (firebaseAuth != null && firestore != null) {
@@ -221,7 +199,28 @@ class AuthService {
           final profileSnapshot = await profileRef.get();
           final profile = profileSnapshot.data();
 
-          final resolvedRole = parseRole(profile?['role'] as String?);
+          // Role is stored and managed on Firestore, not hardcoded
+          var resolvedRole = parseRole(profile?['role'] as String?);
+
+          // If this is a newly authenticated user without a profile doc yet,
+          // check if they match municipal admin emails or initialize their profile
+          if (profile == null) {
+            final isMunicipalAdmin = _defaultLocalAdmins.any(
+              (a) => (a['email'] as String).toLowerCase() == cleanEmail,
+            );
+            resolvedRole = isMunicipalAdmin ? AppRole.admin : AppRole.resident;
+
+            await profileRef.set({
+              'id': firebaseUser.uid,
+              'fullName': firebaseUser.displayName ?? cleanEmail.split('@').first,
+              'email': cleanEmail,
+              'phone': firebaseUser.phoneNumber ?? '',
+              'role': resolvedRole.name,
+              'createdAt': FieldValue.serverTimestamp(),
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+          }
+
           final user = AppUser(
             id: firebaseUser.uid,
             fullName: (profile?['fullName'] as String?) ??
@@ -242,6 +241,25 @@ class AuthService {
       } on firebase_auth.FirebaseAuthException catch (_) {
         _recordFailedLogin(cleanEmail);
         return null;
+      }
+    }
+
+    // 2. Offline / Local Fallback (used when Firebase is offline or in mock test bindings)
+    for (final admin in _defaultLocalAdmins) {
+      if ((admin['email'] as String).toLowerCase() == cleanEmail &&
+          admin['passwordHash'] == inputHash) {
+        final user = AppUser(
+          id: admin['id'] as String,
+          fullName: admin['fullName'] as String,
+          email: admin['email'] as String,
+          phone: admin['phone'] as String,
+          role: AppRole.admin,
+          address: admin['address'] as String?,
+        );
+        _failedAttempts.remove(cleanEmail);
+        _lockoutUntil.remove(cleanEmail);
+        await _saveSession(user);
+        return user;
       }
     }
 
@@ -550,6 +568,44 @@ class AuthService {
       } catch (_) {}
     }
     return getRegisteredResidents();
+  }
+
+  /// Updates a user's role on Firestore profiles collection and local store
+  Future<void> updateUserRole({
+    required String userId,
+    required AppRole newRole,
+    String? userEmail,
+  }) async {
+    // 1. Update Firestore if active
+    final firestore = _firestore;
+    if (firestore != null) {
+      try {
+        await firestore.collection('profiles').doc(userId).set({
+          'role': newRole.name,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (_) {}
+    }
+
+    // 2. Update local registered users
+    final registered = _getRegisteredUsers();
+    final index = registered.indexWhere(
+      (u) => u['id'] == userId ||
+          (userEmail != null && (u['email'] as String).toLowerCase() == userEmail.toLowerCase()),
+    );
+    if (index != -1) {
+      registered[index]['role'] = newRole.name;
+      await _preferences.setString(_usersKey, jsonEncode(registered));
+    }
+
+    // 3. Update current session if matching
+    final current = getCurrentUser();
+    if (current != null &&
+        (current.id == userId ||
+            (userEmail != null && current.email.toLowerCase() == userEmail.toLowerCase()))) {
+      final updated = current.copyWith(role: newRole);
+      await _saveSession(updated);
+    }
   }
 
   void _saveToLocalRegisteredUsers(AppUser user, String password) {

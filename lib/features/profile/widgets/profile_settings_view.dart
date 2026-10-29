@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../../core/pickup_request_repository.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/language_service.dart';
+import '../../../core/services/theme_service.dart';
 import '../../../domain/entities/app_user.dart';
 import '../../../domain/entities/pickup_request.dart';
 import '../../../domain/enums/request_status.dart';
@@ -281,6 +282,63 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
               ),
               const SizedBox(height: 6),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showThemeSelector() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.palette_outlined, color: Color(0xFF2E7D32)),
+                SizedBox(width: 8),
+                Text(
+                  'Select Theme Mode',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            for (final mode in [ThemeMode.system, ThemeMode.light, ThemeMode.dark])
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  switch (mode) {
+                    ThemeMode.light => Icons.light_mode_outlined,
+                    ThemeMode.dark => Icons.dark_mode_outlined,
+                    ThemeMode.system => Icons.settings_brightness_outlined,
+                  },
+                  color: const Color(0xFF2E7D32),
+                ),
+                title: Text(
+                  switch (mode) {
+                    ThemeMode.light => 'Light Mode',
+                    ThemeMode.dark => 'Dark Mode',
+                    ThemeMode.system => 'System Default',
+                  },
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                trailing: ThemeService.instance.themeMode == mode
+                    ? const Icon(Icons.check_rounded, color: Color(0xFF2E7D32))
+                    : null,
+                onTap: () {
+                  ThemeService.instance.setThemeMode(mode);
+                  Navigator.pop(ctx);
+                  setState(() {});
+                },
+              ),
           ],
         ),
       ),
@@ -588,6 +646,23 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
                 subtitle: _langService.currentLanguage.label,
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: _showLanguageSelector,
+              ),
+              const Divider(height: 1),
+              ListenableBuilder(
+                listenable: ThemeService.instance,
+                builder: (context, _) => _buildSettingTile(
+                  icon: ThemeService.instance.isDarkMode
+                      ? Icons.dark_mode_outlined
+                      : Icons.light_mode_outlined,
+                  title: 'Appearance',
+                  subtitle: switch (ThemeService.instance.themeMode) {
+                    ThemeMode.light => 'Light mode',
+                    ThemeMode.dark => 'Dark mode',
+                    ThemeMode.system => 'System default',
+                  },
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: _showThemeSelector,
+                ),
               ),
             ],
           ),
