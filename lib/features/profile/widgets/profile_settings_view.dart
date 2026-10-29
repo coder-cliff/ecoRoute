@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/pickup_request_repository.dart';
 import '../../../core/services/auth_service.dart';
@@ -47,6 +49,218 @@ class ProfileSettingsView extends StatefulWidget {
 class _ProfileSettingsViewState extends State<ProfileSettingsView> {
   final _reminderPolicy = const ReminderPolicy();
   final _langService = LanguageService.instance;
+  bool _uploadingPhoto = false;
+
+  void _showPhotoOptionsSheet() {
+    final hasPhoto = widget.currentUser?.photoUrl != null &&
+        widget.currentUser!.photoUrl!.isNotEmpty;
+
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.account_circle_outlined, color: Color(0xFF2E7D32)),
+                    SizedBox(width: 8),
+                    Text(
+                      'Profile Photo',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined, color: Color(0xFF2E7D32)),
+                title: const Text('Take photo with camera'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndUploadPhoto(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined, color: Color(0xFF2E7D32)),
+                title: const Text('Choose from gallery'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndUploadPhoto(ImageSource.gallery);
+                },
+              ),
+              if (hasPhoto)
+                ListTile(
+                  leading: const Icon(Icons.delete_outline_rounded, color: Color(0xFFC62828)),
+                  title: const Text(
+                    'Remove profile photo',
+                    style: TextStyle(color: Color(0xFFC62828)),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _removePhoto();
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadPhoto(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 70,
+      );
+      if (picked == null) return;
+
+      setState(() => _uploadingPhoto = true);
+      final bytes = await picked.readAsBytes();
+      final base64String = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+
+      if (widget.authService != null) {
+        await widget.authService!.updateProfilePhoto(base64String);
+      }
+      widget.onProfileUpdated?.call();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile photo updated successfully.'),
+            backgroundColor: Color(0xFF2E7D32),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not update profile photo: $e'),
+            backgroundColor: const Color(0xFFC62828),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _uploadingPhoto = false);
+      }
+    }
+  }
+
+  Future<void> _removePhoto() async {
+    try {
+      setState(() => _uploadingPhoto = true);
+      if (widget.authService != null) {
+        await widget.authService!.updateProfilePhoto(null);
+      }
+      widget.onProfileUpdated?.call();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile photo removed.'),
+            backgroundColor: Color(0xFF2E7D32),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not remove photo: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _uploadingPhoto = false);
+      }
+    }
+  }
+
+  Widget _buildAvatarImage(AppUser? user) {
+    final photoUrl = user?.photoUrl;
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      try {
+        if (photoUrl.startsWith('data:image')) {
+          final base64Part = photoUrl.contains(',')
+              ? photoUrl.split(',').last.trim()
+              : photoUrl;
+          final bytes = base64Decode(base64Part);
+          return Image.memory(
+            bytes,
+            width: 86,
+            height: 86,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => _buildFallbackInitial(user),
+          );
+        } else if (photoUrl.startsWith('http')) {
+          return Image.network(
+            photoUrl,
+            width: 86,
+            height: 86,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => _buildFallbackInitial(user),
+          );
+        } else {
+          final bytes = base64Decode(photoUrl);
+          return Image.memory(
+            bytes,
+            width: 86,
+            height: 86,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => _buildFallbackInitial(user),
+          );
+        }
+      } catch (_) {
+        return _buildFallbackInitial(user);
+      }
+    }
+    return _buildFallbackInitial(user);
+  }
+
+  Widget _buildFallbackInitial(AppUser? user) {
+    return Container(
+      width: 86,
+      height: 86,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF2E8B57), Color(0xFF135D39)],
+        ),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          user?.fullName.isNotEmpty == true
+              ? user!.fullName.trim()[0].toUpperCase()
+              : 'U',
+          style: const TextStyle(
+            fontSize: 36,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
 
   String _formatName(String raw) {
     if (raw.isEmpty) return 'EcoRoute User';
@@ -83,6 +297,47 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
                 const Text(
                   'Update your profile information for collection riders and dispatch dispatchers.',
                   style: TextStyle(fontSize: 12, color: Color(0xFF647568)),
+                ),
+                const SizedBox(height: 12),
+                Center(
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showPhotoOptionsSheet();
+                    },
+                    borderRadius: BorderRadius.circular(30),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFA5D6A7)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ClipOval(
+                            child: SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: _buildAvatarImage(user),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            user?.photoUrl != null && user!.photoUrl!.isNotEmpty
+                                ? 'Change Photo'
+                                : 'Upload Photo',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF2E7D32),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
@@ -388,37 +643,47 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
                 Stack(
                   alignment: Alignment.bottomRight,
                   children: [
-                    Container(
-                      width: 86,
-                      height: 86,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF2E8B57), Color(0xFF135D39)],
+                    GestureDetector(
+                      onTap: _showPhotoOptionsSheet,
+                      child: Container(
+                        width: 86,
+                        height: 86,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0x22135D39),
+                              blurRadius: 12,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        shape: BoxShape.circle,
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x22135D39),
-                            blurRadius: 12,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          user?.fullName.isNotEmpty == true
-                              ? user!.fullName.trim()[0].toUpperCase()
-                              : 'U',
-                          style: const TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                          ),
+                        child: ClipOval(
+                          child: _buildAvatarImage(user),
                         ),
                       ),
                     ),
+                    if (_uploadingPhoto)
+                      Positioned.fill(
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.black38,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     InkWell(
-                      onTap: _showEditProfileDialog,
+                      onTap: _showPhotoOptionsSheet,
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
                         padding: const EdgeInsets.all(6),
@@ -427,20 +692,49 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2),
                         ),
-                        child: const Icon(Icons.edit_rounded, size: 14, color: Colors.white),
+                        child: const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  _formatName(user?.fullName ?? ''),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF183B20),
+                const SizedBox(height: 6),
+                TextButton.icon(
+                  onPressed: _showPhotoOptionsSheet,
+                  icon: const Icon(Icons.photo_camera_outlined, size: 14, color: Color(0xFF2E7D32)),
+                  label: Text(
+                    user?.photoUrl != null && user!.photoUrl!.isNotEmpty
+                        ? 'Change Photo'
+                        : 'Upload Photo',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2E7D32),
+                    ),
                   ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _formatName(user?.fullName ?? ''),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF183B20),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 17, color: Color(0xFF2E7D32)),
+                      tooltip: 'Edit Profile Information',
+                      onPressed: _showEditProfileDialog,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 6),
 

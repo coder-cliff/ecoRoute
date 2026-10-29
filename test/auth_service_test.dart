@@ -316,5 +316,27 @@ void main() {
       expect(authService.getCurrentUser()?.role, AppRole.rider);
       expect(authService.getCurrentUser()?.email, 'rider.arua@ecoroute.ug');
     });
+
+    test('updates and persists user profile photo', () async {
+      final user = await authService.register(
+        fullName: 'Photo Tester',
+        email: 'phototester@example.com',
+        phone: '+256772000111',
+        password: 'password123',
+      );
+      expect(user.photoUrl, isNull);
+
+      const fakePhotoData = 'data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      final updated = await authService.updateProfilePhoto(fakePhotoData);
+      expect(updated.photoUrl, fakePhotoData);
+
+      final current = authService.getCurrentUser();
+      expect(current?.photoUrl, fakePhotoData);
+
+      // Verify removal
+      final removed = await authService.updateProfilePhoto(null);
+      expect(removed.photoUrl, isNull);
+      expect(authService.getCurrentUser()?.photoUrl, isNull);
+    });
   });
 }

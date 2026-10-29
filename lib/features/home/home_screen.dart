@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -2079,15 +2080,23 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                       CircleAvatar(
                         radius: 18,
                         backgroundColor: const Color(0xFFE8F5E9),
-                        child: Text(
-                          residents[i].fullName.isNotEmpty
-                              ? residents[i].fullName[0].toUpperCase()
-                              : 'R',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF2E7D32),
-                          ),
-                        ),
+                        backgroundImage: residents[i].photoUrl != null &&
+                                residents[i].photoUrl!.isNotEmpty
+                            ? (residents[i].photoUrl!.startsWith('data:image')
+                                ? MemoryImage(base64Decode(residents[i].photoUrl!.split(',').last))
+                                : NetworkImage(residents[i].photoUrl!) as ImageProvider)
+                            : null,
+                        child: residents[i].photoUrl == null || residents[i].photoUrl!.isEmpty
+                            ? Text(
+                                residents[i].fullName.isNotEmpty
+                                    ? residents[i].fullName[0].toUpperCase()
+                                    : 'R',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF2E7D32),
+                                ),
+                              )
+                            : null,
                       ),
                       const SizedBox(width: 10),
                       Expanded(

@@ -8,6 +8,7 @@ class AppUser {
     required this.phone,
     this.role = AppRole.resident,
     this.address,
+    this.photoUrl,
   });
 
   final String id;
@@ -16,6 +17,7 @@ class AppUser {
   final String phone;
   final AppRole role;
   final String? address;
+  final String? photoUrl;
 
   AppUser copyWith({
     String? id,
@@ -24,6 +26,7 @@ class AppUser {
     String? phone,
     AppRole? role,
     String? address,
+    String? photoUrl,
   }) {
     return AppUser(
       id: id ?? this.id,
@@ -32,6 +35,7 @@ class AppUser {
       phone: phone ?? this.phone,
       role: role ?? this.role,
       address: address ?? this.address,
+      photoUrl: photoUrl ?? this.photoUrl,
     );
   }
 }

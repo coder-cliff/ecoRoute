@@ -102,6 +102,7 @@ class AuthService {
         phone: map['phone'] as String,
         role: role,
         address: map['address'] as String?,
+        photoUrl: map['photoUrl'] as String?,
       );
     } catch (_) {
       return null;
@@ -116,6 +117,7 @@ class AuthService {
       'phone': user.phone,
       'role': user.role.name,
       'address': user.address,
+      'photoUrl': user.photoUrl,
       'savedAt': DateTime.now().toIso8601String(),
     };
     await _preferences.setString(_sessionKey, jsonEncode(data));
@@ -245,6 +247,7 @@ class AuthService {
                 '',
             role: resolvedRole,
             address: profile?['address'] as String?,
+            photoUrl: (profile?['photoUrl'] as String?) ?? firebaseUser.photoURL,
           );
           _failedAttempts.remove(cleanEmail);
           _lockoutUntil.remove(cleanEmail);
@@ -268,6 +271,7 @@ class AuthService {
           phone: admin['phone'] as String,
           role: AppRole.admin,
           address: admin['address'] as String?,
+          photoUrl: admin['photoUrl'] as String?,
         );
         _failedAttempts.remove(cleanEmail);
         _lockoutUntil.remove(cleanEmail);
@@ -299,6 +303,7 @@ class AuthService {
           phone: reg['phone'] as String,
           role: role,
           address: reg['address'] as String?,
+          photoUrl: reg['photoUrl'] as String?,
         );
         _failedAttempts.remove(cleanEmail);
         _lockoutUntil.remove(cleanEmail);
@@ -333,6 +338,7 @@ class AuthService {
     AppRole role = AppRole.resident,
     String? address,
     String? inviteCode,
+    String? photoUrl,
   }) async {
     final cleanEmail = email.trim().toLowerCase();
     if (cleanEmail == supportEmail) {
@@ -373,10 +379,11 @@ class AuthService {
           phone: normalizedPhone,
           role: resolvedRole,
           address: address?.trim().isNotEmpty == true ? address!.trim() : null,
+          photoUrl: photoUrl,
         );
 
         try {
-          await firestore.collection('profiles').doc(firebaseUser.uid).set({
+          final profileDoc = <String, dynamic>{
             'id': firebaseUser.uid,
             'fullName': user.fullName,
             'email': user.email,
@@ -385,7 +392,14 @@ class AuthService {
             'address': user.address,
             'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
-          });
+          };
+          if (user.photoUrl != null) {
+            profileDoc['photoUrl'] = user.photoUrl;
+          }
+          await firestore.collection('profiles').doc(firebaseUser.uid).set(
+            profileDoc,
+            SetOptions(merge: true),
+          );
         } catch (e) {
           debugPrint('Firestore profile document write notice: $e');
         }
@@ -422,6 +436,7 @@ class AuthService {
       phone: normalizedPhone,
       role: resolvedRole,
       address: address?.trim().isNotEmpty == true ? address!.trim() : null,
+      photoUrl: photoUrl,
     );
 
     _saveToLocalRegisteredUsers(user, password);
@@ -554,6 +569,7 @@ class AuthService {
     required String fullName,
     required String phone,
     String? address,
+    String? photoUrl,
   }) async {
     final current = getCurrentUser();
     if (current == null) {
@@ -567,6 +583,7 @@ class AuthService {
       phone: phone.trim(),
       role: current.role,
       address: address?.trim().isNotEmpty == true ? address!.trim() : null,
+      photoUrl: photoUrl ?? current.photoUrl,
     );
 
     await _saveSession(updated);
@@ -580,6 +597,7 @@ class AuthService {
       registered[index]['fullName'] = updated.fullName;
       registered[index]['phone'] = updated.phone;
       registered[index]['address'] = updated.address;
+      registered[index]['photoUrl'] = updated.photoUrl;
       await _preferences.setString(_usersKey, jsonEncode(registered));
     }
 
@@ -587,12 +605,58 @@ class AuthService {
     final firestore = _firestore;
     if (firestore != null) {
       try {
-        await firestore.collection('profiles').doc(current.id).update({
+        final profileData = <String, dynamic>{
           'fullName': updated.fullName,
           'phone': updated.phone,
           'address': updated.address,
           'updatedAt': FieldValue.serverTimestamp(),
-        });
+        };
+        if (updated.photoUrl != null) {
+          profileData['photoUrl'] = updated.photoUrl;
+        }
+        await firestore.collection('profiles').doc(current.id).set(
+          profileData,
+          SetOptions(merge: true),
+        );
+      } catch (_) {}
+    }
+
+    return updated;
+  }
+
+  /// Dedicated fast update for profile picture
+  Future<AppUser> updateProfilePhoto(String? photoUrl) async {
+    final current = getCurrentUser();
+    if (current == null) {
+      throw StateError('No user is currently signed in.');
+    }
+    final updated = AppUser(
+      id: current.id,
+      fullName: current.fullName,
+      email: current.email,
+      phone: current.phone,
+      role: current.role,
+      address: current.address,
+      photoUrl: photoUrl,
+    );
+    await _saveSession(updated);
+
+    final registered = _getRegisteredUsers();
+    final index = registered.indexWhere(
+      (u) => (u['email'] as String).toLowerCase() == current.email.toLowerCase(),
+    );
+    if (index != -1) {
+      registered[index]['photoUrl'] = photoUrl;
+      await _preferences.setString(_usersKey, jsonEncode(registered));
+    }
+
+    final firestore = _firestore;
+    if (firestore != null) {
+      try {
+        await firestore.collection('profiles').doc(current.id).set({
+          'photoUrl': photoUrl,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       } catch (_) {}
     }
 
@@ -611,6 +675,7 @@ class AuthService {
           phone: reg['phone'] as String,
           role: parseRole((reg['role'] as String?) ?? 'resident'),
           address: reg['address'] as String?,
+          photoUrl: reg['photoUrl'] as String?,
         ));
       } catch (_) {}
     }
@@ -636,6 +701,7 @@ class AuthService {
                 phone: data['phone'] as String? ?? '',
                 role: AppRole.resident,
                 address: data['address'] as String?,
+                photoUrl: data['photoUrl'] as String?,
               ));
             }
           }
@@ -646,6 +712,7 @@ class AuthService {
             'phone': u.phone,
             'role': u.role.name,
             'address': u.address,
+            'photoUrl': u.photoUrl,
           }).toList();
           await _preferences.setString(_usersKey, jsonEncode(userMaps));
           return users;
@@ -705,6 +772,7 @@ class AuthService {
       'role': user.role.name,
       'passwordHash': hashPassword(password),
       'address': user.address,
+      'photoUrl': user.photoUrl,
     };
 
     users.removeWhere((u) => (u['email'] as String).toLowerCase() == user.email.toLowerCase());
