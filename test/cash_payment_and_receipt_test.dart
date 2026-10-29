@@ -103,12 +103,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Cash Collection at Gate'), findsOneWidget);
+      final cashHeader = find.text('Cash Collection at Gate');
+      await tester.scrollUntilVisible(cashHeader, 300.0, scrollable: find.byType(Scrollable).first);
+      await tester.pumpAndSettle();
+
+      expect(cashHeader, findsOneWidget);
       expect(find.text('Confirm Cash Received (4,500 UGX)'), findsOneWidget);
 
-      // Scroll and tap confirm cash
-      await tester.drag(find.byType(ListView), const Offset(0, -300));
-      await tester.pumpAndSettle();
       await tester.tap(find.text('Confirm Cash Received (4,500 UGX)'));
       await tester.pumpAndSettle();
 

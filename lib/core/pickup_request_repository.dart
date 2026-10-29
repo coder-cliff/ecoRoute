@@ -240,8 +240,10 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
 
       return combined;
     } on FirebaseException catch (error) {
-      if (!_isConnectivityError(error)) rethrow;
-      debugPrint('Firestore read unavailable; showing locally saved requests.');
+      debugPrint('Firestore read notice (${error.code}): ${error.message}; falling back to local requests.');
+      return localRequests;
+    } catch (error) {
+      debugPrint('Repository loadAll error: $error; falling back to local requests.');
       return localRequests;
     }
   }
@@ -256,7 +258,10 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
         .orderBy('submittedAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map(_requestFromDocument).toList());
+        .map((snapshot) => snapshot.docs.map(_requestFromDocument).toList())
+        .handleError((dynamic error) {
+          debugPrint('Firestore watchRequests notice: $error');
+        });
   }
 
   @override

@@ -340,7 +340,7 @@ class _OrderPageState extends State<OrderPage> {
                           Text(
                             _capturedPhotoLabel != null
                                 ? 'Photo attached • GPS locked'
-                                : 'Give details or use camera scanner',
+                                : 'Describe waste (Photo is optional; GPS autofill below)',
                             style: const TextStyle(fontSize: 12, color: Color(0xFF556958)),
                           ),
                         ],
@@ -354,7 +354,7 @@ class _OrderPageState extends State<OrderPage> {
                         size: 16,
                         color: const Color(0xFF2E7D32),
                       ),
-                      label: Text(_capturedPhotoLabel != null ? 'Retake' : 'Scan Rubbish'),
+                      label: Text(_capturedPhotoLabel != null ? 'Retake' : 'Photo (Optional)'),
                       onPressed: () => _openCameraScanner(autoLaunchCamera: true),
                     ),
                   ],

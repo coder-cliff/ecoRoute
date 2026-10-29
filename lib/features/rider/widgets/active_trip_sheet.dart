@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/utils/formatters.dart';
@@ -174,6 +175,26 @@ class ActiveTripSheet extends StatefulWidget {
 class _ActiveTripSheetState extends State<ActiveTripSheet> {
   late int _selectedStopIndex;
   bool _advancing = false;
+  final _picker = ImagePicker();
+
+  Future<void> _captureProofPhoto(ImageSource source) async {
+    try {
+      final file = await _picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (file == null) return;
+      final updated = _currentStop.copyWith(photoUrl: file.path);
+      if (widget.onUpdateCashReceived != null) {
+        await widget.onUpdateCashReceived!(updated);
+      } else {
+        await widget.onAdvanceOrder(updated, updated.status);
+      }
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
 
   @override
   void initState() {
@@ -599,6 +620,79 @@ class _ActiveTripSheetState extends State<ActiveTripSheet> {
                               fontSize: 13,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF2E7D32),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // 3a. On-Site Proof of Collection Photo (Audit & Verification)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: cardBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: cardBorder),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.camera_alt_outlined, size: 18, color: Color(0xFF2E7D32)),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Proof of Collection Photo',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                          ),
+                          const Spacer(),
+                          if (current.photoUrl != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE8F5E9),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'Photo Attached',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF2E7D32)),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        current.photoUrl != null
+                            ? 'Visual proof captured on-site. Ready for depot weigh-in audit.'
+                            : 'Snap a photo of the loaded tricycle sacks at the gate for verified drop-off.',
+                        style: TextStyle(fontSize: 11, color: subtextColor),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _captureProofPhoto(ImageSource.camera),
+                              icon: const Icon(Icons.photo_camera_rounded, size: 16),
+                              label: Text(current.photoUrl != null ? 'Retake Photo' : 'Take Gate Photo'),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFF2E7D32)),
+                                foregroundColor: const Color(0xFF2E7D32),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton.outlined(
+                            onPressed: () => _captureProofPhoto(ImageSource.gallery),
+                            icon: const Icon(Icons.photo_library_outlined, size: 18),
+                            tooltip: 'Select from gallery',
+                            style: IconButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFF2E7D32)),
+                              foregroundColor: const Color(0xFF2E7D32),
                             ),
                           ),
                         ],

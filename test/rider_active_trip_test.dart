@@ -109,9 +109,9 @@ void main() {
       expect(updatedPrice, 9000);
 
       // Verify advancing order
-      await tester.drag(find.byType(ListView), const Offset(0, -300));
-      await tester.pumpAndSettle();
       final btn = find.widgetWithText(FilledButton, 'Confirm Sacks Loaded & Depart');
+      await tester.scrollUntilVisible(btn, 300.0, scrollable: find.byType(Scrollable).first);
+      await tester.pumpAndSettle();
       await tester.tap(btn);
       await tester.pumpAndSettle();
       expect(advancedRequest?.id, 'stop-1');

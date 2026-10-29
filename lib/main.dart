@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, kDebugMode;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
@@ -56,10 +56,6 @@ Future<void> main() async {
   // Restore user saved theme mode on startup
   await ThemeService.instance.init(preferences);
 
-  // Auto-seed realistic municipal demo data only in debug mode
-  if (kDebugMode) {
-    await repository.seedDemoData();
-  }
   final authService = AuthService(
     preferences,
     firebaseAuth: firebaseAuth,

@@ -468,9 +468,9 @@ Status: ${_isCashMode ? 'CASH COMMITMENT ACCEPTED' : 'VERIFIED PAID'}
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.handshake_outlined, color: Color(0xFFB78103), size: 18),
-                      const SizedBox(width: 8),
-                      const Expanded(
+                      Icon(Icons.handshake_outlined, color: Color(0xFFB78103), size: 18),
+                      SizedBox(width: 8),
+                      Expanded(
                         child: Text(
                           'Cash Payment at Gate Handover',
                           maxLines: 1,

@@ -272,5 +272,49 @@ void main() {
       expect(current?.email, 'samuel@ecoroute.ug');
       expect(current?.phone, '+256772333444');
     });
+
+    testWidgets('invited rider can register with custom password and authenticates as AppRole.rider', (
+      WidgetTester tester,
+    ) async {
+      final code = await authService.inviteRider(
+        email: 'rider.arua@ecoroute.ug',
+        fullName: 'Kassim Rider',
+        phone: '+256772999888',
+      );
+
+      AppRole? authenticatedRole;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AuthSheet(
+              authService: authService,
+              initialCreateAccount: true,
+              onAuthenticated: (role) => authenticatedRole = role,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.widgetWithText(TextFormField, 'Full name'), 'Kassim Rider');
+      await tester.enterText(find.widgetWithText(TextFormField, 'Phone number'), '+256772999888');
+      await tester.enterText(find.widgetWithText(TextFormField, 'Email address'), 'rider.arua@ecoroute.ug');
+      await tester.enterText(find.widgetWithText(TextFormField, 'Rider invite code (optional)'), code);
+      await tester.pumpAndSettle();
+
+      expect(find.text('EcoRoute Rider Fleet Onboarding'), findsOneWidget);
+
+      await tester.enterText(find.widgetWithText(TextFormField, 'Password'), 'mycustompassword123');
+      await tester.enterText(find.widgetWithText(TextFormField, 'Confirm password'), 'mycustompassword123');
+
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Create account'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
+      await tester.pumpAndSettle();
+
+      expect(authenticatedRole, AppRole.rider);
+      expect(authService.getCurrentUser()?.role, AppRole.rider);
+      expect(authService.getCurrentUser()?.email, 'rider.arua@ecoroute.ug');
+    });
   });
 }

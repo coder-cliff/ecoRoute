@@ -33,6 +33,8 @@ class _AuthSheetState extends State<AuthSheet> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _confirmPassword = TextEditingController();
+  final _inviteCode = TextEditingController();
+  bool _isRiderOnboarding = false;
 
   @override
   void initState() {
@@ -41,6 +43,29 @@ class _AuthSheetState extends State<AuthSheet> {
     _password.addListener(() {
       if (mounted) setState(() {});
     });
+    _email.addListener(_checkRiderInvite);
+    _inviteCode.addListener(_checkRiderInvite);
+  }
+
+  void _checkRiderInvite() {
+    if (!_createAccount) return;
+    final email = _email.text.trim();
+    final code = _inviteCode.text.trim();
+    final invite = widget.authService?.getRiderInvite(code.isNotEmpty ? code : email);
+    final isInvite = invite != null;
+    if (isInvite != _isRiderOnboarding) {
+      setState(() {
+        _isRiderOnboarding = isInvite;
+        if (isInvite) {
+          if (_fullName.text.trim().isEmpty && invite['fullName'] != null) {
+            _fullName.text = invite['fullName'] as String;
+          }
+          if (_phone.text.trim().isEmpty && invite['phone'] != null) {
+            _phone.text = invite['phone'] as String;
+          }
+        }
+      });
+    }
   }
 
   @override
@@ -51,6 +76,7 @@ class _AuthSheetState extends State<AuthSheet> {
     _email.dispose();
     _password.dispose();
     _confirmPassword.dispose();
+    _inviteCode.dispose();
     super.dispose();
   }
 
@@ -125,13 +151,14 @@ class _AuthSheetState extends State<AuthSheet> {
         if (_createAccount) {
           final user = await authService.register(
             fullName: _fullName.text.trim().isEmpty
-                ? 'EcoRoute Resident'
+                ? (_isRiderOnboarding ? 'EcoRoute Rider' : 'EcoRoute Resident')
                 : _fullName.text.trim(),
             email: _email.text.trim(),
             phone: _phone.text.trim().isEmpty ? '+256 700 000 000' : _phone.text.trim(),
             password: _password.text,
-            role: AppRole.resident,
+            role: _isRiderOnboarding ? AppRole.rider : AppRole.resident,
             address: _address.text.trim().isEmpty ? null : _address.text.trim(),
+            inviteCode: _inviteCode.text.trim().isNotEmpty ? _inviteCode.text.trim() : null,
           );
           authenticatedRole = user.role;
 
@@ -140,7 +167,11 @@ class _AuthSheetState extends State<AuthSheet> {
           widget.onAuthenticated(authenticatedRole);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Welcome to EcoRoute, ${user.fullName}! Account created successfully.'),
+              content: Text(
+                user.role == AppRole.rider
+                    ? 'Welcome to EcoRoute Rider Fleet, ${user.fullName}! Your private password has been set.'
+                    : 'Welcome to EcoRoute, ${user.fullName}! Account created successfully.',
+              ),
               backgroundColor: const Color(0xFF2E7D32),
             ),
           );
@@ -378,6 +409,57 @@ class _AuthSheetState extends State<AuthSheet> {
                         ),
                       ),
                       const SizedBox(height: 12),
+                      TextFormField(
+                        key: const ValueKey('auth_invite_code'),
+                        controller: _inviteCode,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: InputDecoration(
+                          labelText: 'Rider invite code (optional)',
+                          hintText: 'e.g. RIDER-123456',
+                          prefixIcon: const Icon(Icons.badge_outlined, size: 20),
+                          isDense: true,
+                          helperText: _isRiderOnboarding
+                              ? 'Rider invitation verified! Set your custom password below.'
+                              : 'Invited by EcoRoute HQ? Enter your code to activate Rider account.',
+                          helperStyle: TextStyle(
+                            color: _isRiderOnboarding ? const Color(0xFF1B5E20) : null,
+                            fontWeight: _isRiderOnboarding ? FontWeight.w700 : null,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (_isRiderOnboarding) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F5E9),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFA5D6A7)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.two_wheeler_rounded, color: Color(0xFF2E7D32), size: 22),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'EcoRoute Rider Fleet Onboarding',
+                                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF1B5E20)),
+                                    ),
+                                    Text(
+                                      'Invitation verified. Choose your own secure password below.',
+                                      style: TextStyle(fontSize: 11, color: Color(0xFF2E7D32)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                     ],
 
                     // Email Address

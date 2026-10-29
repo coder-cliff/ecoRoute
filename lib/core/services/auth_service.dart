@@ -209,12 +209,15 @@ class AuthService {
           var resolvedRole = parseRole(profile?['role'] as String?);
 
           // If this is a newly authenticated user without a profile doc yet,
-          // check if they match municipal admin emails or initialize their profile
+          // check if they match municipal admin emails or invited rider records
           if (profile == null) {
             final isMunicipalAdmin = _defaultLocalAdmins.any(
               (a) => (a['email'] as String).toLowerCase() == cleanEmail,
             );
-            resolvedRole = isMunicipalAdmin ? AppRole.admin : AppRole.resident;
+            final riderInvite = getRiderInvite(cleanEmail);
+            resolvedRole = isMunicipalAdmin
+                ? AppRole.admin
+                : (riderInvite != null ? AppRole.rider : AppRole.resident);
 
             try {
               await profileRef.set({
@@ -329,6 +332,7 @@ class AuthService {
     required String password,
     AppRole role = AppRole.resident,
     String? address,
+    String? inviteCode,
   }) async {
     final cleanEmail = email.trim().toLowerCase();
     if (cleanEmail == supportEmail) {
@@ -338,6 +342,13 @@ class AuthService {
     final normalizedPhone = phone.trim();
     if (normalizedPhone.isEmpty) {
       throw StateError('Please enter a valid phone number.');
+    }
+
+    // Auto-detect if user was invited by management as a Rider
+    var resolvedRole = role;
+    final invite = getRiderInvite(inviteCode?.trim().isNotEmpty == true ? inviteCode!.trim() : cleanEmail);
+    if (invite != null) {
+      resolvedRole = AppRole.rider;
     }
 
     final firebaseAuth = _firebaseAuth;
@@ -355,10 +366,12 @@ class AuthService {
 
         final user = AppUser(
           id: firebaseUser.uid,
-          fullName: fullName.trim(),
+          fullName: fullName.trim().isNotEmpty
+              ? fullName.trim()
+              : (invite?['fullName'] as String? ?? 'EcoRoute Rider'),
           email: cleanEmail,
           phone: normalizedPhone,
-          role: role,
+          role: resolvedRole,
           address: address?.trim().isNotEmpty == true ? address!.trim() : null,
         );
 
@@ -377,6 +390,11 @@ class AuthService {
           debugPrint('Firestore profile document write notice: $e');
         }
 
+        if (resolvedRole == AppRole.rider) {
+          await markInviteAccepted(cleanEmail);
+        }
+
+        _saveToLocalRegisteredUsers(user, password);
         await _saveSession(user);
         return user;
       } on firebase_auth.FirebaseAuthException catch (e) {
@@ -390,21 +408,64 @@ class AuthService {
           throw StateError('The email address format is invalid.');
         }
         throw StateError(e.message ?? 'Registration failed (${e.code}).');
+      } on FirebaseException catch (e) {
+        debugPrint('Firebase operation notice (${e.code}): ${e.message}');
       }
     }
 
     final user = AppUser(
       id: 'user-${DateTime.now().millisecondsSinceEpoch}',
-      fullName: fullName.trim(),
+      fullName: fullName.trim().isNotEmpty
+          ? fullName.trim()
+          : (invite?['fullName'] as String? ?? 'EcoRoute Rider'),
       email: cleanEmail,
       phone: normalizedPhone,
-      role: role,
+      role: resolvedRole,
       address: address?.trim().isNotEmpty == true ? address!.trim() : null,
     );
 
     _saveToLocalRegisteredUsers(user, password);
+    if (resolvedRole == AppRole.rider) {
+      await markInviteAccepted(cleanEmail);
+    }
     await _saveSession(user);
     return user;
+  }
+
+  /// Checks if an email or invite code corresponds to an authorized rider invitation
+  Map<String, dynamic>? getRiderInvite(String emailOrCode) {
+    final query = emailOrCode.trim().toLowerCase();
+    final riders = getInvitedRiders();
+    for (final rider in riders) {
+      final email = (rider['email'] as String? ?? '').toLowerCase();
+      final code = (rider['inviteCode'] as String? ?? '').toLowerCase();
+      if (email == query || code == query) {
+        return rider;
+      }
+    }
+    return null;
+  }
+
+  /// Marks an invited rider record as accepted upon custom password registration
+  Future<void> markInviteAccepted(String email) async {
+    final cleanEmail = email.trim().toLowerCase();
+    final riders = getInvitedRiders();
+    final index = riders.indexWhere((r) => (r['email'] as String).toLowerCase() == cleanEmail);
+    if (index != -1) {
+      riders[index]['status'] = 'accepted';
+      riders[index]['acceptedAt'] = DateTime.now().toIso8601String();
+      await _preferences.setString(_invitedRidersKey, jsonEncode(riders));
+    }
+
+    final firestore = _firestore;
+    if (firestore != null) {
+      try {
+        await firestore.collection('invitedRiders').doc(cleanEmail).update({
+          'status': 'accepted',
+          'acceptedAt': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {}
+    }
   }
 
   Future<String> inviteRider({
