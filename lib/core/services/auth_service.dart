@@ -622,25 +622,37 @@ class AuthService {
     final firestore = _firestore;
     if (firestore != null) {
       try {
-        final snapshot = await firestore
-            .collection('profiles')
-            .where('role', isEqualTo: 'resident')
-            .get();
+        final snapshot = await firestore.collection('profiles').get();
         if (snapshot.docs.isNotEmpty) {
-          final users = snapshot.docs.map((doc) {
+          final users = <AppUser>[];
+          for (final doc in snapshot.docs) {
             final data = doc.data();
-            return AppUser(
-              id: data['id'] as String? ?? doc.id,
-              fullName: data['fullName'] as String? ?? 'Resident',
-              email: data['email'] as String? ?? '',
-              phone: data['phone'] as String? ?? '',
-              role: parseRole(data['role'] as String?),
-              address: data['address'] as String?,
-            );
+            final role = parseRole(data['role'] as String?);
+            if (role == AppRole.resident) {
+              users.add(AppUser(
+                id: data['id'] as String? ?? doc.id,
+                fullName: data['fullName'] as String? ?? 'Resident',
+                email: data['email'] as String? ?? '',
+                phone: data['phone'] as String? ?? '',
+                role: AppRole.resident,
+                address: data['address'] as String?,
+              ));
+            }
+          }
+          final userMaps = users.map((u) => {
+            'id': u.id,
+            'fullName': u.fullName,
+            'email': u.email,
+            'phone': u.phone,
+            'role': u.role.name,
+            'address': u.address,
           }).toList();
+          await _preferences.setString(_usersKey, jsonEncode(userMaps));
           return users;
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Firestore fetchResidents notice: $e');
+      }
     }
     return getRegisteredResidents();
   }

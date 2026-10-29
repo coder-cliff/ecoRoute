@@ -209,42 +209,85 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
   Future<void> seedDemoData({bool force = false}) =>
       _localRepository.seedDemoData(force: force);
 
+  Future<String> _getUserRole(firebase_auth.User user) async {
+    final email = user.email?.toLowerCase().trim() ?? '';
+    if (email == 'saviordeogratius@yahoo.com' ||
+        email == 'techcliff451@hotmail.com' ||
+        email == 'saviordeogratius@gmail.com' ||
+        email == 'techcliff451@gmail.com' ||
+        email.contains('admin')) {
+      return 'admin';
+    }
+
+    try {
+      final doc = await _firestore.collection('profiles').doc(user.uid).get();
+      final role = doc.data()?['role'] as String?;
+      if (role != null && role.isNotEmpty) {
+        return role.toLowerCase().trim();
+      }
+    } catch (_) {}
+
+    return 'resident';
+  }
+
   @override
   Future<List<PickupRequest>> loadAll() async {
     final localRequests = await _localRepository.loadAll();
     final user = _firebaseAuth.currentUser;
-    if (user == null) return localRequests;
+    if (user == null) {
+      // Purge legacy demo requests from unauthenticated view
+      return localRequests.where((r) => !r.id.startsWith('req-arua-')).toList();
+    }
+
+    // Clean out stale demo requests from local storage if present
+    for (final req in localRequests) {
+      if (req.id.startsWith('req-arua-')) {
+        await _localRepository.delete(req.id);
+      }
+    }
 
     try {
-      final profile = await _firestore
-          .collection('profiles')
-          .doc(user.uid)
-          .get();
-      final role = profile.data()?['role'] as String? ?? 'resident';
+      final role = await _getUserRole(user);
       final query = _requests.orderBy('submittedAt', descending: true);
-      final snapshot = role == 'resident'
-          ? await query.where('residentId', isEqualTo: user.uid).get()
-          : await query.get();
-      final cloudRequests = snapshot.docs.map(_requestFromDocument).toList();
-      final byId = {for (final request in localRequests) request.id: request};
-      for (final request in cloudRequests) {
-        byId[request.id] = request;
-      }
-      final combined = byId.values.toList()
-        ..sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+      final snapshot = (role == 'admin' || role == 'rider')
+          ? await query.get()
+          : await query.where('residentId', isEqualTo: user.uid).get();
 
-      // Cache cloud requests back into local storage for offline continuity
+      final cloudRequests = snapshot.docs.map(_requestFromDocument).toList();
+      final cloudIds = cloudRequests.map((c) => c.id).toSet();
+
+      // Auto-sync any genuine local requests to Firestore if missing from cloud
+      for (final req in localRequests) {
+        if (!req.id.startsWith('req-arua-') && !cloudIds.contains(req.id)) {
+          if (role != 'resident' || req.residentId == user.uid) {
+            try {
+              await _requests.doc(req.id).set(
+                _requestToDocument(req),
+                SetOptions(merge: true),
+              );
+              cloudRequests.add(req.copyWith(isSynced: true));
+              cloudIds.add(req.id);
+            } catch (e) {
+              debugPrint('Auto-sync cloud upload notice for ${req.id}: $e');
+            }
+          }
+        }
+      }
+
+      cloudRequests.sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+
+      // Overwrite local cache with authoritative cloud state
       for (final req in cloudRequests) {
         await _localRepository.save(req);
       }
 
-      return combined;
+      return cloudRequests;
     } on FirebaseException catch (error) {
       debugPrint('Firestore read notice (${error.code}): ${error.message}; falling back to local requests.');
-      return localRequests;
+      return localRequests.where((r) => !r.id.startsWith('req-arua-')).toList();
     } catch (error) {
       debugPrint('Repository loadAll error: $error; falling back to local requests.');
-      return localRequests;
+      return localRequests.where((r) => !r.id.startsWith('req-arua-')).toList();
     }
   }
 
@@ -254,26 +297,34 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
     if (user == null) {
       return Stream.fromFuture(loadAll());
     }
-    return _requests
-        .orderBy('submittedAt', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map(_requestFromDocument).toList())
-        .handleError((dynamic error) {
-          debugPrint('Firestore watchRequests notice: $error');
-        });
+
+    return Stream.fromFuture(_getUserRole(user)).asyncExpand((role) {
+      Query<Map<String, dynamic>> query = _requests.orderBy('submittedAt', descending: true);
+      if (role != 'admin' && role != 'rider') {
+        query = query.where('residentId', isEqualTo: user.uid);
+      }
+      return query
+          .limit(limit)
+          .snapshots()
+          .map((snapshot) => snapshot.docs.map(_requestFromDocument).toList());
+    }).handleError((dynamic error) {
+      debugPrint('Firestore watchRequests notice: $error');
+    });
   }
 
   @override
   Future<void> save(PickupRequest request) async {
     final user = _firebaseAuth.currentUser;
-    if (user != null && user.uid.isNotEmpty) {
+    if (user != null && user.uid.isNotEmpty && request.residentId.isEmpty) {
       request = request.copyWith(residentId: user.uid);
     }
     await _localRepository.save(request);
     if (user == null) return;
     _queueCloudWrite(
-      _requests.doc(request.id).set(_requestToDocument(request)),
+      _requests.doc(request.id).set(
+        _requestToDocument(request),
+        SetOptions(merge: true),
+      ),
       'save pickup request',
     );
   }
@@ -283,10 +334,10 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
     await _localRepository.updateStatus(id, status);
     if (_firebaseAuth.currentUser == null) return;
     _queueCloudWrite(
-      _requests.doc(id).update({
+      _requests.doc(id).set({
         'status': status.name,
         'updatedAt': FieldValue.serverTimestamp(),
-      }),
+      }, SetOptions(merge: true)),
       'update pickup status',
     );
   }

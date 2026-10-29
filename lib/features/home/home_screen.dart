@@ -326,22 +326,41 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   final TextEditingController _riderNameController = TextEditingController();
   final TextEditingController _riderPhoneController = TextEditingController();
   bool _invitingRider = false;
+  StreamSubscription<List<PickupRequest>>? _ordersSubscription;
 
   @override
   void dispose() {
+    _ordersSubscription?.cancel();
     _riderEmailController.dispose();
     _riderNameController.dispose();
     _riderPhoneController.dispose();
     super.dispose();
   }
+
   @override
   void initState() {
     super.initState();
     _apiService = widget.wasteApiService ?? WasteApiService();
     _loadUserSession();
     _loadOrders();
+    _subscribeToOrders();
     _loadWeather();
     _loadRiders();
+  }
+
+  void _subscribeToOrders() {
+    _ordersSubscription?.cancel();
+    _ordersSubscription = widget.repository.watchRequests().listen((orders) {
+      if (!mounted) return;
+      setState(() {
+        _orders
+          ..clear()
+          ..addAll(orders);
+        _loadingOrders = false;
+      });
+    }, onError: (Object error) {
+      debugPrint('Live orders stream notice: $error');
+    });
   }
 
   void _loadUserSession() {
@@ -380,7 +399,10 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
   Future<void> _loadRiders() async {
     if (widget.authService != null) {
-      await widget.authService!.fetchInvitedRidersAsync();
+      await Future.wait([
+        widget.authService!.fetchInvitedRidersAsync(),
+        widget.authService!.fetchResidentsAsync(),
+      ]);
     }
     if (mounted) {
       setState(() {});
@@ -880,13 +902,18 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       builder: (_) => AuthSheet(
         authService: widget.authService,
         initialCreateAccount: createAccount,
-        onAuthenticated: (role) => setState(() {
-          _signedIn = true;
-          _role = role;
-          if (widget.authService != null) {
-            _currentUser = widget.authService!.getCurrentUser();
-          }
-        }),
+        onAuthenticated: (role) {
+          setState(() {
+            _signedIn = true;
+            _role = role;
+            if (widget.authService != null) {
+              _currentUser = widget.authService!.getCurrentUser();
+            }
+          });
+          _loadOrders();
+          _subscribeToOrders();
+          _loadRiders();
+        },
       ),
     );
   }
@@ -901,6 +928,9 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       _role = AppRole.resident;
       _currentUser = null;
     });
+    _loadOrders();
+    _subscribeToOrders();
+    _loadRiders();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Signed out successfully.')),
     );
@@ -2565,7 +2595,10 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                   color: const Color(0xFF2E7D32),
                   onRefresh: () async {
                     HapticFeedback.lightImpact();
-                    await _loadOrders();
+                    await Future.wait([
+                      _loadOrders(),
+                      _loadRiders(),
+                    ]);
                   },
                   child: ListView.builder(
                     keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
