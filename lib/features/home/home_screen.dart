@@ -72,70 +72,20 @@ class _EcoRouteSplashScreenState extends State<EcoRouteSplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scaleAnimation;
-  late final Animation<double> _opacityAnimation;
-  late final Animation<double> _brightnessAnimation;
-  late final Animation<double> _glowAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 600),
     );
 
     _scaleAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.86, end: 1.02)
-            .chain(CurveTween(curve: Curves.easeOutBack)),
-        weight: 65,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.02, end: 1.15)
-            .chain(CurveTween(curve: Curves.easeInCubic)),
-        weight: 35,
-      ),
-    ]).animate(_controller);
-
-    _opacityAnimation = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 0.0, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeIn)),
-        weight: 20,
-      ),
-      TweenSequenceItem(tween: ConstantTween<double>(1.0), weight: 60),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 0.0)
+        tween: Tween<double>(begin: 0.95, end: 1.0)
             .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 20,
-      ),
-    ]).animate(_controller);
-
-    // Dynamic brightness & exposure sweep across logo as it launches
-    _brightnessAnimation = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 0.65, end: 1.35)
-            .chain(CurveTween(curve: Curves.easeInOutCubic)),
-        weight: 50,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.35, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 50,
-      ),
-    ]).animate(_controller);
-
-    // Subtle breathing halo glow
-    _glowAnimation = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 0.15, end: 0.55)
-            .chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 50,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 0.55, end: 0.25)
-            .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 50,
+        weight: 100,
       ),
     ]).animate(_controller);
 
@@ -148,7 +98,7 @@ class _EcoRouteSplashScreenState extends State<EcoRouteSplashScreen>
               authService: widget.authService,
               wasteApiService: widget.wasteApiService,
             ),
-            transitionDuration: const Duration(milliseconds: 350),
+            transitionDuration: const Duration(milliseconds: 250),
             transitionsBuilder: (context, animation, secondaryAnimation, child) =>
                 FadeTransition(opacity: animation, child: child),
           ),
@@ -167,108 +117,39 @@ class _EcoRouteSplashScreenState extends State<EcoRouteSplashScreen>
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
-        statusBarColor: Color(0xFF141D26),
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: Color(0xFF141D26),
-        systemNavigationBarIconBrightness: Brightness.light,
+        statusBarColor: Color(0xFF72B08D),
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Color(0xFF72B08D),
+        systemNavigationBarIconBrightness: Brightness.dark,
         systemNavigationBarDividerColor: Colors.transparent,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFF141D26),
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment(0.0, -0.1),
-              radius: 1.1,
-              colors: [
-                Color(0xFF1B2836),
-                Color(0xFF141D26),
-                Color(0xFF0C1218),
-              ],
-            ),
-          ),
-          child: Center(
-            child: AnimatedBuilder(
-              animation: _controller,
-              builder: (context, _) {
-                final b = _brightnessAnimation.value;
-                return FadeTransition(
-                  opacity: _opacityAnimation,
-                  child: Transform.scale(
-                    scale: _scaleAnimation.value,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Soft breathing glowing aura behind logo
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Container(
-                              width: 280,
-                              height: 280,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF2EAD65).withValues(alpha: _glowAnimation.value),
-                                    blurRadius: 70,
-                                    spreadRadius: 10,
-                                  ),
-                                  BoxShadow(
-                                    color: const Color(0xFF1E88E5).withValues(alpha: _glowAnimation.value * 0.6),
-                                    blurRadius: 90,
-                                    spreadRadius: 5,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Uploaded EcoRoute emblem with dynamic animated brightness sweep
-                            ColorFiltered(
-                              colorFilter: ColorFilter.matrix([
-                                b, 0, 0, 0, 0,
-                                0, b, 0, 0, 0,
-                                0, 0, b, 0, 0,
-                                0, 0, 0, 1, 0,
-                              ]),
-                              child: Image.asset(
-                                'assets/EcoRoute_splash.png',
-                                width: 280,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) => const BrandLockup(splash: true),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        // Modern tagline & loading bar
-                        const Text(
-                          'Sustainable Waste Logistics • Arua',
-                          style: TextStyle(
-                            color: Color(0xFF8BA296),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        SizedBox(
-                          width: 140,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: LinearProgressIndicator(
-                              value: _controller.value,
-                              minHeight: 3,
-                              backgroundColor: Colors.white.withValues(alpha: 0.1),
-                              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2EAD65)),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+        backgroundColor: const Color(0xFF72B08D),
+        body: Center(
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  'assets/EcoRoute_splash.png',
+                  width: 240,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => const BrandLockup(splash: true),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Sustainable Waste Logistics • Arua',
+                  style: TextStyle(
+                    fontFamily: 'Satoshi',
+                    color: Color(0xFF1A3A28),
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
                   ),
-                );
-              },
+                ),
+              ],
             ),
           ),
         ),
@@ -307,7 +188,6 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   // REST API Weather
   late final WasteApiService _apiService;
   AruaWeatherReport? _weatherReport;
-  bool _loadingWeather = false;
 
   // GPS State
   UserLocationResult? _lastGpsResult;
@@ -328,10 +208,12 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   final TextEditingController _riderPhoneController = TextEditingController();
   bool _invitingRider = false;
   StreamSubscription<List<PickupRequest>>? _ordersSubscription;
+  Timer? _weatherAutoSyncTimer;
 
   @override
   void dispose() {
     _ordersSubscription?.cancel();
+    _weatherAutoSyncTimer?.cancel();
     _riderEmailController.dispose();
     _riderNameController.dispose();
     _riderPhoneController.dispose();
@@ -346,7 +228,15 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     _loadOrders();
     _subscribeToOrders();
     _loadWeather();
+    _weatherAutoSyncTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) {
+        _loadWeather();
+      }
+    });
     _loadRiders();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkInitialRiderInvite();
+    });
   }
 
   void _subscribeToOrders() {
@@ -377,12 +267,10 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   }
 
   Future<void> _loadWeather() async {
-    setState(() => _loadingWeather = true);
     final report = await _apiService.fetchAruaCollectionWeather();
     if (mounted) {
       setState(() {
         _weatherReport = report;
-        _loadingWeather = false;
       });
     }
   }
@@ -895,7 +783,12 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     );
   }
 
-  void _showAuth({bool createAccount = false}) {
+  void _showAuth({
+    bool createAccount = false,
+    AppRole? initialRole,
+    String? initialInviteCode,
+    String? initialEmail,
+  }) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -903,6 +796,9 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
       builder: (_) => AuthSheet(
         authService: widget.authService,
         initialCreateAccount: createAccount,
+        initialRole: initialRole,
+        initialInviteCode: initialInviteCode,
+        initialEmail: initialEmail,
         onAuthenticated: (role) {
           setState(() {
             _signedIn = true;
@@ -917,6 +813,43 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         },
       ),
     );
+  }
+
+  void _checkInitialRiderInvite() {
+    try {
+      final uri = Uri.base;
+      final inviteParam = uri.queryParameters['invite'] ??
+          uri.queryParameters['code'] ??
+          uri.queryParameters['rider'];
+      final emailParam = uri.queryParameters['email'];
+
+      String? fragmentInvite;
+      String? fragmentEmail;
+      if (uri.fragment.isNotEmpty && uri.fragment.contains('=')) {
+        try {
+          final fragUri = Uri.parse(
+            'https://dummy.ug/?${uri.fragment.replaceFirst('#', '').replaceFirst('/', '')}',
+          );
+          fragmentInvite =
+              fragUri.queryParameters['invite'] ?? fragUri.queryParameters['code'];
+          fragmentEmail = fragUri.queryParameters['email'];
+        } catch (_) {}
+      }
+
+      final effectiveInvite = inviteParam ?? fragmentInvite;
+      final effectiveEmail = emailParam ?? fragmentEmail;
+
+      if ((effectiveInvite != null || effectiveEmail != null) && !_signedIn) {
+        _showAuth(
+          createAccount: true,
+          initialRole: AppRole.rider,
+          initialInviteCode: effectiveInvite,
+          initialEmail: effectiveEmail,
+        );
+      }
+    } catch (e) {
+      debugPrint('Could not parse initial rider invite: $e');
+    }
   }
 
   Future<void> _signOut() async {
@@ -1340,7 +1273,6 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
   Widget _buildWeatherSafetyCard() {
     final report = _weatherReport;
-    final isOnline = report?.isOnline ?? false;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -1357,47 +1289,21 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Arua Route Weather',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0D2618),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(5),
-                      border: Border.all(color: const Color(0xFF0D2618), width: 1),
-                    ),
-                    child: Text(
-                      isOnline ? 'Open-Meteo Live' : 'Offline Cache',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0D2618),
-                      ),
-                    ),
-                  ),
-                ],
+              const Text(
+                'Arua Route Weather',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0D2618),
+                ),
               ),
               const SizedBox(height: 3),
               Text(
                 report != null
                     ? '${report.temperatureC.toStringAsFixed(1)}°C • ${report.conditionSummary}'
-                    : 'Connecting to Open-Meteo weather service...',
+                    : 'Loading route weather updates...',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -1408,23 +1314,6 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
               ),
             ],
           ),
-        ),
-        IconButton(
-          onPressed: _loadingWeather ? null : _loadWeather,
-          tooltip: 'Refresh Weather',
-          icon: _loadingWeather
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Color(0xFF0D2618),
-                  ),
-                )
-              : const Icon(
-                  Icons.refresh_rounded,
-                  size: 22,
-                  color: Color(0xFF0D2618),
-                ),
         ),
       ],
     );

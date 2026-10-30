@@ -290,6 +290,8 @@ void main() {
             body: AuthSheet(
               authService: authService,
               initialCreateAccount: true,
+              initialRole: AppRole.rider,
+              initialInviteCode: code,
               onAuthenticated: (role) => authenticatedRole = role,
             ),
           ),
@@ -300,7 +302,6 @@ void main() {
       await tester.enterText(find.widgetWithText(TextFormField, 'Full name'), 'Kassim Rider');
       await tester.enterText(find.widgetWithText(TextFormField, 'Phone number'), '+256772999888');
       await tester.enterText(find.widgetWithText(TextFormField, 'Email address'), 'rider.arua@ecoroute.ug');
-      await tester.enterText(find.widgetWithText(TextFormField, 'Rider invite code (optional)'), code);
       await tester.pumpAndSettle();
 
       expect(find.text('EcoRoute Rider Fleet Onboarding'), findsOneWidget);
@@ -308,8 +309,8 @@ void main() {
       await tester.enterText(find.widgetWithText(TextFormField, 'Password'), 'mycustompassword123');
       await tester.enterText(find.widgetWithText(TextFormField, 'Confirm password'), 'mycustompassword123');
 
-      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Create account'));
-      await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
+      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Create Rider account'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Create Rider account'));
       await tester.pumpAndSettle();
 
       expect(authenticatedRole, AppRole.rider);

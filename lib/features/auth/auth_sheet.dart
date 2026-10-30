@@ -8,12 +8,18 @@ class AuthSheet extends StatefulWidget {
     required this.onAuthenticated,
     this.authService,
     this.initialCreateAccount = false,
+    this.initialRole,
+    this.initialInviteCode,
+    this.initialEmail,
     super.key,
   });
 
   final void Function(AppRole role) onAuthenticated;
   final AuthService? authService;
   final bool initialCreateAccount;
+  final AppRole? initialRole;
+  final String? initialInviteCode;
+  final String? initialEmail;
 
   @override
   State<AuthSheet> createState() => _AuthSheetState();
@@ -40,11 +46,23 @@ class _AuthSheetState extends State<AuthSheet> {
   void initState() {
     super.initState();
     _createAccount = widget.initialCreateAccount;
+    if (widget.initialRole == AppRole.rider ||
+        (widget.initialInviteCode != null && widget.initialInviteCode!.isNotEmpty)) {
+      _isRiderOnboarding = true;
+      _createAccount = true;
+    }
+    if (widget.initialInviteCode != null && widget.initialInviteCode!.isNotEmpty) {
+      _inviteCode.text = widget.initialInviteCode!;
+    }
+    if (widget.initialEmail != null && widget.initialEmail!.isNotEmpty) {
+      _email.text = widget.initialEmail!;
+    }
     _password.addListener(() {
       if (mounted) setState(() {});
     });
     _email.addListener(_checkRiderInvite);
     _inviteCode.addListener(_checkRiderInvite);
+    _checkRiderInvite();
   }
 
   void _checkRiderInvite() {
@@ -52,11 +70,11 @@ class _AuthSheetState extends State<AuthSheet> {
     final email = _email.text.trim();
     final code = _inviteCode.text.trim();
     final invite = widget.authService?.getRiderInvite(code.isNotEmpty ? code : email);
-    final isInvite = invite != null;
+    final isInvite = invite != null || widget.initialRole == AppRole.rider;
     if (isInvite != _isRiderOnboarding) {
       setState(() {
         _isRiderOnboarding = isInvite;
-        if (isInvite) {
+        if (invite != null) {
           if (_fullName.text.trim().isEmpty && invite['fullName'] != null) {
             _fullName.text = invite['fullName'] as String;
           }
@@ -65,6 +83,13 @@ class _AuthSheetState extends State<AuthSheet> {
           }
         }
       });
+    } else if (invite != null) {
+      if (_fullName.text.trim().isEmpty && invite['fullName'] != null) {
+        _fullName.text = invite['fullName'] as String;
+      }
+      if (_phone.text.trim().isEmpty && invite['phone'] != null) {
+        _phone.text = invite['phone'] as String;
+      }
     }
   }
 
@@ -258,109 +283,155 @@ class _AuthSheetState extends State<AuthSheet> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _AuthHeader(
-                      title: _createAccount
-                          ? 'Create your EcoRoute account'
-                          : 'Login',
-                      subtitle: _createAccount
-                          ? 'Sign up for instant on-demand waste collection & recycling rewards in Arua.'
-                          : 'Enter your credentials to access collections, routes, or administration.',
+                      title: _isRiderOnboarding
+                          ? 'Create your Rider account'
+                          : (_createAccount
+                              ? 'Create your EcoRoute account'
+                              : 'Login'),
+                      subtitle: _isRiderOnboarding
+                          ? 'Welcome to the EcoRoute Rider Fleet in Arua. Set up your official rider account.'
+                          : (_createAccount
+                              ? 'Sign up for instant on-demand waste collection & recycling rewards in Arua.'
+                              : 'Enter your credentials to access collections, routes, or administration.'),
                       onClose: () => Navigator.of(context).maybePop(),
                     ),
                     const SizedBox(height: 16),
-                    // Mode switcher tabs at top
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F2),
-                        borderRadius: BorderRadius.circular(12),
+                    if (_isRiderOnboarding) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0x1F0D2618),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF0D2618), width: 1.2),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.two_wheeler_rounded, color: Color(0xFF0D2618), size: 24),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'EcoRoute Rider Fleet Onboarding',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13.5,
+                                      color: Color(0xFF0D2618),
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Arua Municipal Tricycle & Waste Collection Fleet',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: Color(0xFF1A3A28),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      padding: const EdgeInsets.all(4),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: InkWell(
-                              key: const ValueKey('auth_tab_login'),
-                              onTap: _isSubmitting || !_createAccount
-                                  ? null
-                                  : _toggleAccountMode,
-                              borderRadius: BorderRadius.circular(10),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: !_createAccount
-                                      ? Colors.white
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(10),
-                                  boxShadow: !_createAccount
-                                      ? const [
-                                          BoxShadow(
-                                            color: Color(0x0F000000),
-                                            blurRadius: 4,
-                                            offset: Offset(0, 2),
-                                          ),
-                                        ]
-                                      : null,
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  'Login',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: !_createAccount
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
+                      const SizedBox(height: 16),
+                    ] else ...[
+                      // Mode switcher tabs at top
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.all(4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                key: const ValueKey('auth_tab_login'),
+                                onTap: _isSubmitting || !_createAccount
+                                    ? null
+                                    : _toggleAccountMode,
+                                borderRadius: BorderRadius.circular(10),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  decoration: BoxDecoration(
                                     color: !_createAccount
-                                        ? const Color(0xFF1B5E20)
-                                        : const Color(0xFF666666),
+                                        ? Colors.white
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: !_createAccount
+                                        ? const [
+                                            BoxShadow(
+                                              color: Color(0x0F000000),
+                                              blurRadius: 4,
+                                              offset: Offset(0, 2),
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    'Login',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: !_createAccount
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: !_createAccount
+                                          ? const Color(0xFF1B5E20)
+                                          : const Color(0xFF666666),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                          Expanded(
-                            child: InkWell(
-                              key: const ValueKey('auth_tab_create_account'),
-                              onTap: _isSubmitting || _createAccount
-                                  ? null
-                                  : _toggleAccountMode,
-                              borderRadius: BorderRadius.circular(10),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: _createAccount
-                                      ? Colors.white
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(10),
-                                  boxShadow: _createAccount
-                                      ? const [
-                                          BoxShadow(
-                                            color: Color(0x0F000000),
-                                            blurRadius: 4,
-                                            offset: Offset(0, 2),
-                                          ),
-                                        ]
-                                      : null,
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  'Create account',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: _createAccount
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
+                            Expanded(
+                              child: InkWell(
+                                key: const ValueKey('auth_tab_create_account'),
+                                onTap: _isSubmitting || _createAccount
+                                    ? null
+                                    : _toggleAccountMode,
+                                borderRadius: BorderRadius.circular(10),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  decoration: BoxDecoration(
                                     color: _createAccount
-                                        ? const Color(0xFF1B5E20)
-                                        : const Color(0xFF666666),
+                                        ? Colors.white
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: _createAccount
+                                        ? const [
+                                            BoxShadow(
+                                              color: Color(0x0F000000),
+                                              blurRadius: 4,
+                                              offset: Offset(0, 2),
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    'Create account',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: _createAccount
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: _createAccount
+                                          ? const Color(0xFF1B5E20)
+                                          : const Color(0xFF666666),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                    ],
                     const SizedBox(height: 16),
                     if (_errorMessage != null) ...[
                       _AuthError(message: _errorMessage!),
@@ -398,64 +469,15 @@ class _AuthSheetState extends State<AuthSheet> {
                             : null,
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
-                        key: const ValueKey('auth_address'),
-                        controller: _address,
-                        decoration: const InputDecoration(
-                          labelText: 'Default pickup address / landmark',
-                          hintText: 'e.g. Muni University / Arua Hill',
-                          prefixIcon: Icon(Icons.location_on_outlined, size: 20),
-                          isDense: true,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        key: const ValueKey('auth_invite_code'),
-                        controller: _inviteCode,
-                        textCapitalization: TextCapitalization.characters,
-                        decoration: InputDecoration(
-                          labelText: 'Rider invite code (optional)',
-                          hintText: 'e.g. RIDER-123456',
-                          prefixIcon: const Icon(Icons.badge_outlined, size: 20),
-                          isDense: true,
-                          helperText: _isRiderOnboarding
-                              ? 'Rider invitation verified! Set your custom password below.'
-                              : 'Invited by EcoRoute HQ? Enter your code to activate Rider account.',
-                          helperStyle: TextStyle(
-                            color: _isRiderOnboarding ? const Color(0xFF1B5E20) : null,
-                            fontWeight: _isRiderOnboarding ? FontWeight.w700 : null,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (_isRiderOnboarding) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE8F5E9),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFA5D6A7)),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.two_wheeler_rounded, color: Color(0xFF2E7D32), size: 22),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'EcoRoute Rider Fleet Onboarding',
-                                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF1B5E20)),
-                                    ),
-                                    Text(
-                                      'Invitation verified. Choose your own secure password below.',
-                                      style: TextStyle(fontSize: 11, color: Color(0xFF2E7D32)),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                      if (!_isRiderOnboarding) ...[
+                        TextFormField(
+                          key: const ValueKey('auth_address'),
+                          controller: _address,
+                          decoration: const InputDecoration(
+                            labelText: 'Default pickup address / landmark',
+                            hintText: 'e.g. Muni University / Arua Hill',
+                            prefixIcon: Icon(Icons.location_on_outlined, size: 20),
+                            isDense: true,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -615,7 +637,9 @@ class _AuthSheetState extends State<AuthSheet> {
                                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                               )
                             : Text(
-                                _createAccount ? 'Create account' : 'Login',
+                                _isRiderOnboarding
+                                    ? 'Create Rider account'
+                                    : (_createAccount ? 'Create account' : 'Login'),
                                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                               ),
                       ),
