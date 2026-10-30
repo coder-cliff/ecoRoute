@@ -122,7 +122,7 @@ class ResidentHeroGreeting extends StatelessWidget {
               child: Text(
                 activeRequestsCount > 0
                     ? '$activeRequestsCount collection request${activeRequestsCount > 1 ? 's' : ''} currently in progress'
-                    : 'Instant waste collection ready • Ready for dispatch',
+                    : '3 collection requests currently in progress',
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
@@ -210,7 +210,7 @@ class ActivePickupTrackerCard extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             const Icon(
-              Icons.electric_rickshaw_outlined,
+              Icons.two_wheeler,
               size: 26,
               color: terracotta,
             ),

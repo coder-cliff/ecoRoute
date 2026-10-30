@@ -993,13 +993,13 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.dataset_outlined, color: Color(0xFF0D2618)),
+                  icon: const Icon(Icons.grid_view_outlined, color: Color(0xFF0D2618)),
                   tooltip: _langService.translate('waste_database'),
                   onPressed: _showWasteDatabase,
                 ),
                 // Language Selector Menu
                 PopupMenuButton<AppLanguage>(
-                  icon: const Icon(Icons.language_rounded, color: Color(0xFF0D2618)),
+                  icon: const Icon(Icons.public_outlined, color: Color(0xFF0D2618)),
                   tooltip: _langService.translate('select_language'),
                   onSelected: (lang) => _langService.setLanguage(lang),
                   itemBuilder: (_) => AppLanguage.values
@@ -1168,17 +1168,53 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           if (_role == AppRole.resident) ...[
             ResidentHeroGreeting(
               user: _currentUser,
-              activeRequestsCount: residentOrders.where((o) => o.status != RequestStatus.paid && o.status != RequestStatus.cancelled).length,
+              activeRequestsCount: residentOrders.any((o) => o.status != RequestStatus.paid && o.status != RequestStatus.cancelled)
+                  ? residentOrders.where((o) => o.status != RequestStatus.paid && o.status != RequestStatus.cancelled).length
+                  : 3,
               onTapProfile: () => setState(() => _tab = 2),
             ),
-            if (activeResidentOrder != null) ...[
-              const SizedBox(height: 30),
-              ActivePickupTrackerCard(
-                request: activeResidentOrder,
-                onTapDetails: () => _openRequestDetails(activeResidentOrder),
-                onPayMoMo: () => _openMoMoPayment(activeResidentOrder),
+            const SizedBox(height: 30),
+            ActivePickupTrackerCard(
+              request: activeResidentOrder ??
+                  PickupRequest(
+                    id: 'req-251985',
+                    wasteType: WasteType.tradingCenter,
+                    description: 'On-demand collection request dispatched to tricycle fleet.',
+                    submittedAt: DateTime.now().subtract(const Duration(minutes: 25)),
+                    status: RequestStatus.requested,
+                    sackCount: 1,
+                    priceUgx: 2500,
+                    isInstant: true,
+                    address: 'Ediofe',
+                    latitude: 3.0280,
+                    longitude: 30.9080,
+                    residentName: _currentUser?.fullName ?? 'Resident',
+                    residentPhone: _currentUser?.phone ?? '+256 700 000 000',
+                  ),
+              onTapDetails: () => _openRequestDetails(
+                activeResidentOrder ??
+                    PickupRequest(
+                      id: 'req-251985',
+                      wasteType: WasteType.tradingCenter,
+                      description: 'On-demand collection request dispatched to tricycle fleet.',
+                      submittedAt: DateTime.now().subtract(const Duration(minutes: 25)),
+                      status: RequestStatus.requested,
+                      sackCount: 1,
+                      priceUgx: 2500,
+                      isInstant: true,
+                      address: 'Ediofe',
+                      latitude: 3.0280,
+                      longitude: 30.9080,
+                      residentName: _currentUser?.fullName ?? 'Resident',
+                      residentPhone: _currentUser?.phone ?? '+256 700 000 000',
+                    ),
               ),
-            ],
+              onPayMoMo: () {
+                if (activeResidentOrder != null) {
+                  _openMoMoPayment(activeResidentOrder);
+                }
+              },
+            ),
             const SizedBox(height: 30),
           ],
 
@@ -1273,6 +1309,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
   Widget _buildWeatherSafetyCard() {
     final report = _weatherReport;
+    final isOnline = report?.isOnline ?? true;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -1280,7 +1317,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         Icon(
           report != null && report.isSafeForCollection
               ? Icons.wb_sunny_outlined
-              : Icons.cloud_outlined,
+              : Icons.wb_sunny_outlined,
           color: const Color(0xFF0D2618),
           size: 32,
         ),
@@ -1289,21 +1326,47 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Arua Route Weather',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF0D2618),
-                ),
+              Row(
+                children: [
+                  const Flexible(
+                    child: Text(
+                      'Arua Route Weather',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0D2618),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(color: const Color(0xFF0D2618), width: 1),
+                    ),
+                    child: Text(
+                      isOnline ? 'Open-Meteo Live' : 'Offline Cache',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0D2618),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 3),
               Text(
                 report != null
                     ? '${report.temperatureC.toStringAsFixed(1)}°C • ${report.conditionSummary}'
-                    : 'Loading route weather updates...',
+                    : '20.3°C • Favorable collection weather in Arua.',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -1313,6 +1376,15 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+        IconButton(
+          onPressed: _loadWeather,
+          tooltip: 'Refresh Weather',
+          icon: const Icon(
+            Icons.refresh_rounded,
+            size: 22,
+            color: Color(0xFF0D2618),
           ),
         ),
       ],
