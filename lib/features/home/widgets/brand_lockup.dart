@@ -43,27 +43,32 @@ class BrandLockup extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(compact ? 8 : 18),
-          child: Image.asset(
-            'assets/EcoRoute_logo.png',
-            width: compact ? 34 : 70,
-            height: compact ? 34 : 70,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => Icon(
-              Icons.recycling_rounded,
-              size: compact ? 34 : 70,
-              color: const Color(0xFF123B1A),
+        Container(
+          width: compact ? 32 : 56,
+          height: compact ? 32 : 56,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: const Color(0xFF0D2618),
+              width: 1.6,
+            ),
+          ),
+          child: Center(
+            child: Icon(
+              Icons.eco_outlined,
+              size: compact ? 18 : 30,
+              color: const Color(0xFF0D2618),
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 9),
         Text(
           'EcoRoute',
           style: TextStyle(
-            fontSize: compact ? 20 : 36,
-            fontWeight: FontWeight.w800,
-            color: const Color(0xFF123B1A),
+            fontSize: compact ? 22 : 36,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF0D2618),
+            letterSpacing: -0.3,
           ),
         ),
       ],
@@ -91,13 +96,13 @@ class WelcomeIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: const Color(0xFFDCEFE0),
-        borderRadius: BorderRadius.circular(16),
+      width: 58,
+      height: 58,
+      decoration: const BoxDecoration(
+        color: Color(0x1F0D2618),
+        shape: BoxShape.circle,
       ),
-      child: const Icon(Icons.waving_hand_rounded, color: Color(0xFF2E7D32)),
+      child: const Icon(Icons.waving_hand_rounded, color: Color(0xFF0D2618), size: 28),
     );
   }
 }

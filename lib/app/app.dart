@@ -26,16 +26,16 @@ class EcoRouteApp extends StatelessWidget {
       listenable: ThemeService.instance,
       builder: (context, _) {
         final isDark = ThemeService.instance.isDarkMode;
-        final statusBarColor = isDark ? const Color(0xFF192A1D) : const Color(0xFF2EAD65);
-        final navBarColor = isDark ? const Color(0xFF111E14) : const Color(0xFF2EAD65);
+        final statusBarColor = isDark ? const Color(0xFF12281B) : const Color(0xFF72B08D);
+        final navBarColor = isDark ? const Color(0xFF12281B) : const Color(0xFF72B08D);
 
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle(
             statusBarColor: statusBarColor,
-            statusBarIconBrightness: Brightness.light,
-            statusBarBrightness: Brightness.dark,
+            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
             systemNavigationBarColor: navBarColor,
-            systemNavigationBarIconBrightness: Brightness.light,
+            systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
             systemNavigationBarDividerColor: Colors.transparent,
           ),
           child: MaterialApp(

@@ -980,8 +980,21 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
               children: [
                 NavigationRail(
                   selectedIndex: _tab,
-                  indicatorColor: const Color(0xFFDCEFE0),
+                  backgroundColor: const Color(0xFF72B08D),
+                  indicatorColor: Colors.transparent,
                   labelType: NavigationRailLabelType.all,
+                  selectedIconTheme: const IconThemeData(color: Color(0xFF0D2618)),
+                  unselectedIconTheme: const IconThemeData(color: Color(0xFF1A3A28)),
+                  selectedLabelTextStyle: const TextStyle(
+                    fontFamily: 'Satoshi',
+                    color: Color(0xFF0D2618),
+                    fontWeight: FontWeight.w700,
+                  ),
+                  unselectedLabelTextStyle: const TextStyle(
+                    fontFamily: 'Satoshi',
+                    color: Color(0xFF1A3A28),
+                    fontWeight: FontWeight.w500,
+                  ),
                   onDestinationSelected: (value) {
                     if (value != _tab) {
                       HapticFeedback.selectionClick();
@@ -991,17 +1004,17 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                   destinations: const [
                     NavigationRailDestination(
                       icon: Icon(Icons.home_outlined),
-                      selectedIcon: Icon(Icons.home),
+                      selectedIcon: Icon(Icons.home_rounded),
                       label: Text('Home'),
                     ),
                     NavigationRailDestination(
                       icon: Icon(Icons.receipt_long_outlined),
-                      selectedIcon: Icon(Icons.receipt_long),
+                      selectedIcon: Icon(Icons.receipt_long_rounded),
                       label: Text('Requests'),
                     ),
                     NavigationRailDestination(
                       icon: Icon(Icons.person_outline),
-                      selectedIcon: Icon(Icons.person),
+                      selectedIcon: Icon(Icons.person_rounded),
                       label: Text('Profile'),
                     ),
                   ],
@@ -1014,113 +1027,122 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
           return Scaffold(
             appBar: AppBar(
+              backgroundColor: const Color(0xFF72B08D),
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              surfaceTintColor: Colors.transparent,
               systemOverlayStyle: const SystemUiOverlayStyle(
-                statusBarColor: Color(0xFF2EAD65),
-                statusBarIconBrightness: Brightness.light,
-                statusBarBrightness: Brightness.dark,
-                systemNavigationBarColor: Color(0xFF2EAD65),
-                systemNavigationBarIconBrightness: Brightness.light,
+                statusBarColor: Color(0xFF72B08D),
+                statusBarIconBrightness: Brightness.dark,
+                statusBarBrightness: Brightness.light,
+                systemNavigationBarColor: Color(0xFF72B08D),
+                systemNavigationBarIconBrightness: Brightness.dark,
                 systemNavigationBarDividerColor: Colors.transparent,
               ),
-            title: const FittedBox(
-              fit: BoxFit.scaleDown,
-              child: BrandLockup(compact: true),
-            ),
-            actions: [
-              ListenableBuilder(
-                listenable: ThemeService.instance,
-                builder: (context, _) => IconButton(
-                  icon: Icon(
-                    ThemeService.instance.isDarkMode
-                        ? Icons.light_mode_outlined
-                        : Icons.dark_mode_outlined,
+              title: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: BrandLockup(compact: true),
+              ),
+              actions: [
+                ListenableBuilder(
+                  listenable: ThemeService.instance,
+                  builder: (context, _) => IconButton(
+                    icon: Icon(
+                      ThemeService.instance.isDarkMode
+                          ? Icons.light_mode_outlined
+                          : Icons.dark_mode_outlined,
+                      color: const Color(0xFF0D2618),
+                    ),
+                    tooltip: ThemeService.instance.isDarkMode
+                        ? 'Switch to light mode'
+                        : 'Switch to dark mode',
+                    onPressed: () => ThemeService.instance.toggleTheme(),
                   ),
-                  tooltip: ThemeService.instance.isDarkMode
-                      ? 'Switch to light mode'
-                      : 'Switch to dark mode',
-                  onPressed: () => ThemeService.instance.toggleTheme(),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.dataset_outlined),
-                tooltip: _langService.translate('waste_database'),
-                onPressed: _showWasteDatabase,
-              ),
-              // Language Selector Menu
-              PopupMenuButton<AppLanguage>(
-                icon: const Icon(Icons.language_rounded),
-                tooltip: _langService.translate('select_language'),
-                onSelected: (lang) => _langService.setLanguage(lang),
-                itemBuilder: (_) => AppLanguage.values
-                    .map(
-                      (l) => PopupMenuItem(
-                        value: l,
-                        child: Row(
-                          children: [
-                            Text(l.label),
-                            if (_langService.currentLanguage == l) ...[
-                              const Spacer(),
-                              const Icon(Icons.check, size: 16, color: Color(0xFF2E7D32)),
+                IconButton(
+                  icon: const Icon(Icons.dataset_outlined, color: Color(0xFF0D2618)),
+                  tooltip: _langService.translate('waste_database'),
+                  onPressed: _showWasteDatabase,
+                ),
+                // Language Selector Menu
+                PopupMenuButton<AppLanguage>(
+                  icon: const Icon(Icons.language_rounded, color: Color(0xFF0D2618)),
+                  tooltip: _langService.translate('select_language'),
+                  onSelected: (lang) => _langService.setLanguage(lang),
+                  itemBuilder: (_) => AppLanguage.values
+                      .map(
+                        (l) => PopupMenuItem(
+                          value: l,
+                          child: Row(
+                            children: [
+                              Text(l.label),
+                              if (_langService.currentLanguage == l) ...[
+                                const Spacer(),
+                                const Icon(Icons.check, size: 16, color: Color(0xFF0D2618)),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
+                      )
+                      .toList(),
+                ),
+                IconButton(
+                  tooltip: _signedIn
+                      ? '${_langService.translate('my_account')} (${_currentUser?.fullName ?? 'User'})'
+                      : _langService.translate('sign_in'),
+                  onPressed: _showAuth,
+                  icon: Icon(
+                    _signedIn
+                        ? Icons.account_circle_rounded
+                        : Icons.account_circle_outlined,
+                    color: const Color(0xFF0D2618),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
+            body: bodyContent,
+            bottomNavigationBar: isWideScreen
+                ? null
+                : NavigationBar(
+                    selectedIndex: _tab,
+                    backgroundColor: const Color(0xFF72B08D),
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
+                    surfaceTintColor: Colors.transparent,
+                    indicatorColor: Colors.transparent,
+                    labelBehavior: MediaQuery.sizeOf(context).width < 360
+                        ? NavigationDestinationLabelBehavior.onlyShowSelected
+                        : NavigationDestinationLabelBehavior.alwaysShow,
+                    onDestinationSelected: (value) {
+                      if (value != _tab) {
+                        HapticFeedback.selectionClick();
+                        setState(() => _tab = value);
+                      }
+                    },
+                    destinations: const [
+                      NavigationDestination(
+                        icon: Icon(Icons.home_outlined, color: Color(0xFF1A3A28)),
+                        selectedIcon: Icon(Icons.home_rounded, color: Color(0xFF0D2618)),
+                        label: 'Home',
                       ),
-                    )
-                    .toList(),
-              ),
-              IconButton(
-                tooltip: _signedIn
-                    ? '${_langService.translate('my_account')} (${_currentUser?.fullName ?? 'User'})'
-                    : _langService.translate('sign_in'),
-                onPressed: _showAuth,
-                icon: Icon(
-                  _signedIn
-                      ? Icons.account_circle_rounded
-                      : Icons.account_circle_outlined,
-                  color: _signedIn ? const Color(0xFF1B5E20) : null,
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
-          ),
-          body: bodyContent,
-          bottomNavigationBar: isWideScreen
-              ? null
-              : NavigationBar(
-                  selectedIndex: _tab,
-                  indicatorColor: const Color(0xFFDCEFE0),
-                  labelBehavior: MediaQuery.sizeOf(context).width < 360
-                      ? NavigationDestinationLabelBehavior.onlyShowSelected
-                      : NavigationDestinationLabelBehavior.alwaysShow,
-                  onDestinationSelected: (value) {
-                    if (value != _tab) {
-                      HapticFeedback.selectionClick();
-                      setState(() => _tab = value);
-                    }
-                  },
-                  destinations: const [
-                    NavigationDestination(
-                      icon: Icon(Icons.home_outlined),
-                      selectedIcon: Icon(Icons.home),
-                      label: 'Home',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.receipt_long_outlined),
-                      selectedIcon: Icon(Icons.receipt_long),
-                      label: 'Requests',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.person_outline),
-                      selectedIcon: Icon(Icons.person),
-                      label: 'Profile',
-                    ),
-                  ],
-                ),
-        );
-      },
-    ),
-  );
-}
+                      NavigationDestination(
+                        icon: Icon(Icons.receipt_long_outlined, color: Color(0xFF1A3A28)),
+                        selectedIcon: Icon(Icons.receipt_long_rounded, color: Color(0xFF0D2618)),
+                        label: 'Requests',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.person_outline, color: Color(0xFF1A3A28)),
+                        selectedIcon: Icon(Icons.person_rounded, color: Color(0xFF0D2618)),
+                        label: 'Profile',
+                      ),
+                    ],
+                  ),
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildBrowse() {
     final heroTitle = switch (_role) {
@@ -1204,98 +1226,73 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     );
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildWelcome(),
+          const SizedBox(height: 30),
           if (_role == AppRole.resident) ...[
-            const SizedBox(height: 12),
             ResidentHeroGreeting(
               user: _currentUser,
               activeRequestsCount: residentOrders.where((o) => o.status != RequestStatus.paid && o.status != RequestStatus.cancelled).length,
               onTapProfile: () => setState(() => _tab = 2),
             ),
             if (activeResidentOrder != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 30),
               ActivePickupTrackerCard(
                 request: activeResidentOrder,
                 onTapDetails: () => _openRequestDetails(activeResidentOrder),
                 onPayMoMo: () => _openMoMoPayment(activeResidentOrder),
               ),
             ],
+            const SizedBox(height: 30),
           ],
-          const SizedBox(height: 16),
 
           _buildWeatherSafetyCard(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 30),
 
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF2E8B57), Color(0xFF1B5E3B)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          // Resident service overview (or Rider dispatch board / Operations control center)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      heroTitle,
+                      style: const TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0D2618),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      heroDescription,
+                      style: const TextStyle(
+                        color: Color(0xFF1A3A28),
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x33000000),
-                  blurRadius: 14,
-                  offset: Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        heroTitle,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        heroDescription,
-                        style: const TextStyle(
-                          color: Color(0xFFEAF7F0),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Container(
-                  width: 70,
-                  height: 70,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Icon(
-                    _role == AppRole.rider
-                        ? Icons.route_rounded
-                        : _role == AppRole.admin
-                        ? Icons.dashboard_customize_rounded
-                        : Icons.home_repair_service_rounded,
-                    color: Colors.white,
-                    size: 30,
-                  ),
-                ),
-              ],
-            ),
+              const SizedBox(width: 14),
+              Icon(
+                _role == AppRole.rider
+                    ? Icons.route_outlined
+                    : _role == AppRole.admin
+                        ? Icons.dashboard_customize_outlined
+                        : Icons.work_outline_rounded,
+                color: const Color(0xFF0D2618),
+                size: 32,
+              ),
+            ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 28),
           Row(
             children: [
               for (final metric in stats)
@@ -1307,17 +1304,17 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                 ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 28),
           if (_role == AppRole.resident) _buildQuickActions(),
           if (_role == AppRole.rider) ...[
-            const SizedBox(height: 18),
+            const SizedBox(height: 28),
             _buildRiderRoute(),
           ],
           if (_role == AppRole.admin) ...[
-            const SizedBox(height: 18),
+            const SizedBox(height: 28),
             _buildAdminWorkspace(),
           ],
-          const SizedBox(height: 18),
+          const SizedBox(height: 28),
 
           // Interactive Arua Map View
           InteractiveAruaMapPanel(
@@ -1328,14 +1325,14 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           ),
 
           if (_role == AppRole.resident) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 28),
             ResidentEcoImpactCard(personalRequests: residentOrders),
-            const SizedBox(height: 12),
+            const SizedBox(height: 28),
             WasteSegregationTipsCard(onTapDatabase: _showWasteDatabase),
-            const SizedBox(height: 16),
+            const SizedBox(height: 28),
             _buildReportButton(),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -1345,100 +1342,91 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     final report = _weatherReport;
     final isOnline = report?.isOnline ?? false;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0F7F2),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFD6E8D8)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              report != null && report.isSafeForCollection
-                  ? Icons.wb_sunny_rounded
-                  : Icons.cloud_queue_rounded,
-              color: const Color(0xFF2E7D32),
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Arua Route Weather',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF183B20),
-                        ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Icon(
+          report != null && report.isSafeForCollection
+              ? Icons.wb_sunny_outlined
+              : Icons.cloud_outlined,
+          color: const Color(0xFF0D2618),
+          size: 32,
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Arua Route Weather',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0D2618),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isOnline
-                            ? const Color(0xFFE8F5E9)
-                            : const Color(0xFFFFF3E0),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        isOnline ? 'Open-Meteo Live' : 'Offline Cache',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          color: isOnline
-                              ? const Color(0xFF2E7D32)
-                              : const Color(0xFFE65100),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  report != null
-                      ? '${report.temperatureC.toStringAsFixed(1)}°C • ${report.conditionSummary}'
-                      : 'Connecting to Open-Meteo weather service...',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF556958),
                   ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(color: const Color(0xFF0D2618), width: 1),
+                    ),
+                    child: Text(
+                      isOnline ? 'Open-Meteo Live' : 'Offline Cache',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0D2618),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 3),
+              Text(
+                report != null
+                    ? '${report.temperatureC.toStringAsFixed(1)}°C • ${report.conditionSummary}'
+                    : 'Connecting to Open-Meteo weather service...',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w400,
+                  color: Color(0xFF1A3A28),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          IconButton(
-            onPressed: _loadingWeather ? null : _loadWeather,
-            tooltip: 'Refresh Weather',
-            icon: _loadingWeather
-                ? const SizedBox.square(
-                    dimension: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.refresh_rounded, size: 20),
-          ),
-        ],
-      ),
+        ),
+        IconButton(
+          onPressed: _loadingWeather ? null : _loadWeather,
+          tooltip: 'Refresh Weather',
+          icon: _loadingWeather
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Color(0xFF0D2618),
+                  ),
+                )
+              : const Icon(
+                  Icons.refresh_rounded,
+                  size: 22,
+                  color: Color(0xFF0D2618),
+                ),
+        ),
+      ],
     );
   }
 
@@ -2240,9 +2228,9 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 19,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF183B20),
+              fontSize: 23,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0D2618),
             ),
           ),
           const SizedBox(height: 3),
@@ -2250,22 +2238,24 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             subtitle,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Color(0xFF647568)),
+            style: const TextStyle(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFF1A3A28),
+            ),
           ),
         ],
       );
 
       return Padding(
-        padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
-        child: constraints.maxWidth < 340
-            ? greeting
-            : Row(
-                children: [
-                  const WelcomeIcon(),
-                  const SizedBox(width: 12),
-                  Expanded(child: greeting),
-                ],
-              ),
+        padding: const EdgeInsets.fromLTRB(0, 4, 0, 0),
+        child: Row(
+          children: [
+            const WelcomeIcon(),
+            const SizedBox(width: 14),
+            Expanded(child: greeting),
+          ],
+        ),
       );
     },
   );

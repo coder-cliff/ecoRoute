@@ -5,10 +5,11 @@ import '../../../core/utils/formatters.dart';
 import '../../../domain/entities/app_user.dart';
 import '../../../domain/entities/pickup_request.dart';
 import '../../../domain/enums/request_status.dart';
+import '../../../domain/enums/role.dart';
 import '../../../domain/enums/waste_type.dart';
 
-/// Personalized greeting card for residents showing time-of-day greeting,
-/// user profile pill, and quick eco-status.
+/// Personalized greeting section for residents showing time-of-day greeting,
+/// user profile pill, and quick eco-status in flat, borderless Rich Jade style.
 class ResidentHeroGreeting extends StatelessWidget {
   const ResidentHeroGreeting({
     required this.user,
@@ -29,166 +30,114 @@ class ResidentHeroGreeting extends StatelessWidget {
   }
 
   String get _displayName {
-    if (user == null || user!.fullName.isEmpty) return 'EcoRoute Resident';
+    if (user == null || user!.fullName.isEmpty) return 'Resident';
     final parts = user!.fullName.trim().split(RegExp(r'\s+'));
     return parts.first;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1B5E3B), Color(0xFF2E8B57)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x281B5E3B),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Top row: Greeting on left, thin outlined badge on right
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Text(
+                '$_greeting, $_displayName',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0D2618),
+                  letterSpacing: -0.4,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            InkWell(
+              onTap: onTapProfile,
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
-                ),
-                child: Center(
-                  child: Text(
-                    _displayName.isNotEmpty ? _displayName[0].toUpperCase() : 'R',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$_greeting, $_displayName!',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Container(
-                          width: 7,
-                          height: 7,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF69F0AE),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Expanded(
-                          child: Text(
-                            'Arua City • On-Demand Tricycles Active',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFFD4EED8),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              if (onTapProfile != null)
-                Material(
                   color: Colors.transparent,
-                  child: InkWell(
-                    onTap: onTapProfile,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.shield_outlined, size: 14, color: Colors.white),
-                          SizedBox(width: 4),
-                          Text(
-                            'Resident',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFF0D2618), width: 1),
+                ),
+                child: Text(
+                  user?.role == AppRole.admin
+                      ? 'Admin'
+                      : user?.role == AppRole.rider
+                          ? 'Rider'
+                          : 'Resident',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0D2618),
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.bolt_rounded, size: 16, color: Color(0xFFFFD54F)),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    activeRequestsCount > 0
-                        ? '$activeRequestsCount collection request${activeRequestsCount > 1 ? 's' : ''} currently in progress'
-                        : 'Instant waste collection ready • Average rider arrival 20-35 mins',
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFF1F8F3),
-                    ),
-                  ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        // Middle row: "Arua City • On-Demand Tricycle" followed by inline 9x9 green circle
+        Row(
+          children: [
+            const Flexible(
+              child: Text(
+                'Arua City • On-Demand Tricycle',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF1A3A28),
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
-      ),
+            const SizedBox(width: 8),
+            Container(
+              width: 9,
+              height: 9,
+              decoration: const BoxDecoration(
+                color: Color(0xFF22C55E),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // Bottom row: Flat inline lightning bolt icon + active requests text with no background pill
+        Row(
+          children: [
+            const Icon(Icons.bolt_rounded, size: 18, color: Color(0xFF0D2618)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                activeRequestsCount > 0
+                    ? '$activeRequestsCount collection request${activeRequestsCount > 1 ? 's' : ''} currently in progress'
+                    : 'Instant waste collection ready • Ready for dispatch',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF0D2618),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
 
-/// Active pickup tracking card shown prominently on the resident home dashboard.
+/// Active pickup tracking card shown prominently in flat, borderless Terracotta accent style.
 class ActivePickupTrackerCard extends StatelessWidget {
   const ActivePickupTrackerCard({
     required this.request,
@@ -211,7 +160,7 @@ class ActivePickupTrackerCard extends StatelessWidget {
 
   String get _stageTitle => switch (request.status) {
     RequestStatus.requested => 'Tricycle Rider Dispatched',
-    RequestStatus.collected => 'Waste Collected • In Transit to Depot',
+    RequestStatus.collected => 'Waste Collected • In Transit',
     RequestStatus.awaitingVerification => 'Depot Verification Pending',
     RequestStatus.paid => 'Pickup Verified & Settled',
     RequestStatus.cancelled => 'Pickup Cancelled',
@@ -219,241 +168,212 @@ class ActivePickupTrackerCard extends StatelessWidget {
 
   String get _stageSubtitle => switch (request.status) {
     RequestStatus.requested => 'Rider heading to your address in Arua',
-    RequestStatus.collected => 'Collected by rider, weighing at sorting center',
+    RequestStatus.collected => 'Collected by rider, in transit to sorting depot',
     RequestStatus.awaitingVerification => 'Depot administrator reviewing audit weight',
     RequestStatus.paid => 'Thank you for keeping Arua City clean!',
     RequestStatus.cancelled => 'This order was cancelled',
   };
 
-  Color get _stageColor => switch (request.status) {
-    RequestStatus.requested => const Color(0xFFE65100),
-    RequestStatus.collected => const Color(0xFF0288D1),
-    RequestStatus.awaitingVerification => const Color(0xFF7B1FA2),
-    RequestStatus.paid => const Color(0xFF2E7D32),
-    RequestStatus.cancelled => const Color(0xFFC62828),
-  };
-
   @override
   Widget build(BuildContext context) {
-    final shortId = request.id.length > 6
-        ? request.id.substring(request.id.length - 6).toUpperCase()
-        : request.id.toUpperCase();
+    final rawSuffix = request.id.replaceAll(RegExp(r'[^0-9]'), '');
+    final shortId = rawSuffix.length >= 6
+        ? rawSuffix.substring(rawSuffix.length - 6)
+        : (request.id.length > 6
+            ? request.id.substring(request.id.length - 6).toUpperCase()
+            : request.id.toUpperCase());
 
     final step = _stepIndex;
+    const terracotta = Color(0xFF9C3D18);
+    const primaryInk = Color(0xFF0D2618);
+    const subtleTint = Color(0x1F0D2618);
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _stageColor.withValues(alpha: 0.3), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: _stageColor.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header banner
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: _stageColor.withValues(alpha: 0.1),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header row: Stage title + Short ID in Terracotta on left, Outlined tricycle icon on right
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Text(
+                '$_stageTitle #$shortId',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: terracotta,
+                ),
+              ),
             ),
-            child: Row(
-              children: [
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.electric_rickshaw_outlined,
+              size: 26,
+              color: terracotta,
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        // Subtitle: Rider heading to your address in Arua
+        Text(
+          _stageSubtitle,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+            color: primaryInk,
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // 4-Step Horizontal Stepper (Requested -> Collected -> Verifying -> Settled)
+        Row(
+          children: [
+            for (int i = 0; i < 4; i++) ...[
+              // Step Node
+              if (i <= (step >= 0 ? step : 0))
                 Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: _stageColor,
+                  width: 26,
+                  height: 26,
+                  decoration: const BoxDecoration(
+                    color: terracotta,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    request.status == RequestStatus.paid
-                        ? Icons.check
-                        : Icons.two_wheeler_rounded,
-                    size: 14,
-                    color: Colors.white,
+                  child: const Center(
+                    child: Icon(
+                      Icons.check,
+                      size: 16,
+                      color: Color(0xFF72B08D),
+                    ),
+                  ),
+                )
+              else if (i == (step >= 0 ? step : 0) + 1)
+                Container(
+                  width: 11,
+                  height: 11,
+                  decoration: const BoxDecoration(
+                    color: terracotta,
+                    shape: BoxShape.circle,
+                  ),
+                )
+              else
+                Container(
+                  width: 11,
+                  height: 11,
+                  decoration: const BoxDecoration(
+                    color: subtleTint,
+                    shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            _stageTitle,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: _stageColor,
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            '#$shortId',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              color: _stageColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _stageSubtitle,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF556958),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
 
-          // Stepper bar
-          if (step >= 0)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              // Connecting Line
+              if (i < 3)
+                Expanded(
+                  child: Container(
+                    height: i <= (step >= 0 ? step : 0) ? 2.5 : 1.5,
+                    color: i <= (step >= 0 ? step : 0) ? terracotta : subtleTint,
+                  ),
+                ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 6),
+        // Step labels
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Requested', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF1A3A28))),
+            Text('Collected', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF1A3A28))),
+            Text('Verifying', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF1A3A28))),
+            Text('Settled', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF1A3A28))),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        // Details & CTA row
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left column: Sack count & Address
+            Expanded(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      for (int i = 0; i < 4; i++) ...[
-                        Container(
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            color: i <= step ? _stageColor : const Color(0xFFE0E6E2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Icon(
-                              i <= step ? Icons.check : Icons.circle,
-                              size: 11,
-                              color: i <= step ? Colors.white : const Color(0xFF9E9E9E),
-                            ),
+                      const Icon(Icons.inventory_2_outlined, size: 16, color: primaryInk),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '${request.sackCount} sack(s) • ${request.wasteType.label}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: primaryInk,
                           ),
                         ),
-                        if (i < 3)
-                          Expanded(
-                            child: Container(
-                              height: 3,
-                              color: i < step ? _stageColor : const Color(0xFFE0E6E2),
-                            ),
-                          ),
-                      ],
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  const SizedBox(height: 5),
+                  Row(
                     children: [
-                      Text('Requested', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF556958))),
-                      Text('Collected', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF556958))),
-                      Text('Verifying', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF556958))),
-                      Text('Settled', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF556958))),
+                      const Icon(Icons.location_on_outlined, size: 16, color: primaryInk),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          request.address,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w400,
+                            color: primaryInk,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ],
               ),
             ),
-
-          // Request Summary details
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
-            child: Row(
+            const SizedBox(width: 12),
+            // Right column: Price on top + flat text link "View Live Status >" below
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.inventory_2_outlined, size: 14, color: _stageColor),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${request.sackCount} sack(s) • ${request.wasteType.label}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1B2E23),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          const Icon(Icons.location_on_outlined, size: 14, color: Color(0xFF71877D)),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              request.address,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                color: Color(0xFF556958),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                Text(
+                  formatUgx(request.priceUgx),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: primaryInk,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      formatUgx(request.priceUgx),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF1B5E20),
-                      ),
+                const SizedBox(height: 4),
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    onTapDetails();
+                  },
+                  child: const Text(
+                    'View Live Status >',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: terracotta,
                     ),
-                    const SizedBox(height: 4),
-                    OutlinedButton(
-                      onPressed: () {
-                        HapticFeedback.selectionClick();
-                        onTapDetails();
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        minimumSize: const Size(0, 28),
-                        side: BorderSide(color: _stageColor),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      child: Text(
-                        'View Live Status',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: _stageColor,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 }
