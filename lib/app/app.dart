@@ -44,7 +44,7 @@ class EcoRouteApp extends StatelessWidget {
             theme: EcoRouteTheme.build(brightness: Brightness.light),
             darkTheme: EcoRouteTheme.buildDark(),
             themeMode: ThemeService.instance.themeMode,
-            home: EcoRouteSplashScreen(
+            home: EcoRouteHomeScreen(
               repository: repository,
               authService: authService,
               wasteApiService: wasteApiService,

@@ -35,6 +35,12 @@ Future<void> main() async {
     try {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
+      ).timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('Firebase initialization timed out, running in local mode');
+          return Firebase.app();
+        },
       );
       firebaseAuth = FirebaseAuth.instance;
       firestore = FirebaseFirestore.instance;
