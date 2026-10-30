@@ -188,10 +188,17 @@ class ActivePickupTrackerCard extends StatelessWidget {
     const primaryInk = Color(0xFF0D2618);
     const subtleTint = Color(0x1F0D2618);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header row: Stage title + Short ID in Terracotta on left, Outlined tricycle icon on right
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0x120D2618),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row: Stage title + Short ID in Terracotta on left, Outlined tricycle icon on right
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -282,12 +289,65 @@ class ActivePickupTrackerCard extends StatelessWidget {
         const SizedBox(height: 6),
         // Step labels
         const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Requested', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF1A3A28))),
-            Text('Collected', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF1A3A28))),
-            Text('Verifying', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF1A3A28))),
-            Text('Settled', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF1A3A28))),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Requested',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A3A28),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: Text(
+                  'Collected',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A3A28),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: Text(
+                  'Verifying',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A3A28),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  'Settled',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A3A28),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 14),
@@ -374,8 +434,9 @@ class ActivePickupTrackerCard extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
+    ),
+  );
+}
 }
 
 /// 4-card Quick Action Grid specifically tailored for residents.
