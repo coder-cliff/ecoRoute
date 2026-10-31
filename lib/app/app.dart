@@ -5,7 +5,7 @@ import '../core/pickup_request_repository.dart';
 import '../core/services/auth_service.dart';
 import '../core/services/theme_service.dart';
 import '../core/services/waste_api_service.dart';
-import '../features/home/home_screen.dart';
+import '../features/auth/splash_screen.dart';
 import 'theme/app_theme.dart';
 
 class EcoRouteApp extends StatelessWidget {
@@ -14,11 +14,13 @@ class EcoRouteApp extends StatelessWidget {
     this.repository = const MemoryPickupRequestRepository(),
     this.authService,
     this.wasteApiService,
+    this.home,
   });
 
   final PickupRequestRepository repository;
   final AuthService? authService;
   final WasteApiService? wasteApiService;
+  final Widget? home;
 
   @override
   Widget build(BuildContext context) {
@@ -26,8 +28,10 @@ class EcoRouteApp extends StatelessWidget {
       listenable: ThemeService.instance,
       builder: (context, _) {
         final isDark = ThemeService.instance.isDarkMode;
-        final statusBarColor = isDark ? const Color(0xFF12281B) : const Color(0xFF72B08D);
-        final navBarColor = isDark ? const Color(0xFF12281B) : const Color(0xFF72B08D);
+        final statusBarColor =
+            isDark ? const Color(0xFF12281B) : const Color(0xFFE8ECE7);
+        final navBarColor =
+            isDark ? const Color(0xFF12281B) : const Color(0xFFE8ECE7);
 
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle(
@@ -35,7 +39,8 @@ class EcoRouteApp extends StatelessWidget {
             statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
             statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
             systemNavigationBarColor: navBarColor,
-            systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            systemNavigationBarIconBrightness:
+                isDark ? Brightness.light : Brightness.dark,
             systemNavigationBarDividerColor: Colors.transparent,
           ),
           child: MaterialApp(
@@ -44,11 +49,12 @@ class EcoRouteApp extends StatelessWidget {
             theme: EcoRouteTheme.build(brightness: Brightness.light),
             darkTheme: EcoRouteTheme.buildDark(),
             themeMode: ThemeService.instance.themeMode,
-            home: EcoRouteHomeScreen(
-              repository: repository,
-              authService: authService,
-              wasteApiService: wasteApiService,
-            ),
+            home: home ??
+                SplashScreen(
+                  repository: repository,
+                  authService: authService,
+                  wasteApiService: wasteApiService,
+                ),
           ),
         );
       },

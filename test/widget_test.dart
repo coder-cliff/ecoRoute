@@ -5,45 +5,51 @@ import 'package:ecoroute/core/pickup_request_repository.dart';
 import 'package:ecoroute/domain/entities/pickup_request.dart';
 import 'package:ecoroute/domain/enums/request_status.dart';
 import 'package:ecoroute/domain/enums/waste_type.dart';
+import 'package:ecoroute/features/auth/login_screen.dart';
 import 'package:ecoroute/features/home/home_screen.dart';
+import 'package:ecoroute/features/rider/rider_task_hub.dart';
+import 'package:ecoroute/features/admin/admin_dashboard.dart';
 import 'package:ecoroute/main.dart';
 
 void main() {
-  testWidgets('users can browse the EcoRoute dashboard', (
+  testWidgets('launch sequence starts with splash and transitions to Sign-In portal', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const EcoRouteApp());
-    await tester.pump(const Duration(seconds: 3));
-    await tester.pumpAndSettle();
-
+    // Initial splash state
     expect(find.text('EcoRoute'), findsOneWidget);
 
-    expect(find.text('Arua waste pickup'), findsOneWidget);
-    expect(find.text('Arua service radius: 12 km'), findsOneWidget);
-    expect(find.text('REPORT AN ISSUE'), findsOneWidget);
+    // After 1.5s splash animation, automatically transitions to LoginScreen
+    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sign In'), findsNWidgets(2));
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.text('Forgot Password?'), findsOneWidget);
+    expect(find.text('Don\'t have an account? '), findsOneWidget);
   });
 
-  testWidgets('auth accounts sign in as different roles', (
+  testWidgets('auth accounts sign in as different roles with automatic routing', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const EcoRouteApp());
-    await tester.pump(const Duration(seconds: 2));
+    await tester.pump(const Duration(milliseconds: 1600));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('REPORT AN ISSUE'));
-    await tester.tap(find.text('REPORT AN ISSUE'));
-    await tester.pumpAndSettle();
-
+    // Fill in Rider credentials on Login Screen
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Email address'),
+      find.byKey(const ValueKey('login_email_input')),
       'rider.juma@ecoroute.ug',
     );
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Password'),
+      find.byKey(const ValueKey('login_password_input')),
       'OfficialAdmin@2026',
     );
-    await tester.tap(find.widgetWithText(FilledButton, 'Login'));
+    await tester.tap(find.byKey(const ValueKey('login_submit_button')));
     await tester.pumpAndSettle();
+
+    // Automatically routed to Rider Task Hub without any manual role selection
+    expect(find.byType(RiderTaskHub), findsOneWidget);
     await tester.ensureVisible(find.text('Profile'));
     await tester.tap(find.text('Profile'));
     await tester.pumpAndSettle();
@@ -51,25 +57,30 @@ void main() {
     expect(find.text('Signed in as Rider'), findsOneWidget);
   });
 
-  testWidgets('order form validates waste type and description', (
+  testWidgets('resident sign in routes to resident dashboard and validates order form', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const EcoRouteApp());
-    await tester.pump(const Duration(seconds: 2));
+    await tester.pump(const Duration(milliseconds: 1600));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('REPORT AN ISSUE'));
-    await tester.tap(find.text('REPORT AN ISSUE'));
-    await tester.pumpAndSettle();
+
+    // Fill in resident credentials
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Email address'),
+      find.byKey(const ValueKey('login_email_input')),
       'user@example.com',
     );
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Password'),
+      find.byKey(const ValueKey('login_password_input')),
       'secret123',
     );
-    await tester.tap(find.widgetWithText(FilledButton, 'Login'));
+    await tester.tap(find.byKey(const ValueKey('login_submit_button')));
     await tester.pumpAndSettle();
+
+    // Automatically routed to Resident Dashboard
+    expect(find.text('Arua waste pickup'), findsOneWidget);
+    expect(find.text('REPORT AN ISSUE'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('REPORT AN ISSUE'));
     await tester.tap(find.text('REPORT AN ISSUE'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Submit collection order'));
@@ -88,8 +99,11 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const EcoRouteApp());
-    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: HomeScreen(repository: MemoryPickupRequestRepository()),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('REPORT AN ISSUE'));
@@ -109,10 +123,9 @@ void main() {
       ),
     ]);
     await tester.pumpWidget(
-      MaterialApp(home: EcoRouteHomeScreen(repository: repository)),
+      MaterialApp(home: RiderTaskHub(repository: repository)),
     );
     await tester.pumpAndSettle();
-    await _signInAs(tester, 'Rider');
 
     await tester.ensureVisible(find.text('Mark collected'));
     await tester.tap(find.text('Mark collected'));
@@ -151,10 +164,9 @@ void main() {
       ),
     ]);
     await tester.pumpWidget(
-      MaterialApp(home: EcoRouteHomeScreen(repository: repository)),
+      MaterialApp(home: AdminDashboard(repository: repository)),
     );
     await tester.pumpAndSettle();
-    await _signInAs(tester, 'Admin');
 
     await tester.ensureVisible(find.text('Approve payment').first);
     await tester.tap(find.text('Approve payment').first);
@@ -176,35 +188,6 @@ void main() {
       containsAll([RequestStatus.paid, RequestStatus.collected]),
     );
   });
-}
-
-Future<void> _signInAs(WidgetTester tester, String role) async {
-  final authBtn = find.byWidgetPredicate(
-    (w) =>
-        w is Icon &&
-        (w.icon == Icons.account_circle_outlined ||
-            w.icon == Icons.account_circle_rounded ||
-            w.icon == Icons.notifications_none_rounded),
-  );
-  await tester.tap(authBtn);
-  await tester.pumpAndSettle();
-  if (role.toLowerCase() == 'rider') {
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Email address'),
-      'rider.juma@ecoroute.ug',
-    );
-  } else if (role.toLowerCase() == 'admin') {
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Email address'),
-      'saviordeogratius@yahoo.com',
-    );
-  }
-  await tester.enterText(
-    find.widgetWithText(TextFormField, 'Password'),
-    'OfficialAdmin@2026',
-  );
-  await tester.tap(find.widgetWithText(FilledButton, 'Login'));
-  await tester.pumpAndSettle();
 }
 
 class _TestPickupRequestRepository implements PickupRequestRepository {

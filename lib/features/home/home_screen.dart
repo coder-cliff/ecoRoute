@@ -9,6 +9,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/language_service.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/rider_invite_service.dart';
+import '../../core/services/router_service.dart';
 import '../../core/services/waste_api_service.dart';
 import '../../core/utils/formatters.dart';
 import '../../domain/entities/app_user.dart';
@@ -36,6 +37,7 @@ import 'widgets/metric_cards.dart';
 import 'widgets/resident_dashboard_widgets.dart';
 import 'widgets/status_selector.dart';
 
+export '../auth/splash_screen.dart';
 export 'widgets/brand_lockup.dart';
 export 'widgets/interactive_map_panel.dart';
 export 'widgets/metric_cards.dart';
@@ -43,6 +45,7 @@ export 'widgets/resident_dashboard_widgets.dart';
 export 'widgets/status_selector.dart';
 
 // Backward compatibility aliases
+typedef HomeScreen = EcoRouteHomeScreen;
 typedef _RouteStop = RouteStopTile;
 typedef _ApprovalItem = ApprovalItemTile;
 typedef _AnalyticsRow = AnalyticsRow;
@@ -164,6 +167,7 @@ class EcoRouteHomeScreen extends StatefulWidget {
     this.authService,
     this.wasteApiService,
     this.locationService = const LocationService(),
+    this.enforcedRole,
     super.key,
   });
 
@@ -171,6 +175,7 @@ class EcoRouteHomeScreen extends StatefulWidget {
   final AuthService? authService;
   final WasteApiService? wasteApiService;
   final LocationService locationService;
+  final AppRole? enforcedRole;
 
   @override
   State<EcoRouteHomeScreen> createState() => _EcoRouteHomeScreenState();
@@ -255,12 +260,16 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   }
 
   void _loadUserSession() {
+    if (widget.enforcedRole != null) {
+      _role = widget.enforcedRole!;
+      _signedIn = true;
+    }
     if (widget.authService != null) {
       _remindersEnabled = widget.authService!.getRemindersEnabled();
       final user = widget.authService!.getCurrentUser();
       if (user != null) {
         _signedIn = true;
-        _role = user.role;
+        _role = widget.enforcedRole ?? user.role;
         _currentUser = user;
       }
     }
@@ -867,6 +876,12 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     _loadRiders();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Signed out successfully.')),
+    );
+    AppRouter.routeToLogin(
+      context,
+      repository: widget.repository,
+      authService: widget.authService,
+      wasteApiService: widget.wasteApiService,
     );
   }
 
