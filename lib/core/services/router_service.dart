@@ -5,6 +5,7 @@ import '../pickup_request_repository.dart';
 import 'auth_service.dart';
 import 'waste_api_service.dart';
 import '../../features/auth/login_screen.dart';
+import '../../features/auth/role_select_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/rider/rider_task_hub.dart';
 import '../../features/admin/admin_dashboard.dart';
@@ -62,6 +63,28 @@ class AppRouter {
           return FadeTransition(opacity: animation, child: child);
         },
         transitionDuration: const Duration(milliseconds: 300),
+      ),
+      (route) => false,
+    );
+  }
+
+  static void routeToRoleSelect(
+    BuildContext context, {
+    required PickupRequestRepository repository,
+    AuthService? authService,
+    WasteApiService? wasteApiService,
+  }) {
+    Navigator.of(context).pushAndRemoveUntil(
+      PageRouteBuilder<void>(
+        pageBuilder: (context, animation, secondaryAnimation) => RoleSelectScreen(
+          repository: repository,
+          authService: authService,
+          wasteApiService: wasteApiService,
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 250),
       ),
       (route) => false,
     );
