@@ -7,6 +7,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:printing/printing.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -53,16 +55,24 @@ class EcoRouteState extends ChangeNotifier {
   factory EcoRouteState() => instance;
   EcoRouteState._internal();
 
-  static const String _kStorageKey = 'ecoroute_app_state_v2';
+  static const String _kStorageKey = 'ecoroute_app_state_v3';
   SharedPreferences? _prefs;
 
   // Active Role and Profile
   String currentRole = 'resident'; // 'resident', 'rider', 'admin'
   String userName = 'Jane Agondua';
+  String userUsername = 'jane_arua';
   String userEmail = 'resident.arua@ecoroute.ug';
-  String userPhone = '+256394880352';
+  String userPhone = '+256 394 880 352';
   String userCell = 'Ediofe, Trading Center';
+  String? userPhotoBase64;
   int ecoCredits = 150;
+
+  // Saved addresses
+  List<Map<String, String>> savedAddresses = [
+    {'label': 'Home', 'address': 'Ediofe, Trading Center'},
+    {'label': 'Store', 'address': 'Arua Central Market'},
+  ];
 
   // Active Pickup State
   Map<String, dynamic> activePickup = {
@@ -70,6 +80,7 @@ class EcoRouteState extends ChangeNotifier {
     'sacks': 1,
     'wasteType': 'Household',
     'address': 'Ediofe, Trading Center',
+    'pickupNotes': 'Behind blue gate, call on arrival',
     'price': '2,500 UGX',
     'status': 'Dispatched',
     'step': 1, // 0: Requested, 1: Dispatched, 2: Verifying, 3: Settled
@@ -79,6 +90,9 @@ class EcoRouteState extends ChangeNotifier {
     'createdAt': 'Today, 08:30 AM',
     'isInstant': true,
     'paymentMethod': 'Cash on Collection',
+    'photoEvidence': null,
+    'riderRating': null,
+    'receiptSerial': 'ECO-ARUA-251985',
   };
 
   // Resident Requests History
@@ -90,6 +104,7 @@ class EcoRouteState extends ChangeNotifier {
       'size': '1 Sack',
       'status': 'Dispatched',
       'color': 0xFF9C3D18,
+      'receiptSerial': 'ECO-ARUA-251985',
     },
     {
       'id': 'Sacks Pickup #249112',
@@ -98,6 +113,7 @@ class EcoRouteState extends ChangeNotifier {
       'size': '2 Sacks',
       'status': 'Settled',
       'color': 0xFF0D2618,
+      'receiptSerial': 'ECO-ARUA-249112',
     },
     {
       'id': 'Standard Pickup #248873',
@@ -106,6 +122,7 @@ class EcoRouteState extends ChangeNotifier {
       'size': '1 Sack',
       'status': 'Settled',
       'color': 0xFF0D2618,
+      'receiptSerial': 'ECO-ARUA-248873',
     },
   ];
 
@@ -116,6 +133,7 @@ class EcoRouteState extends ChangeNotifier {
       'client': 'Jane Agondua',
       'phone': '+256 394 880 352',
       'address': 'Ediofe, Trading Center',
+      'pickupNotes': 'Behind blue gate, call on arrival',
       'sacks': 1,
       'wasteType': 'Household',
       'payment': '2,500 UGX Cash',
@@ -124,12 +142,15 @@ class EcoRouteState extends ChangeNotifier {
       'distance': '1.4 km',
       'eta': '8 mins',
       'zone': 'Ediofe',
+      'photoEvidence': null,
+      'receiptSerial': 'ECO-ARUA-251985',
     },
     {
       'id': '251992',
       'client': 'Arua Hill Secondary School',
       'phone': '+256 394 880 352',
       'address': 'Arua Hill Avenue, Near Stadium',
+      'pickupNotes': 'Main school gate, security desk',
       'sacks': 3,
       'wasteType': 'Commercial',
       'payment': '7,500 UGX Cash',
@@ -138,12 +159,15 @@ class EcoRouteState extends ChangeNotifier {
       'distance': '3.2 km',
       'eta': '15 mins',
       'zone': 'Arua Hill',
+      'photoEvidence': null,
+      'receiptSerial': 'ECO-ARUA-251992',
     },
     {
       'id': '252004',
       'client': 'Onduparaka Green Grocers',
       'phone': '+256 394 880 352',
       'address': 'Onduparaka Center, Road Junction',
+      'pickupNotes': 'Vegetable crates by market stall #4',
       'sacks': 2,
       'wasteType': 'Organic',
       'payment': '5,000 UGX Cash',
@@ -152,6 +176,8 @@ class EcoRouteState extends ChangeNotifier {
       'distance': '4.1 km',
       'eta': '19 mins',
       'zone': 'Onduparaka',
+      'photoEvidence': null,
+      'receiptSerial': 'ECO-ARUA-252004',
     },
   ];
 
@@ -218,6 +244,50 @@ class EcoRouteState extends ChangeNotifier {
   ];
   int selectedTricycleIndex = 0;
 
+  // Registered Rider Roster for Municipal Governance
+  List<Map<String, dynamic>> riderRoster = [
+    {
+      'id': 'RIDER-001',
+      'name': 'John B. Angundru',
+      'phone': '+256 394 880 352',
+      'tricycleId': 'TRIC-04',
+      'zone': 'Ediofe Trading Center',
+      'status': 'Approved',
+      'rating': 4.9,
+      'trips': 142,
+    },
+    {
+      'id': 'RIDER-002',
+      'name': 'Musa Kadir',
+      'phone': '+256 394 880 352',
+      'tricycleId': 'TRIC-09',
+      'zone': 'Onduparaka Center',
+      'status': 'Approved',
+      'rating': 4.7,
+      'trips': 98,
+    },
+    {
+      'id': 'RIDER-003',
+      'name': 'Grace Ayikoru',
+      'phone': '+256 394 880 352',
+      'tricycleId': 'TRIC-12',
+      'zone': 'Arua Hill Avenue',
+      'status': 'Approved',
+      'rating': 5.0,
+      'trips': 167,
+    },
+    {
+      'id': 'RIDER-004',
+      'name': 'David Oroma',
+      'phone': '+256 394 880 352',
+      'tricycleId': 'TRIC-18',
+      'zone': 'Arua Central Market',
+      'status': 'Approved',
+      'rating': 4.8,
+      'trips': 84,
+    },
+  ];
+
   // Live Weather
   String weatherTemp = '20.3°C';
   String weatherCondition = 'Favorable';
@@ -241,6 +311,7 @@ class EcoRouteState extends ChangeNotifier {
   List<double> weeklyTonnage = [1.8, 2.1, 2.4, 1.9, 2.8, 2.0, 1.5]; // Mon to Sun
   List<Map<String, dynamic>> supportTickets = [];
   List<Map<String, dynamic>> invitedRiders = [];
+  List<Map<String, dynamic>> offlineSyncQueue = [];
 
   int get pendingPickupsCount {
     return riderTasks.where((t) => t['status'] != 'Settled').length;
@@ -259,9 +330,11 @@ class EcoRouteState extends ChangeNotifier {
         final map = jsonDecode(saved) as Map<String, dynamic>;
         if (map['currentRole'] != null) currentRole = map['currentRole'] as String;
         if (map['userName'] != null) userName = map['userName'] as String;
+        if (map['userUsername'] != null) userUsername = map['userUsername'] as String;
         if (map['userEmail'] != null) userEmail = map['userEmail'] as String;
         if (map['userPhone'] != null) userPhone = map['userPhone'] as String;
         if (map['userCell'] != null) userCell = map['userCell'] as String;
+        if (map['userPhotoBase64'] != null) userPhotoBase64 = map['userPhotoBase64'] as String?;
         if (map['ecoCredits'] != null) ecoCredits = (map['ecoCredits'] as num).toInt();
         if (map['riderLedgerBalance'] != null) riderLedgerBalance = (map['riderLedgerBalance'] as num).toInt();
         if (map['totalTonnes'] != null) totalTonnes = (map['totalTonnes'] as num).toDouble();
@@ -281,9 +354,11 @@ class EcoRouteState extends ChangeNotifier {
       final stateMap = {
         'currentRole': currentRole,
         'userName': userName,
+        'userUsername': userUsername,
         'userEmail': userEmail,
         'userPhone': userPhone,
         'userCell': userCell,
+        'userPhotoBase64': userPhotoBase64,
         'ecoCredits': ecoCredits,
         'riderLedgerBalance': riderLedgerBalance,
         'totalTonnes': totalTonnes,
@@ -300,12 +375,15 @@ class EcoRouteState extends ChangeNotifier {
     currentRole = role;
     if (role == 'resident') {
       userName = 'Jane Agondua';
+      userUsername = 'jane_arua';
       userEmail = 'resident.arua@ecoroute.ug';
     } else if (role == 'rider') {
       userName = 'John B. (TRIC-04)';
+      userUsername = 'john_rider';
       userEmail = 'rider.john@ecoroute.ug';
     } else {
       userName = 'Arua Command HQ';
+      userUsername = 'admin_arua';
       userEmail = 'admin@ecoroute.ug';
     }
     _saveState();
@@ -325,23 +403,65 @@ class EcoRouteState extends ChangeNotifier {
     required String name,
     required String email,
     required String phone,
+    String? username,
     String? cell,
+    String? photoBase64,
   }) {
     currentRole = role;
     userName = name;
     userEmail = email;
     userPhone = phone;
+    if (username != null && username.isNotEmpty) userUsername = username;
     if (cell != null && cell.isNotEmpty) userCell = cell;
+    if (photoBase64 != null) userPhotoBase64 = photoBase64;
     _saveState();
     notifyListeners();
   }
 
-  void updateProfile({required String name, required String phone, required String cell}) {
+  void updateProfile({
+    required String name,
+    required String username,
+    required String phone,
+    required String cell,
+    String? photoBase64,
+  }) {
     userName = name;
+    userUsername = username;
     userPhone = phone;
     userCell = cell;
+    if (photoBase64 != null) userPhotoBase64 = photoBase64;
     _saveState();
     notifyListeners();
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null && Firebase.apps.isNotEmpty) {
+      try {
+        FirebaseFirestore.instance.collection('profiles').doc(uid).set({
+          'fullName': name,
+          'username': username.toLowerCase(),
+          'phone': phone,
+          'cell': cell,
+          'photoBase64': ?photoBase64,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('Firestore profile update notice: $e');
+      }
+    }
+  }
+
+  void addSavedAddress(String label, String address) {
+    savedAddresses.add({'label': label, 'address': address});
+    _saveState();
+    notifyListeners();
+  }
+
+  void removeSavedAddress(int index) {
+    if (index >= 0 && index < savedAddresses.length) {
+      savedAddresses.removeAt(index);
+      _saveState();
+      notifyListeners();
+    }
   }
 
   void bookPickup({
@@ -350,17 +470,20 @@ class EcoRouteState extends ChangeNotifier {
     required String address,
     required bool isInstant,
     required String paymentMethod,
+    String pickupNotes = '',
   }) {
     final rng = Random();
     final newId = '${rng.nextInt(90000) + 100000}';
     final code = '${rng.nextInt(9000) + 1000}';
     final price = '${sacks * 2500} UGX';
+    final serial = 'ECO-ARUA-$newId';
 
     activePickup = {
       'id': newId,
       'sacks': sacks,
       'wasteType': wasteType,
       'address': address,
+      'pickupNotes': pickupNotes,
       'price': price,
       'status': 'Requested',
       'step': 0, // 0: Requested
@@ -370,6 +493,9 @@ class EcoRouteState extends ChangeNotifier {
       'createdAt': 'Just now',
       'isInstant': isInstant,
       'paymentMethod': paymentMethod,
+      'photoEvidence': null,
+      'riderRating': null,
+      'receiptSerial': serial,
     };
 
     residentRequests.insert(0, {
@@ -379,6 +505,7 @@ class EcoRouteState extends ChangeNotifier {
       'size': '$sacks Sack${sacks > 1 ? 's' : ''}',
       'status': 'Requested',
       'color': 0xFF9C3D18,
+      'receiptSerial': serial,
     });
 
     riderTasks.insert(0, {
@@ -386,6 +513,7 @@ class EcoRouteState extends ChangeNotifier {
       'client': userName,
       'phone': userPhone,
       'address': address,
+      'pickupNotes': pickupNotes,
       'sacks': sacks,
       'wasteType': wasteType,
       'payment': '$price $paymentMethod',
@@ -394,6 +522,8 @@ class EcoRouteState extends ChangeNotifier {
       'distance': '1.2 km',
       'eta': '7 mins',
       'zone': address.split(',').first,
+      'photoEvidence': null,
+      'receiptSerial': serial,
     });
 
     selectedRiderTaskIndex = 0;
@@ -447,6 +577,27 @@ class EcoRouteState extends ChangeNotifier {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Handshake Verified! Pickup #${activeTask['id']} settled. +$earn UGX added to Ledger.')),
+    );
+  }
+
+  void attachPhotoEvidence(String base64Image) {
+    if (riderTasks.isNotEmpty) {
+      riderTasks[selectedRiderTaskIndex]['photoEvidence'] = base64Image;
+    }
+    if (activePickup['id'] == (riderTasks.isNotEmpty ? riderTasks[selectedRiderTaskIndex]['id'] : null)) {
+      activePickup['photoEvidence'] = base64Image;
+    }
+    _saveState();
+    notifyListeners();
+  }
+
+  void submitRiderRating(int stars, List<String> tags, BuildContext context) {
+    activePickup['riderRating'] = stars;
+    _saveState();
+    notifyListeners();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Thank you! $stars-star rating and feedback submitted for ${activePickup['assignedRiderName']}.')),
     );
   }
 
@@ -561,6 +712,35 @@ class EcoRouteState extends ChangeNotifier {
       'link': 'https://coder-cliff.github.io/ecoRoute/#/rider-setup?rider=${Uri.encodeComponent(name)}&tric=$tricycleId',
     });
     notifyListeners();
+  }
+
+  Future<void> exportCollectionAuditCsv(BuildContext context) async {
+    final buffer = StringBuffer();
+    buffer.writeln('Receipt Serial,Pickup ID,Date,Client,Address,Sacks,Waste Type,Price,Payment Method,Rider ID,Status');
+    for (final task in riderTasks) {
+      buffer.writeln(
+        '${task['receiptSerial'] ?? 'ECO-ARUA-${task['id']}'},'
+        '${task['id']},'
+        'Today,'
+        '"${task['client']}",'
+        '"${task['address']}",'
+        '${task['sacks']},'
+        '${task['wasteType']},'
+        '"${task['payment']}",'
+        'Cash/MoMo,'
+        '${task['assignedRiderId'] ?? 'TRIC-04'},'
+        '${task['status']}'
+      );
+    }
+    final bytes = utf8.encode(buffer.toString());
+    try {
+      await Printing.sharePdf(
+        bytes: Uint8List.fromList(bytes),
+        filename: 'EcoRoute_Arua_Audit_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv',
+      );
+    } catch (e) {
+      debugPrint('CSV export notice: $e');
+    }
   }
 
   Future<void> fetchLiveWeather() async {
@@ -743,7 +923,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 }
 
 // =================================================================
-// 4. AUTHENTICATION & LOGIN SCREEN (STRICTLY FIREBASE AUTHENTICATION)
+// 4. AUTHENTICATION & LOGIN (UNIVERSAL IDENTIFIER & FORGOT PASSWORD)
 // =================================================================
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -755,27 +935,101 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _isSignUp = false;
   final _fullNameController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _phoneController = TextEditingController(text: '+256 394 880 352');
-  final _emailController = TextEditingController();
+  final _identifierController = TextEditingController(); // email, username, or phone
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
   @override
   void dispose() {
     _fullNameController.dispose();
+    _usernameController.dispose();
     _phoneController.dispose();
-    _emailController.dispose();
+    _identifierController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
+  void _showForgotPasswordDialog() {
+    final resetCtrl = TextEditingController(text: _identifierController.text.trim());
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset Password', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter your registered email address or username to receive password reset instructions:',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: resetCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Email Address or Username',
+                prefixIcon: Icon(Icons.email_outlined),
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final target = resetCtrl.text.trim();
+              if (target.isEmpty) return;
+              Navigator.pop(ctx);
+
+              String targetEmail = target;
+              if (!target.contains('@') && Firebase.apps.isNotEmpty) {
+                try {
+                  final snap = await FirebaseFirestore.instance
+                      .collection('profiles')
+                      .where('username', isEqualTo: target.toLowerCase())
+                      .limit(1)
+                      .get();
+                  if (snap.docs.isNotEmpty) {
+                    targetEmail = (snap.docs.first.data()['email'] as String?) ?? target;
+                  }
+                } catch (_) {}
+              }
+
+              try {
+                if (Firebase.apps.isNotEmpty) {
+                  await FirebaseAuth.instance.sendPasswordResetEmail(email: targetEmail);
+                }
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Password reset instructions sent to $targetEmail. Please check your inbox.')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Could not send reset email: $e')),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+            child: const Text('Send Reset Link', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleAuth() async {
-    final email = _emailController.text.trim();
+    final identifier = _identifierController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (email.isEmpty) {
+    if (identifier.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your email address')),
+        const SnackBar(content: Text('Please enter your email, username, or phone number')),
       );
       return;
     }
@@ -789,10 +1043,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    // Primary: Firebase Auth & Firestore Profile Verification
+    // Primary: Firebase Auth with Universal Multi-Identifier Resolution
     if (Firebase.apps.isNotEmpty) {
       try {
         if (_isSignUp) {
+          final email = identifier.contains('@') ? identifier : '$identifier@ecoroute.ug';
+          final username = _usernameController.text.trim().isNotEmpty
+              ? _usernameController.text.trim().replaceAll('@', '').toLowerCase()
+              : identifier.split('@').first.toLowerCase();
+
           final userCred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
             email: email,
             password: password,
@@ -800,7 +1059,7 @@ class _LoginScreenState extends State<LoginScreen> {
           final uid = userCred.user?.uid;
           final name = _fullNameController.text.trim().isNotEmpty
               ? _fullNameController.text.trim()
-              : email.split('@').first;
+              : username;
           await userCred.user?.updateDisplayName(name);
 
           if (uid != null) {
@@ -808,9 +1067,10 @@ class _LoginScreenState extends State<LoginScreen> {
               await FirebaseFirestore.instance.collection('profiles').doc(uid).set({
                 'id': uid,
                 'fullName': name,
+                'username': username,
                 'email': email.toLowerCase(),
                 'phone': _phoneController.text.trim(),
-                'role': 'resident', // Public self-registration is strictly for Residents
+                'role': 'resident',
                 'createdAt': FieldValue.serverTimestamp(),
               });
             } catch (e) {
@@ -823,21 +1083,49 @@ class _LoginScreenState extends State<LoginScreen> {
           EcoRouteState.instance.setAuthenticatedUser(
             role: 'resident',
             name: name,
+            username: username,
             email: email,
             phone: _phoneController.text.trim(),
           );
           Navigator.pushNamedAndRemoveUntil(context, '/resident', (route) => false);
           return;
         } else {
+          // Resolve identifier if user typed username or phone number
+          String targetEmail = identifier;
+          if (!identifier.contains('@')) {
+            try {
+              final clean = identifier.toLowerCase();
+              var query = await FirebaseFirestore.instance
+                  .collection('profiles')
+                  .where('username', isEqualTo: clean)
+                  .limit(1)
+                  .get();
+              if (query.docs.isEmpty) {
+                query = await FirebaseFirestore.instance
+                    .collection('profiles')
+                    .where('phone', isEqualTo: identifier)
+                    .limit(1)
+                    .get();
+              }
+              if (query.docs.isNotEmpty) {
+                targetEmail = (query.docs.first.data()['email'] as String?) ?? identifier;
+              }
+            } catch (e) {
+              debugPrint('Identifier resolution notice: $e');
+            }
+          }
+
           final userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-            email: email,
+            email: targetEmail,
             password: password,
           );
           final uid = userCred.user?.uid;
           String resolvedRole = 'resident';
-          String resolvedName = email.split('@').first;
+          String resolvedName = targetEmail.split('@').first;
+          String resolvedUsername = targetEmail.split('@').first;
           String resolvedPhone = '+256 394 880 352';
           String? resolvedCell;
+          String? resolvedPhoto;
 
           if (uid != null) {
             try {
@@ -849,8 +1137,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 final data = doc.data()!;
                 resolvedRole = (data['role'] as String?)?.toLowerCase() ?? 'resident';
                 resolvedName = (data['fullName'] as String?) ?? userCred.user?.displayName ?? resolvedName;
+                resolvedUsername = (data['username'] as String?) ?? resolvedUsername;
                 resolvedPhone = (data['phone'] as String?) ?? resolvedPhone;
                 resolvedCell = (data['cell'] as String?) ?? (data['address'] as String?);
+                resolvedPhoto = data['photoBase64'] as String?;
               }
             } catch (e) {
               debugPrint('Firestore lookup notice: $e');
@@ -862,9 +1152,11 @@ class _LoginScreenState extends State<LoginScreen> {
           EcoRouteState.instance.setAuthenticatedUser(
             role: resolvedRole,
             name: resolvedName,
-            email: email,
+            username: resolvedUsername,
+            email: targetEmail,
             phone: resolvedPhone,
             cell: resolvedCell,
+            photoBase64: resolvedPhoto,
           );
 
           if (resolvedRole == 'admin') {
@@ -882,14 +1174,14 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.message ?? 'Authentication failed. Please verify credentials.')),
         );
-        return; // NEVER fall through on Firebase error!
+        return;
       } catch (e) {
         if (!mounted) return;
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Authentication error: $e')),
         );
-        return; // NEVER fall through!
+        return;
       }
     }
 
@@ -898,7 +1190,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    final clean = email.toLowerCase();
+    final clean = identifier.toLowerCase();
     if (clean.contains('admin')) {
       EcoRouteState.instance.switchRole('admin', context);
     } else if (clean.contains('rider')) {
@@ -934,8 +1226,8 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 8),
               Text(
                 _isSignUp
-                    ? 'Register as an Arua City resident'
-                    : 'Sign in with your verified Firebase credentials',
+                    ? 'Register your household or business in Arua City'
+                    : 'Sign in with your email, username, or phone number',
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 14, color: Color(0xFF1A3A28)),
               ),
@@ -958,6 +1250,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 14),
                 TextField(
+                  controller: _usernameController,
+                  style: const TextStyle(color: Color(0xFF0D2618)),
+                  decoration: InputDecoration(
+                    labelText: 'Choose Username',
+                    hintText: 'e.g. jane_arua',
+                    labelStyle: const TextStyle(color: Color(0xFF0D2618)),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    prefixIcon: const Icon(Icons.alternate_email, color: Color(0xFF0D2618)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
                   controller: _phoneController,
                   style: const TextStyle(color: Color(0xFF0D2618)),
                   decoration: InputDecoration(
@@ -975,26 +1281,27 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(color: const Color(0xFFE8ECE7), borderRadius: BorderRadius.circular(8)),
                   child: const Text(
-                    'Note: Public sign-up creates Resident accounts. Rider accounts require an invite token from Municipal Admin HQ.',
+                    'Note: Public registration creates Resident accounts. Rider accounts require an invite token from Municipal Admin HQ.',
                     style: TextStyle(fontSize: 11, color: Color(0xFF1A3A28)),
                   ),
                 ),
                 const SizedBox(height: 14),
               ],
 
+              // Universal Identifier Input (Email, Username, or Phone)
               TextField(
                 key: const ValueKey('login_email_input'),
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
+                controller: _identifierController,
+                keyboardType: TextInputType.text,
                 style: const TextStyle(color: Color(0xFF0D2618)),
                 decoration: InputDecoration(
-                  labelText: 'Email Address',
-                  hintText: 'name@ecoroute.ug',
+                  labelText: _isSignUp ? 'Email Address' : 'Email, Username, or Phone Number',
+                  hintText: _isSignUp ? 'name@ecoroute.ug' : 'e.g. jane_arua, +256..., or name@ecoroute.ug',
                   labelStyle: const TextStyle(color: Color(0xFF0D2618)),
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF0D2618)),
+                  prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF0D2618)),
                 ),
               ),
               const SizedBox(height: 14),
@@ -1012,7 +1319,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF0D2618)),
                 ),
               ),
-              const SizedBox(height: 24),
+              if (!_isSignUp) ...[
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _showForgotPasswordDialog,
+                    child: const Text('Forgot Password?', style: TextStyle(color: Color(0xFF9C3D18), fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(height: 16),
+              ],
+
               _isLoading
                   ? const Center(child: CircularProgressIndicator(color: Color(0xFF0D2618)))
                   : ElevatedButton(
@@ -1156,11 +1474,137 @@ class _RoleSwitcherPill extends StatelessWidget {
   }
 }
 
+// Complete Account Profile, Security & Saved Addresses Sheet
 void showEcoRouteProfileSheet(BuildContext context) {
   final state = EcoRouteState.instance;
   final nameCtrl = TextEditingController(text: state.userName);
+  final usernameCtrl = TextEditingController(text: state.userUsername);
   final phoneCtrl = TextEditingController(text: state.userPhone);
   final cellCtrl = TextEditingController(text: state.userCell);
+
+  Future<void> pickProfilePhoto(ImageSource source, BuildContext ctx) async {
+    try {
+      final picker = ImagePicker();
+      final photo = await picker.pickImage(source: source, maxWidth: 400, maxHeight: 400, imageQuality: 75);
+      if (photo != null) {
+        final bytes = await photo.readAsBytes();
+        final base64String = base64Encode(bytes);
+        state.updateProfile(
+          name: nameCtrl.text.trim(),
+          username: usernameCtrl.text.trim(),
+          phone: phoneCtrl.text.trim(),
+          cell: cellCtrl.text.trim(),
+          photoBase64: base64String,
+        );
+        if (ctx.mounted) {
+          ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Profile photo updated successfully!')));
+        }
+      }
+    } catch (e) {
+      debugPrint('Photo capture notice: $e');
+    }
+  }
+
+  void showPhotoSourceSheet(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (bCtx) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Color(0xFF0D2618)),
+              title: const Text('Take Photo with Camera'),
+              onTap: () {
+                Navigator.pop(bCtx);
+                pickProfilePhoto(ImageSource.camera, ctx);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Color(0xFF0D2618)),
+              title: const Text('Choose from Gallery'),
+              onTap: () {
+                Navigator.pop(bCtx);
+                pickProfilePhoto(ImageSource.gallery, ctx);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void showChangePasswordDialog(BuildContext ctx) {
+    final passCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    showDialog(
+      context: ctx,
+      builder: (dCtx) => AlertDialog(
+        title: const Text('Change Password', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: passCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'New Password')),
+            const SizedBox(height: 8),
+            TextField(controller: confirmCtrl, obscureText: true, decoration: const InputDecoration(labelText: 'Confirm New Password')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dCtx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(ctx);
+              if (passCtrl.text.trim() != confirmCtrl.text.trim()) {
+                messenger.showSnackBar(const SnackBar(content: Text('Passwords do not match')));
+                return;
+              }
+              Navigator.pop(dCtx);
+              try {
+                await FirebaseAuth.instance.currentUser?.updatePassword(passCtrl.text.trim());
+                messenger.showSnackBar(const SnackBar(content: Text('Password updated successfully!')));
+              } catch (e) {
+                messenger.showSnackBar(SnackBar(content: Text('Could not update password: $e')));
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+            child: const Text('Update', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void showAddAddressDialog(BuildContext ctx) {
+    final labelCtrl = TextEditingController(text: 'Work');
+    final addrCtrl = TextEditingController();
+    showDialog(
+      context: ctx,
+      builder: (dCtx) => AlertDialog(
+        title: const Text('Add Saved Address', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: labelCtrl, decoration: const InputDecoration(labelText: 'Address Label (e.g. Work, Farm)')),
+            const SizedBox(height: 8),
+            TextField(controller: addrCtrl, decoration: const InputDecoration(labelText: 'Address in Arua City')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dCtx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (addrCtrl.text.trim().isEmpty) return;
+              Navigator.pop(dCtx);
+              state.addSavedAddress(labelCtrl.text.trim(), addrCtrl.text.trim());
+              ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Address saved to your profile!')));
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+            child: const Text('Save', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
 
   showModalBottomSheet(
     context: context,
@@ -1191,20 +1635,32 @@ void showEcoRouteProfileSheet(BuildContext context) {
               child: Stack(
                 children: [
                   CircleAvatar(
-                    radius: 36,
+                    radius: 40,
                     backgroundColor: const Color(0xFF0D2618),
-                    child: Text(
-                      state.userName.isNotEmpty ? state.userName[0].toUpperCase() : 'E',
-                      style: const TextStyle(fontSize: 28, color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
+                    child: state.userPhotoBase64 != null
+                        ? ClipOval(
+                            child: Image.memory(
+                              base64Decode(state.userPhotoBase64!),
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : Text(
+                            state.userName.isNotEmpty ? state.userName[0].toUpperCase() : 'E',
+                            style: const TextStyle(fontSize: 32, color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
                   ),
                   Positioned(
                     bottom: 0,
                     right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(color: Color(0xFF9C3D18), shape: BoxShape.circle),
-                      child: const Icon(Icons.edit, size: 14, color: Colors.white),
+                    child: InkWell(
+                      onTap: () => showPhotoSourceSheet(ctx),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(color: Color(0xFF9C3D18), shape: BoxShape.circle),
+                        child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                      ),
                     ),
                   )
                 ],
@@ -1217,6 +1673,11 @@ void showEcoRouteProfileSheet(BuildContext context) {
             ),
             const SizedBox(height: 10),
             TextField(
+              controller: usernameCtrl,
+              decoration: const InputDecoration(labelText: 'Username', prefixIcon: Icon(Icons.alternate_email)),
+            ),
+            const SizedBox(height: 10),
+            TextField(
               controller: phoneCtrl,
               decoration: const InputDecoration(labelText: 'Contact Phone', prefixIcon: Icon(Icons.phone_outlined)),
             ),
@@ -1224,6 +1685,33 @@ void showEcoRouteProfileSheet(BuildContext context) {
             TextField(
               controller: cellCtrl,
               decoration: const InputDecoration(labelText: 'Service Cell / Ward (Arua)', prefixIcon: Icon(Icons.location_city_outlined)),
+            ),
+            const SizedBox(height: 16),
+
+            // Saved Addresses Management
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Saved Pickup Locations', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                TextButton.icon(
+                  onPressed: () => showAddAddressDialog(ctx),
+                  icon: const Icon(Icons.add_location_alt, size: 14, color: Color(0xFF9C3D18)),
+                  label: const Text('Add', style: TextStyle(color: Color(0xFF9C3D18), fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: List.generate(state.savedAddresses.length, (i) {
+                final addr = state.savedAddresses[i];
+                return Chip(
+                  avatar: const Icon(Icons.bookmark, size: 14, color: Color(0xFF0D2618)),
+                  label: Text('${addr['label']}: ${addr['address']}', style: const TextStyle(fontSize: 11)),
+                  onDeleted: () => state.removeSavedAddress(i),
+                  deleteIconColor: Colors.grey,
+                );
+              }),
             ),
             const SizedBox(height: 16),
 
@@ -1260,11 +1748,12 @@ void showEcoRouteProfileSheet(BuildContext context) {
               onPressed: () {
                 state.updateProfile(
                   name: nameCtrl.text.trim(),
+                  username: usernameCtrl.text.trim(),
                   phone: phoneCtrl.text.trim(),
                   cell: cellCtrl.text.trim(),
                 );
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully!')));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile saved successfully!')));
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0D2618),
@@ -1274,22 +1763,35 @@ void showEcoRouteProfileSheet(BuildContext context) {
               child: const Text('Save Profile Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () async {
-                Navigator.pop(ctx);
-                try {
-                  await FirebaseAuth.instance.signOut();
-                } catch (_) {}
-                if (context.mounted) {
-                  Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-                }
-              },
-              icon: const Icon(Icons.logout, color: Color(0xFF9C3D18), size: 18),
-              label: const Text('Sign Out of Session', style: TextStyle(color: Color(0xFF9C3D18), fontWeight: FontWeight.bold)),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF9C3D18)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
+
+            // Security & Self-Service Row
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => showChangePasswordDialog(ctx),
+                    icon: const Icon(Icons.lock_reset, size: 16, color: Color(0xFF0D2618)),
+                    label: const Text('Password', style: TextStyle(color: Color(0xFF0D2618), fontSize: 12)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      try {
+                        await FirebaseAuth.instance.signOut();
+                      } catch (_) {}
+                      if (context.mounted) {
+                        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                      }
+                    },
+                    icon: const Icon(Icons.logout, color: Color(0xFF9C3D18), size: 16),
+                    label: const Text('Sign Out', style: TextStyle(color: Color(0xFF9C3D18), fontSize: 12, fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF9C3D18))),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1357,13 +1859,14 @@ class _ResidentRootScreenState extends State<ResidentRootScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _BookingBottomSheet(
-        onBook: (sacks, wasteType, address, isInstant, paymentMethod) {
+        onBook: (sacks, wasteType, address, isInstant, paymentMethod, pickupNotes) {
           EcoRouteState.instance.bookPickup(
             sacks: sacks,
             wasteType: wasteType,
             address: address,
             isInstant: isInstant,
             paymentMethod: paymentMethod,
+            pickupNotes: pickupNotes,
           );
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Pickup booked for $address ($sacks Sacks)! Dispatched to nearby tricycles.')),
@@ -1430,9 +1933,154 @@ class ResidentHomeScreen extends StatelessWidget {
     required this.onOpenMap,
   });
 
+  void _showRatingModal(BuildContext context) {
+    int selectedStars = 5;
+    final List<String> selectedTags = [];
+    final availableTags = ['Punctual', 'Clean Tricycle', 'Polite Rider', 'Careful Handling'];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDState) => AlertDialog(
+          title: const Text('Rate Collection Service', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('How was your collection by ${pickup['assignedRiderName'] ?? 'Rider John B.'}?', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (i) {
+                  return IconButton(
+                    icon: Icon(i < selectedStars ? Icons.star : Icons.star_border, color: Colors.amber, size: 32),
+                    onPressed: () => setDState(() => selectedStars = i + 1),
+                  );
+                }),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 6,
+                children: availableTags.map((tag) {
+                  final isSel = selectedTags.contains(tag);
+                  return FilterChip(
+                    label: Text(tag, style: TextStyle(fontSize: 11, color: isSel ? Colors.white : const Color(0xFF0D2618))),
+                    selected: isSel,
+                    selectedColor: const Color(0xFF0D2618),
+                    onSelected: (val) {
+                      setDState(() {
+                        if (val) {
+                          selectedTags.add(tag);
+                        } else {
+                          selectedTags.remove(tag);
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Skip')),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                EcoRouteState.instance.submitRiderRating(selectedStars, selectedTags, context);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+              child: const Text('Submit Rating', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDigitalReceipt(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: const [
+                    Icon(Icons.receipt_long, color: Color(0xFF0D2618)),
+                    SizedBox(width: 8),
+                    Text('Official Collection Receipt', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0D2618))),
+                  ],
+                ),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+              ],
+            ),
+            const Divider(),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: const Color(0xFFE8ECE7), borderRadius: BorderRadius.circular(12)),
+              child: Column(
+                children: [
+                  Text(
+                    pickup['receiptSerial'] as String? ?? 'ECO-ARUA-${pickup['id']}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 15, color: Color(0xFF0D2618)),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('Arua City Council • Sustainable Solid Waste Logistics', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  const SizedBox(height: 12),
+                  _buildReceiptRow('Client Name', EcoRouteState.instance.userName),
+                  _buildReceiptRow('Cell / Ward', pickup['address'] as String? ?? 'Ediofe'),
+                  _buildReceiptRow('Waste Payload', '${pickup['sacks']} Sack(s) • ${pickup['wasteType']}'),
+                  _buildReceiptRow('Total Amount', '${pickup['price']} (${pickup['paymentMethod']})'),
+                  _buildReceiptRow('Assigned Unit', '${pickup['assignedRiderId']} (${pickup['assignedRiderName']})'),
+                  _buildReceiptRow('Status', 'VERIFIED & SETTLED'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                final message = 'Official EcoRoute Waste Receipt: ${pickup['receiptSerial']}\n'
+                    'Client: ${EcoRouteState.instance.userName}\n'
+                    'Sacks: ${pickup['sacks']} (${pickup['wasteType']})\n'
+                    'Paid: ${pickup['price']}\n'
+                    'Verified by Arua City Fleet (+256394880352)';
+                launchEcoRouteWhatsApp(message: message);
+              },
+              icon: const Icon(Icons.share, size: 16, color: Colors.white),
+              label: const Text('Share Receipt via WhatsApp', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618), padding: const EdgeInsets.symmetric(vertical: 14)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReceiptRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = EcoRouteState.instance;
+    final isSettled = (pickup['step'] as int) == 3;
 
     return Scaffold(
       appBar: AppBar(
@@ -1546,7 +2194,7 @@ class ResidentHomeScreen extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: (pickup['step'] as int) == 3
+                                color: isSettled
                                     ? Colors.green.withValues(alpha: 0.15)
                                     : const Color(0xFF9C3D18).withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(8),
@@ -1554,7 +2202,7 @@ class ResidentHomeScreen extends StatelessWidget {
                               child: Text(
                                 pickup['status'] as String,
                                 style: TextStyle(
-                                  color: (pickup['step'] as int) == 3 ? Colors.green : const Color(0xFF9C3D18),
+                                  color: isSettled ? Colors.green : const Color(0xFF9C3D18),
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -1611,28 +2259,60 @@ class ResidentHomeScreen extends StatelessWidget {
                             Text(pickup['price'] as String, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618), fontSize: 13)),
                           ],
                         ),
+                        if (pickup['pickupNotes'] != null && (pickup['pickupNotes'] as String).isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text('Notes: "${pickup['pickupNotes']}"', style: const TextStyle(color: Color(0xFF9C3D18), fontSize: 11, fontStyle: FontStyle.italic)),
+                        ],
                         const SizedBox(height: 2),
                         Text('Payment: ${pickup['paymentMethod'] ?? 'Cash on Collection'}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
                         const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            InkWell(
-                              onTap: onOpenMap,
-                              child: const Text('View Live Map Tracker >', style: TextStyle(color: Color(0xFF9C3D18), fontWeight: FontWeight.bold, fontSize: 12)),
-                            ),
-                            ElevatedButton.icon(
-                              onPressed: () => launchEcoRouteCall(),
-                              icon: const Icon(Icons.phone, size: 14, color: Colors.white),
-                              label: const Text('Call Dispatch', style: TextStyle(color: Colors.white, fontSize: 11)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0D2618),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+
+                        // Post-Collection Actions (Receipt & Rating)
+                        if (isSettled) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _showDigitalReceipt(context),
+                                  icon: const Icon(Icons.receipt, size: 16, color: Colors.white),
+                                  label: const Text('Digital Receipt', style: TextStyle(fontSize: 12, color: Colors.white)),
+                                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _showRatingModal(context),
+                                  icon: const Icon(Icons.star, size: 16, color: Colors.amber),
+                                  label: Text(
+                                    pickup['riderRating'] != null ? 'Rated ${pickup['riderRating']}★' : 'Rate Rider',
+                                    style: const TextStyle(color: Color(0xFF0D2618), fontSize: 12, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ] else ...[
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              InkWell(
+                                onTap: onOpenMap,
+                                child: const Text('View Live Map Tracker >', style: TextStyle(color: Color(0xFF9C3D18), fontWeight: FontWeight.bold, fontSize: 12)),
+                              ),
+                              ElevatedButton.icon(
+                                onPressed: () => launchEcoRouteCall(),
+                                icon: const Icon(Icons.phone, size: 14, color: Colors.white),
+                                label: const Text('Call Dispatch', style: TextStyle(color: Colors.white, fontSize: 11)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0D2618),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -2178,6 +2858,25 @@ class RiderTasksScreen extends StatelessWidget {
 
   const RiderTasksScreen({super.key, required this.onNavigateToRoute});
 
+  Future<void> _snapPhotoEvidence(BuildContext context) async {
+    try {
+      final picker = ImagePicker();
+      final photo = await picker.pickImage(source: ImageSource.camera, maxWidth: 600, maxHeight: 600, imageQuality: 70);
+      if (photo != null) {
+        final bytes = await photo.readAsBytes();
+        final base64String = base64Encode(bytes);
+        EcoRouteState.instance.attachPhotoEvidence(base64String);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Photo evidence captured & attached to pickup!')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Photo evidence capture error: $e');
+    }
+  }
+
   void _openHandshakeDialog(BuildContext context, Map<String, dynamic> task) {
     final codeCtrl = TextEditingController();
     final actualCode = task['verificationCode'] as String? ?? '8492';
@@ -2311,6 +3010,10 @@ class RiderTasksScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     Text('Client: ${activeTask['client']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
                     Text('Address: ${activeTask['address']}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                    if (activeTask['pickupNotes'] != null && (activeTask['pickupNotes'] as String).isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text('Notes: "${activeTask['pickupNotes']}"', style: const TextStyle(color: Color(0xFF9C3D18), fontSize: 11, fontStyle: FontStyle.italic)),
+                    ],
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -2344,6 +3047,31 @@ class RiderTasksScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
+
+                    // Photo Evidence Status / Capture Button
+                    if (activeTask['photoEvidence'] != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                        child: Row(
+                          children: const [
+                            Icon(Icons.check_circle, color: Colors.green, size: 18),
+                            SizedBox(width: 8),
+                            Text('Photo Evidence Attached & Verified', style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ] else ...[
+                      OutlinedButton.icon(
+                        onPressed: () => _snapPhotoEvidence(context),
+                        icon: const Icon(Icons.camera_alt, color: Color(0xFF0D2618), size: 16),
+                        label: const Text('Snap Photo Evidence (Waste Sacks)', style: TextStyle(color: Color(0xFF0D2618), fontSize: 12, fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 42)),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
                     // High Visibility Payment Tag
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -2844,6 +3572,78 @@ class AdminDashboardScreen extends StatelessWidget {
     );
   }
 
+  void _showRiderRosterSheet(BuildContext context) {
+    final state = EcoRouteState.instance;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Container(
+        height: 500,
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Arua Municipal Rider Fleet Roster', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0D2618))),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView.builder(
+                itemCount: state.riderRoster.length,
+                itemBuilder: (ctx, i) {
+                  final r = state.riderRoster[i];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: const Color(0xFFE8ECE7), borderRadius: BorderRadius.circular(12)),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: const Color(0xFF0D2618),
+                          child: Text(r['name'][0] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('${r['name']} (${r['tricycleId']})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
+                              Text('${r['zone']} • Rating: ${r['rating']}★ • ${r['trips']} Trips', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+                          child: Text(r['status'] as String, style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _showInviteRiderDialog(context);
+              },
+              icon: const Icon(Icons.person_add, color: Colors.white, size: 16),
+              label: const Text('Add Approved Rider', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showAssignModal(BuildContext context, String pickupId) {
     final state = EcoRouteState.instance;
     showModalBottomSheet(
@@ -2982,9 +3782,9 @@ class AdminDashboardScreen extends StatelessWidget {
                         onPressed: () => _showBroadcastDialog(context),
                       ),
                       IconButton(
-                        tooltip: 'Invite Approved Rider',
-                        icon: const Icon(Icons.person_add, color: Color(0xFF0D2618)),
-                        onPressed: () => _showInviteRiderDialog(context),
+                        tooltip: 'Rider Fleet Roster',
+                        icon: const Icon(Icons.badge, color: Color(0xFF0D2618)),
+                        onPressed: () => _showRiderRosterSheet(context),
                       ),
                     ],
                   ),
@@ -3263,8 +4063,18 @@ class AdminReportsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            const Text('Downloadable Activity Logs (PDF)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
-            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Collection Audits & Logs', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                TextButton.icon(
+                  onPressed: () => state.exportCollectionAuditCsv(context),
+                  icon: const Icon(Icons.table_chart, size: 14, color: Color(0xFF9C3D18)),
+                  label: const Text('Export CSV', style: TextStyle(color: Color(0xFF9C3D18), fontWeight: FontWeight.bold, fontSize: 12)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             _buildReportDownloadTile(context, 'Daily Operations - Oct 31, 2026', 'October 31, 2026'),
             _buildReportDownloadTile(context, 'Weekly Operations Summary - W44', 'Week 44, 2026'),
             _buildReportDownloadTile(context, 'Rider Fleet Monthly Report', 'October 2026'),
@@ -3342,7 +4152,7 @@ class AdminReportsScreen extends StatelessWidget {
 // 9. MODALS & AUXILIARY WIDGETS
 // =================================================================
 class _BookingBottomSheet extends StatefulWidget {
-  final Function(int sacks, String wasteType, String address, bool isInstant, String paymentMethod) onBook;
+  final Function(int sacks, String wasteType, String address, bool isInstant, String paymentMethod, String pickupNotes) onBook;
 
   const _BookingBottomSheet({required this.onBook});
 
@@ -3356,6 +4166,7 @@ class _BookingBottomSheetState extends State<_BookingBottomSheet> {
   String _selectedCell = 'Ediofe, Trading Center';
   bool _isInstant = true;
   String _paymentMethod = 'Cash on Collection';
+  final _notesController = TextEditingController();
 
   final List<String> _aruaCells = [
     'Ediofe, Trading Center',
@@ -3367,8 +4178,15 @@ class _BookingBottomSheetState extends State<_BookingBottomSheet> {
   ];
 
   @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final price = _sacks * 2500;
+    final state = EcoRouteState.instance;
 
     return Container(
       padding: EdgeInsets.only(
@@ -3476,6 +4294,35 @@ class _BookingBottomSheetState extends State<_BookingBottomSheet> {
               items: _aruaCells.map((cell) => DropdownMenuItem(value: cell, child: Text(cell, style: const TextStyle(fontSize: 13)))).toList(),
               onChanged: (val) => setState(() => _selectedCell = val ?? _selectedCell),
             ),
+            if (state.savedAddresses.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                children: state.savedAddresses.map((saved) {
+                  return ActionChip(
+                    avatar: const Icon(Icons.bookmark, size: 12),
+                    label: Text(saved['label']!, style: const TextStyle(fontSize: 10)),
+                    onPressed: () => setState(() => _selectedCell = saved['address']!),
+                  );
+                }).toList(),
+              ),
+            ],
+            const SizedBox(height: 12),
+
+            // Pickup Notes / Special Instructions Field
+            const Text('Special Pickup Instructions (Optional)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A3A28), fontSize: 13)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _notesController,
+              decoration: InputDecoration(
+                hintText: 'e.g. Behind blue gate, call on arrival, near mango tree...',
+                hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
+                filled: true,
+                fillColor: const Color(0xFFE8ECE7),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                prefixIcon: const Icon(Icons.edit_note, color: Color(0xFF0D2618)),
+              ),
+            ),
             const SizedBox(height: 12),
 
             const Text('Payment Settlement Option', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A3A28), fontSize: 13)),
@@ -3502,7 +4349,7 @@ class _BookingBottomSheetState extends State<_BookingBottomSheet> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                widget.onBook(_sacks, _wasteType, _selectedCell, _isInstant, _paymentMethod);
+                widget.onBook(_sacks, _wasteType, _selectedCell, _isInstant, _paymentMethod, _notesController.text.trim());
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0D2618),
