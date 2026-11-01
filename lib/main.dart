@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart' hide TextDirection;
@@ -82,11 +83,11 @@ class EcoRouteState extends ChangeNotifier {
     'address': 'Ediofe, Trading Center',
     'pickupNotes': 'Behind blue gate, call on arrival',
     'price': '2,500 UGX',
-    'status': 'Dispatched',
-    'step': 1, // 0: Requested, 1: Dispatched, 2: Verifying, 3: Settled
+    'status': 'Requested',
+    'step': 0, // 0: Requested, 1: Dispatched, 2: Verifying, 3: Settled
     'verificationCode': '8492',
-    'assignedRiderId': 'TRIC-04',
-    'assignedRiderName': 'John B.',
+    'assignedRiderId': null,
+    'assignedRiderName': 'Pending Admin Dispatch',
     'createdAt': 'Today, 08:30 AM',
     'isInstant': true,
     'paymentMethod': 'Cash on Collection',
@@ -191,52 +192,52 @@ class EcoRouteState extends ChangeNotifier {
     {'title': 'SLA Reliability Bonus', 'date': 'Yesterday', 'amount': '+16,850 UGX', 'isPayout': false},
   ];
 
-  // Tricycle Fleet for Admin & Map
+  // Tricycle Fleet for Admin & Map (Tricycles start unassigned until Admin issues invitation)
   List<Map<String, dynamic>> tricycles = [
     {
       'id': 'TRIC-04',
-      'riderName': 'John B.',
-      'phone': '+256 394 880 352',
-      'battery': 84,
-      'speed': '18 km/h',
-      'status': 'En Route',
-      'zone': 'Ediofe Trading Center',
-      'payload': '1 Sack (25 kg)',
+      'riderName': 'Unassigned',
+      'phone': '-',
+      'battery': 100,
+      'speed': 'Idle',
+      'status': 'Available',
+      'zone': 'Ediofe Depot',
+      'payload': '0 Sacks (Empty)',
       'xRatio': 0.28,
       'yRatio': 0.38,
     },
     {
       'id': 'TRIC-09',
-      'riderName': 'Musa K.',
-      'phone': '+256 394 880 352',
-      'battery': 62,
-      'speed': '12 km/h',
-      'status': 'Collecting',
-      'zone': 'Onduparaka Center',
-      'payload': '3 Sacks (75 kg)',
+      'riderName': 'Unassigned',
+      'phone': '-',
+      'battery': 100,
+      'speed': 'Idle',
+      'status': 'Available',
+      'zone': 'Onduparaka Depot',
+      'payload': '0 Sacks (Empty)',
       'xRatio': 0.72,
       'yRatio': 0.25,
     },
     {
       'id': 'TRIC-12',
-      'riderName': 'Grace A.',
-      'phone': '+256 394 880 352',
-      'battery': 91,
-      'speed': '22 km/h',
-      'status': 'En Route',
-      'zone': 'Arua Hill',
-      'payload': '2 Sacks (50 kg)',
+      'riderName': 'Unassigned',
+      'phone': '-',
+      'battery': 100,
+      'speed': 'Idle',
+      'status': 'Available',
+      'zone': 'Arua Hill Depot',
+      'payload': '0 Sacks (Empty)',
       'xRatio': 0.55,
       'yRatio': 0.65,
     },
     {
       'id': 'TRIC-18',
-      'riderName': 'David O.',
-      'phone': '+256 394 880 352',
-      'battery': 48,
+      'riderName': 'Unassigned',
+      'phone': '-',
+      'battery': 100,
       'speed': 'Idle',
-      'status': 'Standby',
-      'zone': 'Arua Central Market',
+      'status': 'Available',
+      'zone': 'Arua Central Market Depot',
       'payload': '0 Sacks (Empty)',
       'xRatio': 0.45,
       'yRatio': 0.45,
@@ -244,49 +245,8 @@ class EcoRouteState extends ChangeNotifier {
   ];
   int selectedTricycleIndex = 0;
 
-  // Registered Rider Roster for Municipal Governance
-  List<Map<String, dynamic>> riderRoster = [
-    {
-      'id': 'RIDER-001',
-      'name': 'John B. Angundru',
-      'phone': '+256 394 880 352',
-      'tricycleId': 'TRIC-04',
-      'zone': 'Ediofe Trading Center',
-      'status': 'Approved',
-      'rating': 4.9,
-      'trips': 142,
-    },
-    {
-      'id': 'RIDER-002',
-      'name': 'Musa Kadir',
-      'phone': '+256 394 880 352',
-      'tricycleId': 'TRIC-09',
-      'zone': 'Onduparaka Center',
-      'status': 'Approved',
-      'rating': 4.7,
-      'trips': 98,
-    },
-    {
-      'id': 'RIDER-003',
-      'name': 'Grace Ayikoru',
-      'phone': '+256 394 880 352',
-      'tricycleId': 'TRIC-12',
-      'zone': 'Arua Hill Avenue',
-      'status': 'Approved',
-      'rating': 5.0,
-      'trips': 167,
-    },
-    {
-      'id': 'RIDER-004',
-      'name': 'David Oroma',
-      'phone': '+256 394 880 352',
-      'tricycleId': 'TRIC-18',
-      'zone': 'Arua Central Market',
-      'status': 'Approved',
-      'rating': 4.8,
-      'trips': 84,
-    },
-  ];
+  // Registered Rider Roster for Municipal Governance (Populated strictly via Admin Invitation)
+  List<Map<String, dynamic>> riderRoster = [];
 
   // Live Weather
   String weatherTemp = '20.3°C';
@@ -318,7 +278,7 @@ class EcoRouteState extends ChangeNotifier {
   }
 
   int get activeRidersCount {
-    return isRiderShiftActive ? 18 : 17;
+    return riderRoster.where((r) => r['status'] == 'Approved' || r['status'] == 'Active').length;
   }
 
   // Initialize and load saved state from SharedPreferences
@@ -378,9 +338,10 @@ class EcoRouteState extends ChangeNotifier {
       userUsername = 'jane_arua';
       userEmail = 'resident.arua@ecoroute.ug';
     } else if (role == 'rider') {
-      userName = 'John B. (TRIC-04)';
-      userUsername = 'john_rider';
-      userEmail = 'rider.john@ecoroute.ug';
+      final activeRider = riderRoster.isNotEmpty ? riderRoster.first : null;
+      userName = activeRider != null ? '${activeRider['name']} (${activeRider['tricycleId']})' : 'EcoRoute Rider (Awaiting Invite)';
+      userUsername = activeRider != null ? (activeRider['name'] as String).toLowerCase().replaceAll(' ', '_') : 'rider_invite_required';
+      userEmail = activeRider != null ? (activeRider['email'] as String? ?? 'rider@ecoroute.ug') : 'rider.invite@ecoroute.ug';
     } else {
       userName = 'Arua Command HQ';
       userUsername = 'admin_arua';
@@ -703,15 +664,77 @@ class EcoRouteState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void inviteRider({required String name, required String phone, required String tricycleId}) {
-    invitedRiders.add({
+  String _getZoneForTricycle(String id) {
+    switch (id) {
+      case 'TRIC-04':
+        return 'Ediofe Trading Center';
+      case 'TRIC-09':
+        return 'Onduparaka Center';
+      case 'TRIC-12':
+        return 'Arua Hill';
+      case 'TRIC-18':
+        return 'Central Market';
+      default:
+        return 'Arua Municipal';
+    }
+  }
+
+  String inviteRider({required String name, required String phone, required String tricycleId, String? email}) {
+    final cleanEmail = (email ?? '${name.toLowerCase().replaceAll(' ', '.')}@ecoroute.ug').trim();
+    final inviteCode = 'RIDER-${(DateTime.now().millisecondsSinceEpoch % 1000000).toString().padLeft(6, '0')}';
+    final riderRecord = {
+      'id': 'RIDER-${riderRoster.length + 1}',
       'name': name,
       'phone': phone,
+      'email': cleanEmail,
       'tricycleId': tricycleId,
-      'status': 'Invited',
-      'link': 'https://coder-cliff.github.io/ecoRoute/#/rider-setup?rider=${Uri.encodeComponent(name)}&tric=$tricycleId',
-    });
+      'zone': _getZoneForTricycle(tricycleId),
+      'status': 'Invited (Pending Sign-In)',
+      'inviteCode': inviteCode,
+      'rating': 5.0,
+      'trips': 0,
+      'invitedAt': DateTime.now().toIso8601String(),
+      'link': 'https://coder-cliff.github.io/ecoRoute/#/rider-setup?code=$inviteCode&tric=$tricycleId',
+    };
+
+    riderRoster.add(riderRecord);
+    invitedRiders.add(riderRecord);
+
+    // Update the tricycle assignment in Fleet
+    final tIdx = tricycles.indexWhere((t) => t['id'] == tricycleId);
+    if (tIdx != -1) {
+      tricycles[tIdx]['riderName'] = name;
+      tricycles[tIdx]['phone'] = phone;
+      tricycles[tIdx]['status'] = 'Assigned ($name)';
+      tricycles[tIdx]['speed'] = 'Standby';
+    }
+
+    if (activePickup['assignedRiderId'] == 'Unassigned' || activePickup['assignedRiderId'] == null) {
+      activePickup['assignedRiderId'] = tricycleId;
+      activePickup['assignedRiderName'] = name;
+      activePickup['status'] = 'Dispatched';
+    }
+
+    _saveState();
+
+    if (Firebase.apps.isNotEmpty) {
+      try {
+        FirebaseFirestore.instance.collection('invitedRiders').doc(cleanEmail).set({
+          'fullName': name,
+          'phone': phone,
+          'email': cleanEmail,
+          'tricycleId': tricycleId,
+          'inviteCode': inviteCode,
+          'status': 'invited',
+          'invitedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('Firestore rider invite notice: $e');
+      }
+    }
+
     notifyListeners();
+    return inviteCode;
   }
 
   Future<void> exportCollectionAuditCsv(BuildContext context) async {
@@ -3558,10 +3581,48 @@ class AdminDashboardScreen extends StatelessWidget {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () {
+              final name = nameCtrl.text.trim();
+              final phone = phoneCtrl.text.trim();
+              if (name.isEmpty) return;
               Navigator.pop(ctx);
-              EcoRouteState.instance.inviteRider(name: nameCtrl.text.trim(), phone: phoneCtrl.text.trim(), tricycleId: selectedTric);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Invitation dispatched for ${nameCtrl.text.trim()} ($selectedTric).')),
+              final code = EcoRouteState.instance.inviteRider(name: name, phone: phone, tricycleId: selectedTric);
+              showDialog(
+                context: context,
+                builder: (dCtx) => AlertDialog(
+                  title: const Text('Rider Invitation Dispatched', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Official authorization issued for $name on tricycle $selectedTric.'),
+                      const SizedBox(height: 12),
+                      const Text('Invite Code:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.grey)),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(color: const Color(0xFFE8ECE7), borderRadius: BorderRadius.circular(8)),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(code, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'monospace', color: Color(0xFF0D2618))),
+                            IconButton(
+                              icon: const Icon(Icons.copy, size: 18),
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: code));
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invite code copied to clipboard!')));
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text('The rider must enter this invite code during registration to activate their account and tricycle route.', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(dCtx), child: const Text('Done')),
+                  ],
+                ),
               );
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
@@ -3594,40 +3655,60 @@ class AdminDashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Expanded(
-              child: ListView.builder(
-                itemCount: state.riderRoster.length,
-                itemBuilder: (ctx, i) {
-                  final r = state.riderRoster[i];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: const Color(0xFFE8ECE7), borderRadius: BorderRadius.circular(12)),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: const Color(0xFF0D2618),
-                          child: Text(r['name'][0] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+              child: state.riderRoster.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.directions_bike_outlined, size: 54, color: Colors.grey.shade400),
+                          const SizedBox(height: 12),
+                          const Text('No Riders Assigned Yet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0D2618))),
+                          const SizedBox(height: 6),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 24),
+                            child: Text(
+                              'Municipal tricycles start unassigned. All riders must be explicitly authorized and invited by Admin HQ.\n\nTap "Invite Approved Rider" below to assign a driver to an Arua tricycle.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.grey, fontSize: 12, height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: state.riderRoster.length,
+                      itemBuilder: (ctx, i) {
+                        final r = state.riderRoster[i];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(color: const Color(0xFFE8ECE7), borderRadius: BorderRadius.circular(12)),
+                          child: Row(
                             children: [
-                              Text('${r['name']} (${r['tricycleId']})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
-                              Text('${r['zone']} • Rating: ${r['rating']}★ • ${r['trips']} Trips', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                              CircleAvatar(
+                                backgroundColor: const Color(0xFF0D2618),
+                                child: Text((r['name'] as String).isNotEmpty ? (r['name'] as String)[0] : 'R', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('${r['name']} (${r['tricycleId']})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
+                                    Text('Code: ${r['inviteCode'] ?? 'Active'} • Zone: ${r['zone']}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+                                child: Text(r['status'] as String? ?? 'Invited', style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
+                              ),
                             ],
                           ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                          child: Text(r['status'] as String, style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
             ElevatedButton.icon(
               onPressed: () {
@@ -3635,7 +3716,7 @@ class AdminDashboardScreen extends StatelessWidget {
                 _showInviteRiderDialog(context);
               },
               icon: const Icon(Icons.person_add, color: Colors.white, size: 16),
-              label: const Text('Add Approved Rider', style: TextStyle(color: Colors.white)),
+              label: const Text('Invite Approved Rider', style: TextStyle(color: Colors.white)),
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
             ),
           ],
