@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'core/services/pdf_report_service.dart';
+import 'core/services/rider_invite_service.dart';
 import 'firebase_options.dart';
 
 // =================================================================
@@ -550,6 +551,15 @@ class EcoRouteState extends ChangeNotifier {
     }
     _saveState();
     notifyListeners();
+  }
+
+  void reassignTricycleZone(String tricycleId, String newZone) {
+    final idx = tricycles.indexWhere((t) => t['id'] == tricycleId);
+    if (idx != -1) {
+      tricycles[idx]['zone'] = newZone;
+      _saveState();
+      notifyListeners();
+    }
   }
 
   void submitRiderRating(int stars, List<String> tags, BuildContext context) {
@@ -1597,6 +1607,97 @@ void showEcoRouteProfileSheet(BuildContext context) {
     );
   }
 
+  void showChangeEmailDialog(BuildContext ctx) {
+    final emailCtrl = TextEditingController(text: state.userEmail);
+    showDialog(
+      context: ctx,
+      builder: (dCtx) => AlertDialog(
+        title: const Text('Update Email Address', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Enter your new email address. A verification email will be dispatched:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 12),
+            TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'New Email Address', prefixIcon: Icon(Icons.email_outlined))),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dCtx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final newEmail = emailCtrl.text.trim().toLowerCase();
+              if (newEmail.isEmpty || !newEmail.contains('@')) return;
+              final messenger = ScaffoldMessenger.of(ctx);
+              Navigator.pop(dCtx);
+              try {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  await user.verifyBeforeUpdateEmail(newEmail);
+                }
+              } catch (_) {}
+              state.userEmail = newEmail;
+              state.updateProfile(
+                name: state.userName,
+                username: state.userUsername,
+                phone: state.userPhone,
+                cell: state.userCell,
+              );
+              messenger.showSnackBar(SnackBar(content: Text('Account email updated to $newEmail!')));
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+            child: const Text('Update', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void showLanguageDialog(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (bCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Select App Language', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0D2618))),
+              const SizedBox(height: 12),
+              ListTile(
+                title: const Text('English (Official)'),
+                subtitle: const Text('Default system language'),
+                trailing: const Icon(Icons.check, color: Color(0xFF9C3D18)),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Language set to English')));
+                },
+              ),
+              ListTile(
+                title: const Text('Lugbara (Tieng Arua)'),
+                subtitle: const Text('Arua City & West Nile Local Dialect'),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Language set to Lugbara')));
+                },
+              ),
+              ListTile(
+                title: const Text('Kiswahili (East African)'),
+                subtitle: const Text('Regional Trade Language'),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Language set to Kiswahili')));
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void showAddAddressDialog(BuildContext ctx) {
     final labelCtrl = TextEditingController(text: 'Work');
     final addrCtrl = TextEditingController();
@@ -1793,28 +1894,45 @@ void showEcoRouteProfileSheet(BuildContext context) {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => showChangePasswordDialog(ctx),
-                    icon: const Icon(Icons.lock_reset, size: 16, color: Color(0xFF0D2618)),
-                    label: const Text('Password', style: TextStyle(color: Color(0xFF0D2618), fontSize: 12)),
+                    icon: const Icon(Icons.lock_reset, size: 15, color: Color(0xFF0D2618)),
+                    label: const Text('Password', style: TextStyle(color: Color(0xFF0D2618), fontSize: 11)),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () async {
-                      Navigator.pop(ctx);
-                      try {
-                        await FirebaseAuth.instance.signOut();
-                      } catch (_) {}
-                      if (context.mounted) {
-                        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-                      }
-                    },
-                    icon: const Icon(Icons.logout, color: Color(0xFF9C3D18), size: 16),
-                    label: const Text('Sign Out', style: TextStyle(color: Color(0xFF9C3D18), fontSize: 12, fontWeight: FontWeight.bold)),
-                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF9C3D18))),
+                    onPressed: () => showChangeEmailDialog(ctx),
+                    icon: const Icon(Icons.mail_outline, size: 15, color: Color(0xFF0D2618)),
+                    label: const Text('Email', style: TextStyle(color: Color(0xFF0D2618), fontSize: 11)),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => showLanguageDialog(ctx),
+                    icon: const Icon(Icons.translate, size: 15, color: Color(0xFF0D2618)),
+                    label: const Text('Language', style: TextStyle(color: Color(0xFF0D2618), fontSize: 11)),
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  try {
+                    await FirebaseAuth.instance.signOut();
+                  } catch (_) {}
+                  if (context.mounted) {
+                    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                  }
+                },
+                icon: const Icon(Icons.logout, color: Color(0xFF9C3D18), size: 16),
+                label: const Text('Sign Out from EcoRoute', style: TextStyle(color: Color(0xFF9C3D18), fontSize: 12, fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF9C3D18))),
+              ),
             ),
           ],
         ),
@@ -3551,6 +3669,7 @@ class AdminDashboardScreen extends StatelessWidget {
   void _showInviteRiderDialog(BuildContext context) {
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController(text: '+256 394 880 352');
+    final emailCtrl = TextEditingController();
     String selectedTric = 'TRIC-04';
 
     showDialog(
@@ -3563,6 +3682,8 @@ class AdminDashboardScreen extends StatelessWidget {
             TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Rider Full Name')),
             const SizedBox(height: 8),
             TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Phone Number')),
+            const SizedBox(height: 8),
+            TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email Address (Optional)', hintText: 'rider@ecoroute.ug')),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue: selectedTric,
@@ -3583,9 +3704,10 @@ class AdminDashboardScreen extends StatelessWidget {
             onPressed: () {
               final name = nameCtrl.text.trim();
               final phone = phoneCtrl.text.trim();
+              final email = emailCtrl.text.trim().isNotEmpty ? emailCtrl.text.trim() : null;
               if (name.isEmpty) return;
               Navigator.pop(ctx);
-              final code = EcoRouteState.instance.inviteRider(name: name, phone: phone, tricycleId: selectedTric);
+              final code = EcoRouteState.instance.inviteRider(name: name, phone: phone, tricycleId: selectedTric, email: email);
               showDialog(
                 context: context,
                 builder: (dCtx) => AlertDialog(
@@ -3616,10 +3738,39 @@ class AdminDashboardScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      const Text('The rider must enter this invite code during registration to activate their account and tricycle route.', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      const Text('Dispatch credentials directly via WhatsApp or Email:', style: TextStyle(fontSize: 11, color: Colors.grey)),
                     ],
                   ),
                   actions: [
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        final waMsg = Uri.encodeComponent(
+                          'EcoRoute Arua: Official Rider Authorization for $name.\n'
+                          'Assigned Tricycle: $selectedTric\n'
+                          'Authorization Token: $code\n'
+                          'Portal: https://coder-cliff.github.io/ecoRoute/',
+                        );
+                        final cleanPhone = phone.replaceAll(' ', '').replaceAll('+', '');
+                        launchUrl(Uri.parse('https://wa.me/$cleanPhone?text=$waMsg'), mode: LaunchMode.externalApplication);
+                      },
+                      icon: const Icon(Icons.share, size: 14, color: Colors.white),
+                      label: const Text('WhatsApp', style: TextStyle(color: Colors.white, fontSize: 11)),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF25D366)),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        final targetEmail = email ?? '${name.toLowerCase().replaceAll(' ', '.')}@ecoroute.ug';
+                        RiderInviteService.openEmailClient(
+                          riderEmail: targetEmail,
+                          riderName: name,
+                          inviteLink: 'https://coder-cliff.github.io/ecoRoute/#/rider-setup?code=$code&tric=$selectedTric',
+                          inviteCode: code,
+                          tricycleId: selectedTric,
+                        );
+                      },
+                      icon: const Icon(Icons.email_outlined, size: 14, color: Color(0xFF0D2618)),
+                      label: const Text('Email', style: TextStyle(color: Color(0xFF0D2618), fontSize: 11)),
+                    ),
                     TextButton(onPressed: () => Navigator.pop(dCtx), child: const Text('Done')),
                   ],
                 ),
