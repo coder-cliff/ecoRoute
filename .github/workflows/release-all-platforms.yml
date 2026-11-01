@@ -134,3 +134,49 @@ jobs:
         with:
           name: EcoRoute-Windows-Desktop-Bundle
           path: ecoroute-windows-x64.zip
+
+  publish-github-release:
+    name: Publish Official GitHub Release
+    needs: [build-android-apk, build-ios-ipa, build-linux-desktop, build-windows-desktop]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Prepare Release Assets
+        run: |
+          mkdir -p final-assets
+          cp release-artifacts/EcoRoute-Android-Release-APK/app-release.apk final-assets/EcoRoute-v1.0.0.apk
+          cp release-artifacts/EcoRoute-iOS-Unsigned-IPA/EcoRoute-iOS-Unsigned.ipa final-assets/EcoRoute-v1.0.0-iOS-Unsigned.ipa
+          cp release-artifacts/EcoRoute-Linux-Desktop-Bundle/ecoroute-linux-x64.tar.gz final-assets/EcoRoute-v1.0.0-Linux-x64.tar.gz
+          cp release-artifacts/EcoRoute-Windows-Desktop-Bundle/ecoroute-windows-x64.zip final-assets/EcoRoute-v1.0.0-Windows-x64.zip
+          ls -la final-assets/
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0' }}
+          name: "EcoRoute Production Release ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0' }}"
+          body: |
+            ## 🌿 EcoRoute Official Release
+            **Smart Municipal Logistics & Waste Collection Platform**
+
+            ### 📱 Download Installers:
+            - **Android APK**: [EcoRoute-v1.0.0.apk](EcoRoute-v1.0.0.apk) (Universal Android release, all architectures)
+            - **Windows**: [EcoRoute-v1.0.0-Windows-x64.zip](EcoRoute-v1.0.0-Windows-x64.zip)
+            - **Linux**: [EcoRoute-v1.0.0-Linux-x64.tar.gz](EcoRoute-v1.0.0-Linux-x64.tar.gz)
+            - **iOS**: [EcoRoute-v1.0.0-iOS-Unsigned.ipa](EcoRoute-v1.0.0-iOS-Unsigned.ipa) (Sideloadable via AltStore / SideStore)
+
+            ### ✨ Key Features:
+            - **Real-Time Reactive Dispatch**: Dynamic assignment between Residents, Riders, and Admins.
+            - **Strict Role Separation**: Enforced security profiles without manual role switching.
+            - **Verification & Settlement**: Real-time 4-digit PIN verification and automatic municipal earnings credit.
+            - **Direct Hotline**: Dedicated emergency support (+256394880352).
+          draft: false
+          prerelease: false
+          files: |
+            final-assets/*
+
