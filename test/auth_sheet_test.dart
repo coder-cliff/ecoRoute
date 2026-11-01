@@ -13,6 +13,13 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     authService = AuthService(await SharedPreferences.getInstance());
+    await authService.register(
+      fullName: 'Savior Deo',
+      email: 'saviordeogratius@yahoo.com',
+      phone: '+256394880352',
+      password: 'OfficialAdmin@2026',
+      role: AppRole.admin,
+    );
   });
 
   testWidgets('shows a clear error and stays open for invalid credentials', (

@@ -22,6 +22,13 @@ void main() {
     prefs = await SharedPreferences.getInstance();
     authService = AuthService(prefs);
     repository = const MemoryPickupRequestRepository();
+    await authService.register(
+      fullName: 'Savior Deo',
+      email: 'saviordeogratius@yahoo.com',
+      phone: '+256394880352',
+      password: 'OfficialAdmin@2026',
+      role: AppRole.admin,
+    );
   });
 
   group('Streamlined Auth & Launch Flow', () {
@@ -48,6 +55,7 @@ void main() {
     testWidgets('Unauthenticated launch routes from Splash to LoginScreen', (
       tester,
     ) async {
+      await authService.logout();
       await tester.pumpWidget(
         MaterialApp(
           home: SplashScreen(
