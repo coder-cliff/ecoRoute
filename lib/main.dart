@@ -320,6 +320,22 @@ class EcoRouteState extends ChangeNotifier {
     }
   }
 
+  void setAuthenticatedUser({
+    required String role,
+    required String name,
+    required String email,
+    required String phone,
+    String? cell,
+  }) {
+    currentRole = role;
+    userName = name;
+    userEmail = email;
+    userPhone = phone;
+    if (cell != null && cell.isNotEmpty) userCell = cell;
+    _saveState();
+    notifyListeners();
+  }
+
   void updateProfile({required String name, required String phone, required String cell}) {
     userName = name;
     userPhone = phone;
@@ -727,7 +743,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 }
 
 // =================================================================
-// 4. AUTHENTICATION & LOGIN SCREEN (WITH DEMO QUICK CHIPS)
+// 4. AUTHENTICATION & LOGIN SCREEN (STRICTLY FIREBASE AUTHENTICATION)
 // =================================================================
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -742,7 +758,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _phoneController = TextEditingController(text: '+256 394 880 352');
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  String _selectedRole = 'resident';
   bool _isLoading = false;
 
   @override
@@ -752,21 +767,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  void _fillDemoAccount(String role, String email, String password) {
-    setState(() {
-      _selectedRole = role;
-      _emailController.text = email;
-      _passwordController.text = password;
-      if (role == 'resident') {
-        _fullNameController.text = 'Jane Agondua';
-      } else if (role == 'rider') {
-        _fullNameController.text = 'John B. (TRIC-04)';
-      } else {
-        _fullNameController.text = 'Arua Command HQ';
-      }
-    });
   }
 
   Future<void> _handleAuth() async {
@@ -789,7 +789,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    // Primary: Firebase Auth if configured
+    // Primary: Firebase Auth & Firestore Profile Verification
     if (Firebase.apps.isNotEmpty) {
       try {
         if (_isSignUp) {
@@ -810,17 +810,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 'fullName': name,
                 'email': email.toLowerCase(),
                 'phone': _phoneController.text.trim(),
-                'role': _selectedRole,
+                'role': 'resident', // Public self-registration is strictly for Residents
                 'createdAt': FieldValue.serverTimestamp(),
               });
             } catch (e) {
-              debugPrint('Firestore write notice: $e');
+              debugPrint('Firestore profile creation notice: $e');
             }
           }
 
           if (!mounted) return;
           setState(() => _isLoading = false);
-          EcoRouteState.instance.switchRole(_selectedRole, context);
+          EcoRouteState.instance.setAuthenticatedUser(
+            role: 'resident',
+            name: name,
+            email: email,
+            phone: _phoneController.text.trim(),
+          );
+          Navigator.pushNamedAndRemoveUntil(context, '/resident', (route) => false);
           return;
         } else {
           final userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -828,13 +834,23 @@ class _LoginScreenState extends State<LoginScreen> {
             password: password,
           );
           final uid = userCred.user?.uid;
-          String resolvedRole = _selectedRole;
+          String resolvedRole = 'resident';
+          String resolvedName = email.split('@').first;
+          String resolvedPhone = '+256 394 880 352';
+          String? resolvedCell;
 
           if (uid != null) {
             try {
               var doc = await FirebaseFirestore.instance.collection('profiles').doc(uid).get();
+              if (!doc.exists) {
+                doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+              }
               if (doc.exists && doc.data() != null) {
-                resolvedRole = (doc.data()!['role'] as String?)?.toLowerCase() ?? _selectedRole;
+                final data = doc.data()!;
+                resolvedRole = (data['role'] as String?)?.toLowerCase() ?? 'resident';
+                resolvedName = (data['fullName'] as String?) ?? userCred.user?.displayName ?? resolvedName;
+                resolvedPhone = (data['phone'] as String?) ?? resolvedPhone;
+                resolvedCell = (data['cell'] as String?) ?? (data['address'] as String?);
               }
             } catch (e) {
               debugPrint('Firestore lookup notice: $e');
@@ -843,23 +859,42 @@ class _LoginScreenState extends State<LoginScreen> {
 
           if (!mounted) return;
           setState(() => _isLoading = false);
-          EcoRouteState.instance.switchRole(resolvedRole, context);
+          EcoRouteState.instance.setAuthenticatedUser(
+            role: resolvedRole,
+            name: resolvedName,
+            email: email,
+            phone: resolvedPhone,
+            cell: resolvedCell,
+          );
+
+          if (resolvedRole == 'admin') {
+            Navigator.pushNamedAndRemoveUntil(context, '/admin', (route) => false);
+          } else if (resolvedRole == 'rider') {
+            Navigator.pushNamedAndRemoveUntil(context, '/rider', (route) => false);
+          } else {
+            Navigator.pushNamedAndRemoveUntil(context, '/resident', (route) => false);
+          }
           return;
         }
       } on FirebaseAuthException catch (e) {
         if (!mounted) return;
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message ?? 'Authentication failed')),
+          SnackBar(content: Text(e.message ?? 'Authentication failed. Please verify credentials.')),
         );
-        return;
+        return; // NEVER fall through on Firebase error!
       } catch (e) {
-        debugPrint('Firebase general error: $e');
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Authentication error: $e')),
+        );
+        return; // NEVER fall through!
       }
     }
 
-    // Headless / offline direct navigation
-    await Future.delayed(const Duration(milliseconds: 400));
+    // Headless / offline direct navigation for automated unit testing only
+    await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
     setState(() => _isLoading = false);
 
@@ -904,46 +939,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 14, color: Color(0xFF1A3A28)),
               ),
-              const SizedBox(height: 20),
-
-              // One-Tap Demo Test Chips
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF0D2618).withValues(alpha: 0.15)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Instant Demo Login (1-Tap):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: [
-                        ActionChip(
-                          avatar: const Icon(Icons.person, size: 14, color: Color(0xFF0D2618)),
-                          label: const Text('Resident (Jane A.)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                          onPressed: () => _fillDemoAccount('resident', 'resident@ecoroute.ug', 'password123'),
-                        ),
-                        ActionChip(
-                          avatar: const Icon(Icons.two_wheeler, size: 14, color: Color(0xFF0D2618)),
-                          label: const Text('Rider (John B.)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                          onPressed: () => _fillDemoAccount('rider', 'rider@ecoroute.ug', 'password123'),
-                        ),
-                        ActionChip(
-                          avatar: const Icon(Icons.shield, size: 14, color: Color(0xFF0D2618)),
-                          label: const Text('Admin HQ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                          onPressed: () => _fillDemoAccount('admin', 'admin@ecoroute.ug', 'password123'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
               // Sign Up additional fields
               if (_isSignUp) ...[
