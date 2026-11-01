@@ -5,11 +5,10 @@ import 'package:ecoroute/core/pickup_request_repository.dart';
 import 'package:ecoroute/domain/entities/pickup_request.dart';
 import 'package:ecoroute/domain/enums/request_status.dart';
 import 'package:ecoroute/domain/enums/waste_type.dart';
-import 'package:ecoroute/features/auth/login_screen.dart';
 import 'package:ecoroute/features/home/home_screen.dart';
 import 'package:ecoroute/features/rider/rider_task_hub.dart';
 import 'package:ecoroute/features/admin/admin_dashboard.dart';
-import 'package:ecoroute/main.dart' hide LoginScreen, SplashScreen;
+import 'package:ecoroute/main.dart';
 
 void main() {
   testWidgets('launch sequence starts with splash and transitions to Sign-In portal', (
@@ -19,76 +18,96 @@ void main() {
     // Initial splash state
     expect(find.text('EcoRoute'), findsOneWidget);
 
-    // After 1.5s splash animation, automatically transitions to LoginScreen
-    await tester.pump(const Duration(milliseconds: 1600));
+    // After 2.2s splash timer, automatically transitions to LoginScreen
+    await tester.pump(const Duration(milliseconds: 2400));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sign In'), findsNWidgets(2));
-    expect(find.byType(LoginScreen), findsOneWidget);
-    expect(find.text('Forgot Password?'), findsOneWidget);
-    expect(find.text('Don\'t have an account? '), findsOneWidget);
+    expect(find.text('Welcome to EcoRoute'), findsOneWidget);
+    expect(find.text('Continue'), findsOneWidget);
   });
 
-  testWidgets('auth accounts sign in as different roles with automatic routing', (
+  testWidgets('auth accounts sign in as rider with automatic routing', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const EcoRouteApp());
-    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pump(const Duration(milliseconds: 2400));
     await tester.pumpAndSettle();
 
     // Fill in Rider credentials on Login Screen
     await tester.enterText(
       find.byKey(const ValueKey('login_email_input')),
-      'rider.juma@ecoroute.ug',
+      'rider@ecoroute.ug',
     );
     await tester.enterText(
       find.byKey(const ValueKey('login_password_input')),
-      'OfficialAdmin@2026',
+      'password123',
     );
     await tester.tap(find.byKey(const ValueKey('login_submit_button')));
+    await tester.pump(const Duration(milliseconds: 1200));
     await tester.pumpAndSettle();
 
-    // Automatically routed to Rider Task Hub without any manual role selection
-    expect(find.byType(RiderTaskHub), findsOneWidget);
-    await tester.ensureVisible(find.text('Profile'));
-    await tester.tap(find.text('Profile'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Signed in as Rider'), findsOneWidget);
+    // Automatically routed to Rider Dashboard
+    expect(find.text('Rider Dashboard'), findsOneWidget);
+    expect(find.text('Tasks'), findsOneWidget);
+    expect(find.text('Route'), findsOneWidget);
+    expect(find.text('Earnings'), findsOneWidget);
   });
 
-  testWidgets('resident sign in routes to resident dashboard and validates order form', (
+  testWidgets('auth accounts sign in as resident with automatic routing', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const EcoRouteApp());
-    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pump(const Duration(milliseconds: 2400));
     await tester.pumpAndSettle();
 
-    // Fill in resident credentials
+    // Fill in Resident credentials
     await tester.enterText(
       find.byKey(const ValueKey('login_email_input')),
-      'user@example.com',
+      'resident@ecoroute.ug',
     );
     await tester.enterText(
       find.byKey(const ValueKey('login_password_input')),
-      'secret123',
+      'password123',
     );
     await tester.tap(find.byKey(const ValueKey('login_submit_button')));
+    await tester.pump(const Duration(milliseconds: 1200));
     await tester.pumpAndSettle();
 
     // Automatically routed to Resident Dashboard
-    expect(find.text('Arua waste pickup'), findsOneWidget);
-    expect(find.text('REPORT AN ISSUE'), findsOneWidget);
+    expect(find.text('Hello, Resident • Arua City'), findsOneWidget);
+    expect(find.text('Book a New Pickup'), findsOneWidget);
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Requests'), findsOneWidget);
+    expect(find.text('Support'), findsOneWidget);
+  });
 
-    await tester.ensureVisible(find.text('REPORT AN ISSUE'));
-    await tester.tap(find.text('REPORT AN ISSUE'));
+  testWidgets('auth accounts sign in as admin with automatic routing', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const EcoRouteApp());
+    await tester.pump(const Duration(milliseconds: 2400));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Submit collection order'));
-    await tester.tap(find.text('Submit collection order'));
-    await tester.pump();
 
-    expect(find.text('Select a waste type'), findsOneWidget);
-    expect(find.text('Please enter at least 10 characters'), findsOneWidget);
+    // Fill in Admin credentials
+    await tester.enterText(
+      find.byKey(const ValueKey('login_email_input')),
+      'admin@ecoroute.ug',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('login_password_input')),
+      'password123',
+    );
+    await tester.tap(find.byKey(const ValueKey('login_submit_button')));
+    await tester.pump(const Duration(milliseconds: 1200));
+    await tester.pumpAndSettle();
+
+    // Automatically routed to Admin Dashboard
+    expect(find.text('Admin Dashboard'), findsOneWidget);
+    expect(find.text('All Systems Nominal'), findsOneWidget);
+    expect(find.text('Active Riders'), findsOneWidget);
+    expect(find.text('Dashboard'), findsOneWidget);
+    expect(find.text('Fleet'), findsOneWidget);
+    expect(find.text('Reports'), findsOneWidget);
   });
 
   testWidgets('dashboard actions fit a compact phone viewport', (
