@@ -18,28 +18,31 @@ void main() {
       authService = AuthService(preferences);
     });
 
-    test('logs in built-in admin accounts successfully', () async {
-      final admin1 = await authService.login(
-        email: 'saviordeogratius@yahoo.com',
-        password: 'OfficialAdmin@2026',
+    test('registers and logs in admin accounts dynamically without hardcoded credentials', () async {
+      final registered = await authService.register(
+        fullName: 'Municipal Administrator',
+        email: 'admin.operations@ecoroute.ug',
+        password: 'SecureAdminPassword@2026',
+        phone: '+256 394 880 352',
+        role: AppRole.admin,
       );
 
-      expect(admin1, isNotNull);
-      expect(admin1!.role, AppRole.admin);
-      expect(admin1.fullName, 'Savior Deo (Admin)');
+      expect(registered, isNotNull);
+      expect(registered.role, AppRole.admin);
+      expect(registered.fullName, 'Municipal Administrator');
 
-      final admin2 = await authService.login(
-        email: 'techcliff451@hotmail.com',
-        password: 'OfficialAdmin@2026',
+      final loggedIn = await authService.login(
+        email: 'admin.operations@ecoroute.ug',
+        password: 'SecureAdminPassword@2026',
       );
 
-      expect(admin2, isNotNull);
-      expect(admin2!.role, AppRole.admin);
-      expect(admin2.fullName, 'Tech Cliff (Admin)');
+      expect(loggedIn, isNotNull);
+      expect(loggedIn!.role, AppRole.admin);
+      expect(loggedIn.email, 'admin.operations@ecoroute.ug');
 
       // Verify persistent session
       final restored = authService.getCurrentUser();
-      expect(restored?.email, 'techcliff451@hotmail.com');
+      expect(restored?.email, 'admin.operations@ecoroute.ug');
     });
 
     test('rejects incorrect credentials', () async {

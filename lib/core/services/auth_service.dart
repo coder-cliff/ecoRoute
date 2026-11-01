@@ -44,46 +44,6 @@ class AuthService {
   static final Map<String, int> _failedAttempts = {};
   static final Map<String, DateTime> _lockoutUntil = {};
 
-  /// Default municipal administrator accounts retained strictly as offline fallback
-  /// when Firebase cloud services are unavailable or during mock unit tests.
-  static const List<Map<String, dynamic>> _defaultLocalAdmins = [
-    {
-      'id': 'admin-deo-yahoo',
-      'fullName': 'Savior Deo (Admin)',
-      'email': 'saviordeogratius@yahoo.com',
-      'phone': '+256 782 555 111',
-      'role': 'admin',
-      'passwordHash': 'cb53b43d9f921182930e102fbe62db01fe75b21e5da546c80586e45ff541a17c',
-      'address': 'Muni University, Arua',
-    },
-    {
-      'id': 'admin-cliff-hotmail',
-      'fullName': 'Tech Cliff (Admin)',
-      'email': 'techcliff451@hotmail.com',
-      'phone': '+256 701 987 654',
-      'role': 'admin',
-      'passwordHash': 'cb53b43d9f921182930e102fbe62db01fe75b21e5da546c80586e45ff541a17c',
-      'address': 'Muni University, Arua',
-    },
-    {
-      'id': 'admin-deo-gmail',
-      'fullName': 'Savior Deo (Admin)',
-      'email': 'saviordeogratius@gmail.com',
-      'phone': '+256 782 555 111',
-      'role': 'admin',
-      'passwordHash': 'cb53b43d9f921182930e102fbe62db01fe75b21e5da546c80586e45ff541a17c',
-      'address': 'Muni University, Arua',
-    },
-    {
-      'id': 'admin-cliff-gmail',
-      'fullName': 'Tech Cliff (Admin)',
-      'email': 'techcliff451@gmail.com',
-      'phone': '+256 701 987 654',
-      'role': 'admin',
-      'passwordHash': 'cb53b43d9f921182930e102fbe62db01fe75b21e5da546c80586e45ff541a17c',
-      'address': 'Muni University, Arua',
-    },
-  ];
 
   final SharedPreferences _preferences;
   final firebase_auth.FirebaseAuth? _firebaseAuth;
@@ -132,9 +92,6 @@ class AuthService {
 
   bool isEmailRegistered(String email) {
     final cleanEmail = email.trim().toLowerCase();
-    for (final admin in _defaultLocalAdmins) {
-      if ((admin['email'] as String).toLowerCase() == cleanEmail) return true;
-    }
     final riders = getInvitedRiders();
     for (final rider in riders) {
       if ((rider['email'] as String).toLowerCase() == cleanEmail) return true;
@@ -213,13 +170,8 @@ class AuthService {
           // If this is a newly authenticated user without a profile doc yet,
           // check if they match municipal admin emails or invited rider records
           if (profile == null) {
-            final isMunicipalAdmin = _defaultLocalAdmins.any(
-              (a) => (a['email'] as String).toLowerCase() == cleanEmail,
-            );
             final riderInvite = getRiderInvite(cleanEmail);
-            resolvedRole = isMunicipalAdmin
-                ? AppRole.admin
-                : (riderInvite != null ? AppRole.rider : AppRole.resident);
+            resolvedRole = riderInvite != null ? AppRole.rider : AppRole.resident;
 
             try {
               await profileRef.set({
@@ -260,55 +212,30 @@ class AuthService {
       }
     }
 
-    // 2. Offline / Local Fallback (used when Firebase is offline or in mock test bindings)
-    for (final admin in _defaultLocalAdmins) {
-      if ((admin['email'] as String).toLowerCase() == cleanEmail &&
-          admin['passwordHash'] == inputHash) {
-        final user = AppUser(
-          id: admin['id'] as String,
-          fullName: admin['fullName'] as String,
-          email: admin['email'] as String,
-          phone: admin['phone'] as String,
-          role: AppRole.admin,
-          address: admin['address'] as String?,
-          photoUrl: admin['photoUrl'] as String?,
-        );
-        _failedAttempts.remove(cleanEmail);
-        _lockoutUntil.remove(cleanEmail);
-        await _saveSession(user);
-        return user;
-      }
-    }
 
-    // 3. Registered local users with hashed password verification
+    // Local registered users verification (used for offline or mock tests)
     final registered = _getRegisteredUsers();
     for (final reg in registered) {
       if ((reg['email'] as String).toLowerCase() == cleanEmail) {
         final storedHash = reg['passwordHash'] as String?;
-        final rawStoredPassword = reg['password'] as String?; // Migration legacy
-
+        final rawStoredPassword = reg['password'] as String?;
         final matches = (storedHash != null && storedHash == inputHash) ||
             (rawStoredPassword != null && rawStoredPassword == password);
-
-        if (!matches) {
-          _recordFailedLogin(cleanEmail);
-          return null;
+        if (matches) {
+          final user = AppUser(
+            id: reg['id'] as String,
+            fullName: reg['fullName'] as String,
+            email: reg['email'] as String,
+            phone: (reg['phone'] as String?) ?? '',
+            role: parseRole(reg['role'] as String?),
+            address: reg['address'] as String?,
+            photoUrl: reg['photoUrl'] as String?,
+          );
+          _failedAttempts.remove(cleanEmail);
+          _lockoutUntil.remove(cleanEmail);
+          await _saveSession(user);
+          return user;
         }
-
-        final role = parseRole((reg['role'] as String?) ?? 'resident');
-        final user = AppUser(
-          id: reg['id'] as String,
-          fullName: reg['fullName'] as String,
-          email: reg['email'] as String,
-          phone: reg['phone'] as String,
-          role: role,
-          address: reg['address'] as String?,
-          photoUrl: reg['photoUrl'] as String?,
-        );
-        _failedAttempts.remove(cleanEmail);
-        _lockoutUntil.remove(cleanEmail);
-        await _saveSession(user);
-        return user;
       }
     }
 
