@@ -147,11 +147,30 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController(text: '••••••••');
+  final _passwordController = TextEditingController();
   bool _obscure = true;
 
-  void _handleLogin([String? overrideEmail]) {
-    final email = (overrideEmail ?? _emailController.text).trim().toLowerCase();
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _handleLogin() {
+    final email = _emailController.text.trim().toLowerCase();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your email and password to sign in.'),
+          backgroundColor: Color(0xFFC62828),
+        ),
+      );
+      return;
+    }
+
     HapticFeedback.mediumImpact();
     if (email.contains('admin')) {
       Navigator.pushReplacementNamed(context, '/admin');
@@ -220,9 +239,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 24),
                   TextField(
                     controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       labelText: 'Email Address',
-                      hintText: 'resident@, rider@, or admin@',
+                      hintText: 'name@example.com',
                       filled: true,
                       fillColor: Colors.white,
                       prefixIcon: const Icon(Icons.email_outlined, size: 20),
@@ -261,7 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 22),
                   ElevatedButton(
-                    onPressed: () => _handleLogin(),
+                    onPressed: _handleLogin,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0D2618),
                       foregroundColor: Colors.white,
@@ -274,56 +294,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(fontFamily: 'Satoshi', fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Quick Demo Portals:',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'Satoshi',
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF6B8073),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: TextButton(
+                      onPressed: () {},
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          fontFamily: 'Satoshi',
+                          color: Color(0xFF0D2618),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => _handleLogin('resident@ecoroute.ug'),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF0D2618)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                          ),
-                          child: const Text('Resident', style: TextStyle(fontFamily: 'Satoshi', color: Color(0xFF0D2618), fontWeight: FontWeight.bold, fontSize: 12.5)),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => _handleLogin('rider@ecoroute.ug'),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF0D2618)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                          ),
-                          child: const Text('Rider', style: TextStyle(fontFamily: 'Satoshi', color: Color(0xFF0D2618), fontWeight: FontWeight.bold, fontSize: 12.5)),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => _handleLogin('admin@ecoroute.ug'),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF9C3D18)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                          ),
-                          child: const Text('Admin', style: TextStyle(fontFamily: 'Satoshi', color: Color(0xFF9C3D18), fontWeight: FontWeight.bold, fontSize: 12.5)),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
