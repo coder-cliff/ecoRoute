@@ -244,7 +244,7 @@ class _LoginScreenState extends State<LoginScreen> {
           // Store profile in Firestore 'users' collection
           if (uid != null) {
             try {
-              await FirebaseFirestore.instance.collection('users').doc(uid).set({
+              await FirebaseFirestore.instance.collection('profiles').doc(uid).set({
                 'id': uid,
                 'fullName': name,
                 'email': email.toLowerCase(),
@@ -284,7 +284,10 @@ class _LoginScreenState extends State<LoginScreen> {
           // Fetch user role from Firestore 'users' collection
           if (uid != null) {
             try {
-              final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+              var doc = await FirebaseFirestore.instance.collection('profiles').doc(uid).get();
+              if (!doc.exists) {
+                doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+              }
               if (doc.exists && doc.data() != null) {
                 resolvedRole = (doc.data()!['role'] as String?)?.toLowerCase() ?? 'resident';
               }
