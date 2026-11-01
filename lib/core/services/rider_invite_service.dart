@@ -45,6 +45,8 @@ class RiderInviteService {
     required String riderEmail,
     required String riderName,
     String? inviteLink,
+    String? inviteCode,
+    String? tricycleId,
     String? customScriptUrl,
     http.Client? httpClient,
   }) async {
@@ -67,8 +69,10 @@ class RiderInviteService {
           'email': riderEmail.trim().toLowerCase(),
           'name': riderName.trim(),
           'inviteLink': effectiveInviteLink,
-          'subject': 'EcoRoute Collection Team Onboarding: Arua Operations',
-          'senderName': 'EcoRoute Municipal Operations',
+          'inviteCode': ?inviteCode,
+          'tricycleId': ?tricycleId,
+          'subject': 'EcoRoute Arua: Official Rider Authorization & Tricycle Assignment',
+          'senderName': 'EcoRoute Fleet Operations (Arua City Council)',
         }),
       );
 
@@ -96,14 +100,22 @@ class RiderInviteService {
     required String riderEmail,
     required String riderName,
     required String inviteLink,
+    String? inviteCode,
+    String? tricycleId,
   }) async {
-    final subject = 'EcoRoute Collection Team Onboarding: Arua Operations';
+    final subject = 'EcoRoute Arua: Official Rider Authorization & Tricycle Assignment';
     final body = '''
 Hello $riderName,
 
 Welcome to the EcoRoute collection team for Arua City.
 
-Your rider dispatch account has been authorized for the municipal tricycle waste collection fleet serving Ayivu, Central Division, and Muni University.
+An official rider dispatch account has been authorized for you by Arua City Council Fleet Operations for the municipal tricycle waste collection fleet serving Ayivu, Central Division, and Muni University.
+
+Your Authorization Details:
+- Driver Name: $riderName
+- Assigned Tricycle: ${tricycleId ?? 'TRIC-04 (Ediofe Depot)'}
+- Authorization Token: ${inviteCode ?? 'Authorized'}
+- Operations Hotline: +256 394 880 352
 
 Your live dispatch portal is ready at:
 $inviteLink
@@ -116,9 +128,9 @@ Collection operations reminder:
 If you have questions, contact municipal dispatch or reply directly to this email.
 
 EcoRoute Municipal Waste Operations
-Muni University & Arua City Council Logistics
-Arua, West Nile, Uganda
-ecoroute.waste@gmail.com
+Arua City Council Logistics & Muni University Campus
+Plot 4 Avenue Road, Central Division, Arua City, West Nile, Uganda
+Official Dispatch: ecoroute.waste@gmail.com
 ''';
 
     final emailLaunchUri = Uri(
