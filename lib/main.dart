@@ -57,7 +57,7 @@ class EcoRouteState extends ChangeNotifier {
   factory EcoRouteState() => instance;
   EcoRouteState._internal();
 
-  static const String _kStorageKey = 'ecoroute_app_state_v3';
+  static const String _kStorageKey = 'ecoroute_app_state_v4';
   SharedPreferences? _prefs;
 
   // Active Role and Profile
@@ -76,122 +76,20 @@ class EcoRouteState extends ChangeNotifier {
     {'label': 'Store', 'address': 'Arua Central Market'},
   ];
 
-  // Active Pickup State
-  Map<String, dynamic> activePickup = {
-    'id': '251985',
-    'sacks': 1,
-    'wasteType': 'Household',
-    'address': 'Ediofe, Trading Center',
-    'pickupNotes': 'Behind blue gate, call on arrival',
-    'price': '2,500 UGX',
-    'status': 'Requested',
-    'step': 0, // 0: Requested, 1: Dispatched, 2: Verifying, 3: Settled
-    'verificationCode': '8492',
-    'assignedRiderId': null,
-    'assignedRiderName': 'Pending Admin Dispatch',
-    'createdAt': 'Today, 08:30 AM',
-    'isInstant': true,
-    'paymentMethod': 'Cash on Collection',
-    'photoEvidence': null,
-    'riderRating': null,
-    'receiptSerial': 'ECO-ARUA-251985',
-  };
+  // Active Pickup State (Pure dynamic state - populated strictly when Resident books)
+  Map<String, dynamic>? activePickup;
 
-  // Resident Requests History
-  List<Map<String, dynamic>> residentRequests = [
-    {
-      'id': 'Active Pickup #251985',
-      'pickupId': '251985',
-      'date': 'Today, 08:30 AM',
-      'size': '1 Sack',
-      'status': 'Dispatched',
-      'color': 0xFF9C3D18,
-      'receiptSerial': 'ECO-ARUA-251985',
-    },
-    {
-      'id': 'Sacks Pickup #249112',
-      'pickupId': '249112',
-      'date': 'Oct 28, 2026',
-      'size': '2 Sacks',
-      'status': 'Settled',
-      'color': 0xFF0D2618,
-      'receiptSerial': 'ECO-ARUA-249112',
-    },
-    {
-      'id': 'Standard Pickup #248873',
-      'pickupId': '248873',
-      'date': 'Oct 15, 2026',
-      'size': '1 Sack',
-      'status': 'Settled',
-      'color': 0xFF0D2618,
-      'receiptSerial': 'ECO-ARUA-248873',
-    },
-  ];
+  // Resident Requests History (Dynamic request ledger)
+  List<Map<String, dynamic>> residentRequests = [];
 
-  // Rider Tasks Queue
-  List<Map<String, dynamic>> riderTasks = [
-    {
-      'id': '251985',
-      'client': 'Jane Agondua',
-      'phone': '+256 394 880 352',
-      'address': 'Ediofe, Trading Center',
-      'pickupNotes': 'Behind blue gate, call on arrival',
-      'sacks': 1,
-      'wasteType': 'Household',
-      'payment': '2,500 UGX Cash',
-      'status': 'Dispatched',
-      'verificationCode': '8492',
-      'distance': '1.4 km',
-      'eta': '8 mins',
-      'zone': 'Ediofe',
-      'photoEvidence': null,
-      'receiptSerial': 'ECO-ARUA-251985',
-    },
-    {
-      'id': '251992',
-      'client': 'Arua Hill Secondary School',
-      'phone': '+256 394 880 352',
-      'address': 'Arua Hill Avenue, Near Stadium',
-      'pickupNotes': 'Main school gate, security desk',
-      'sacks': 3,
-      'wasteType': 'Commercial',
-      'payment': '7,500 UGX Cash',
-      'status': 'Dispatched',
-      'verificationCode': '3190',
-      'distance': '3.2 km',
-      'eta': '15 mins',
-      'zone': 'Arua Hill',
-      'photoEvidence': null,
-      'receiptSerial': 'ECO-ARUA-251992',
-    },
-    {
-      'id': '252004',
-      'client': 'Onduparaka Green Grocers',
-      'phone': '+256 394 880 352',
-      'address': 'Onduparaka Center, Road Junction',
-      'pickupNotes': 'Vegetable crates by market stall #4',
-      'sacks': 2,
-      'wasteType': 'Organic',
-      'payment': '5,000 UGX Cash',
-      'status': 'Dispatched',
-      'verificationCode': '5521',
-      'distance': '4.1 km',
-      'eta': '19 mins',
-      'zone': 'Onduparaka',
-      'photoEvidence': null,
-      'receiptSerial': 'ECO-ARUA-252004',
-    },
-  ];
+  // Rider Tasks Queue (Dynamic dispatch pool)
+  List<Map<String, dynamic>> riderTasks = [];
 
   int selectedRiderTaskIndex = 0;
   bool isRiderShiftActive = true;
-  int riderLedgerBalance = 54350;
+  int riderLedgerBalance = 0;
 
-  List<Map<String, dynamic>> riderTransactions = [
-    {'title': 'Ediofe Center Batch #251980', 'date': 'Today, 07:45 AM', 'amount': '+12,500 UGX', 'isPayout': false},
-    {'title': 'Ayivu Central Route Completion', 'date': 'Today, 06:30 AM', 'amount': '+25,000 UGX', 'isPayout': false},
-    {'title': 'SLA Reliability Bonus', 'date': 'Yesterday', 'amount': '+16,850 UGX', 'isPayout': false},
-  ];
+  List<Map<String, dynamic>> riderTransactions = [];
 
   // Tricycle Fleet for Admin & Map (Tricycles start unassigned until Admin issues invitation)
   List<Map<String, dynamic>> tricycles = [
@@ -267,9 +165,9 @@ class EcoRouteState extends ChangeNotifier {
     },
   ];
 
-  // Admin KPIs & Tonnage
-  double totalTonnes = 14.50;
-  List<double> weeklyTonnage = [1.8, 2.1, 2.4, 1.9, 2.8, 2.0, 1.5]; // Mon to Sun
+  // Admin KPIs & Tonnage (Dynamic municipal metrics)
+  double totalTonnes = 0.0;
+  List<double> weeklyTonnage = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]; // Mon to Sun
   List<Map<String, dynamic>> supportTickets = [];
   List<Map<String, dynamic>> invitedRiders = [];
   List<Map<String, dynamic>> offlineSyncQueue = [];
@@ -301,6 +199,15 @@ class EcoRouteState extends ChangeNotifier {
         if (map['totalTonnes'] != null) totalTonnes = (map['totalTonnes'] as num).toDouble();
         if (map['activePickup'] != null) activePickup = Map<String, dynamic>.from(map['activePickup'] as Map);
         if (map['systemBroadcast'] != null) systemBroadcast = map['systemBroadcast'] as String?;
+        if (map['residentRequests'] != null) {
+          residentRequests = (map['residentRequests'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+        if (map['riderTasks'] != null) {
+          riderTasks = (map['riderTasks'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+        if (map['riderTransactions'] != null) {
+          riderTransactions = (map['riderTransactions'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
       }
     } catch (e) {
       debugPrint('State initialization notice: $e');
@@ -325,6 +232,9 @@ class EcoRouteState extends ChangeNotifier {
         'totalTonnes': totalTonnes,
         'activePickup': activePickup,
         'systemBroadcast': systemBroadcast,
+        'residentRequests': residentRequests,
+        'riderTasks': riderTasks,
+        'riderTransactions': riderTransactions,
       };
       await _prefs?.setString(_kStorageKey, jsonEncode(stateMap));
     } catch (e) {
@@ -426,6 +336,17 @@ class EcoRouteState extends ChangeNotifier {
     }
   }
 
+  Future<void> _syncPickupRequestToFirestore(Map<String, dynamic> requestData) async {
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        final id = requestData['id'] as String;
+        await FirebaseFirestore.instance.collection('pickupRequests').doc(id).set(requestData, SetOptions(merge: true));
+      }
+    } catch (e) {
+      debugPrint('Firestore sync notice: $e');
+    }
+  }
+
   void bookPickup({
     required int sacks,
     required String wasteType,
@@ -439,61 +360,63 @@ class EcoRouteState extends ChangeNotifier {
     final code = '${rng.nextInt(9000) + 1000}';
     final price = '${sacks * 2500} UGX';
     final serial = 'ECO-ARUA-$newId';
+    final nowTime = 'Today, ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}';
 
-    activePickup = {
+    final order = {
       'id': newId,
+      'client': userName,
+      'phone': userPhone,
       'sacks': sacks,
       'wasteType': wasteType,
       'address': address,
       'pickupNotes': pickupNotes,
       'price': price,
       'status': 'Requested',
-      'step': 0, // 0: Requested
+      'step': 0, // 0: Requested, 1: Dispatched, 2: Verifying, 3: Settled
       'verificationCode': code,
-      'assignedRiderId': 'TRIC-04',
-      'assignedRiderName': 'John B.',
-      'createdAt': 'Just now',
+      'assignedRiderId': null,
+      'assignedRiderName': 'Pending Admin Dispatch',
+      'createdAt': nowTime,
       'isInstant': isInstant,
       'paymentMethod': paymentMethod,
       'photoEvidence': null,
       'riderRating': null,
       'receiptSerial': serial,
+      'distance': '1.2 km',
+      'eta': 'Pending Dispatch',
+      'zone': address.split(',').first.trim(),
     };
+
+    activePickup = Map<String, dynamic>.from(order);
 
     residentRequests.insert(0, {
       'id': 'Pickup #$newId',
       'pickupId': newId,
-      'date': 'Just now',
+      'date': nowTime,
       'size': '$sacks Sack${sacks > 1 ? 's' : ''}',
       'status': 'Requested',
       'color': 0xFF9C3D18,
       'receiptSerial': serial,
-    });
-
-    riderTasks.insert(0, {
-      'id': newId,
-      'client': userName,
-      'phone': userPhone,
       'address': address,
-      'pickupNotes': pickupNotes,
+      'price': price,
       'sacks': sacks,
       'wasteType': wasteType,
-      'payment': '$price $paymentMethod',
-      'status': 'Requested',
+      'paymentMethod': paymentMethod,
+      'assignedRiderName': 'Pending Admin Dispatch',
       'verificationCode': code,
-      'distance': '1.2 km',
-      'eta': '7 mins',
-      'zone': address.split(',').first,
-      'photoEvidence': null,
-      'receiptSerial': serial,
     });
 
+    riderTasks.insert(0, Map<String, dynamic>.from(order));
     selectedRiderTaskIndex = 0;
+
+    _syncPickupRequestToFirestore(order);
+
     _saveState();
     notifyListeners();
   }
 
   void riderVerifyAndSettle({required String inputCode, required BuildContext context}) {
+    if (riderTasks.isEmpty) return;
     final activeTask = riderTasks[selectedRiderTaskIndex];
     final actualCode = activeTask['verificationCode'] as String;
 
@@ -509,9 +432,9 @@ class EcoRouteState extends ChangeNotifier {
 
     // Advance status
     activeTask['status'] = 'Settled';
-    if (activePickup['id'] == activeTask['id']) {
-      activePickup['status'] = 'Settled';
-      activePickup['step'] = 3; // Settled
+    if (activePickup != null && activePickup!['id'] == activeTask['id']) {
+      activePickup!['status'] = 'Settled';
+      activePickup!['step'] = 3; // Settled
     }
 
     // Update requests list
@@ -534,6 +457,8 @@ class EcoRouteState extends ChangeNotifier {
     // Admin Waste Tonnage update (+0.05 Tonnes / sack)
     totalTonnes += (sacks * 0.05);
 
+    _syncPickupRequestToFirestore(activeTask);
+
     _saveState();
     notifyListeners();
 
@@ -545,9 +470,10 @@ class EcoRouteState extends ChangeNotifier {
   void attachPhotoEvidence(String base64Image) {
     if (riderTasks.isNotEmpty) {
       riderTasks[selectedRiderTaskIndex]['photoEvidence'] = base64Image;
+      _syncPickupRequestToFirestore(riderTasks[selectedRiderTaskIndex]);
     }
-    if (activePickup['id'] == (riderTasks.isNotEmpty ? riderTasks[selectedRiderTaskIndex]['id'] : null)) {
-      activePickup['photoEvidence'] = base64Image;
+    if (activePickup != null && activePickup!['id'] == (riderTasks.isNotEmpty ? riderTasks[selectedRiderTaskIndex]['id'] : null)) {
+      activePickup!['photoEvidence'] = base64Image;
     }
     _saveState();
     notifyListeners();
@@ -563,12 +489,15 @@ class EcoRouteState extends ChangeNotifier {
   }
 
   void submitRiderRating(int stars, List<String> tags, BuildContext context) {
-    activePickup['riderRating'] = stars;
+    if (activePickup != null) {
+      activePickup!['riderRating'] = stars;
+      _syncPickupRequestToFirestore(activePickup!);
+    }
     _saveState();
     notifyListeners();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Thank you! $stars-star rating and feedback submitted for ${activePickup['assignedRiderName']}.')),
+      SnackBar(content: Text('Thank you! $stars-star rating and feedback submitted for ${activePickup?['assignedRiderName'] ?? 'Rider'}.')),
     );
   }
 
@@ -614,20 +543,33 @@ class EcoRouteState extends ChangeNotifier {
 
   void adminReassignPickup(String pickupId, String tricycleId, BuildContext context) {
     final tri = tricycles.firstWhere((t) => t['id'] == tricycleId, orElse: () => tricycles.first);
-    if (activePickup['id'] == pickupId) {
-      activePickup['assignedRiderId'] = tri['id'];
-      activePickup['assignedRiderName'] = tri['riderName'];
+    if (activePickup != null && activePickup!['id'] == pickupId) {
+      activePickup!['assignedRiderId'] = tri['id'];
+      activePickup!['assignedRiderName'] = tri['riderName'];
+      activePickup!['status'] = 'Dispatched';
+      activePickup!['step'] = 1;
     }
     for (final task in riderTasks) {
       if (task['id'] == pickupId) {
         task['assignedRiderId'] = tri['id'];
+        task['assignedRiderName'] = tri['riderName'];
+        task['status'] = 'Dispatched';
+        task['eta'] = '8 mins';
+        _syncPickupRequestToFirestore(task);
+      }
+    }
+    for (final req in residentRequests) {
+      if (req['pickupId'] == pickupId) {
+        req['status'] = 'Dispatched';
+        req['color'] = 0xFF9C3D18;
+        req['assignedRiderName'] = tri['riderName'];
       }
     }
     _saveState();
     notifyListeners();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Task #$pickupId successfully reassigned to ${tri['id']} (${tri['riderName']}).')),
+      SnackBar(content: Text('Task #$pickupId successfully assigned to ${tri['id']} (${tri['riderName']}).')),
     );
   }
 
@@ -719,10 +661,11 @@ class EcoRouteState extends ChangeNotifier {
       tricycles[tIdx]['speed'] = 'Standby';
     }
 
-    if (activePickup['assignedRiderId'] == 'Unassigned' || activePickup['assignedRiderId'] == null) {
-      activePickup['assignedRiderId'] = tricycleId;
-      activePickup['assignedRiderName'] = name;
-      activePickup['status'] = 'Dispatched';
+    if (activePickup != null && (activePickup!['assignedRiderId'] == 'Unassigned' || activePickup!['assignedRiderId'] == null)) {
+      activePickup!['assignedRiderId'] = tricycleId;
+      activePickup!['assignedRiderName'] = name;
+      activePickup!['status'] = 'Dispatched';
+      activePickup!['step'] = 1;
     }
 
     _saveState();
@@ -1412,100 +1355,8 @@ class _LoginScreenState extends State<LoginScreen> {
 }
 
 // =================================================================
-// 5. TOP APP BAR QUICK ROLE SWITCHER & PROFILE SHEET
+// 5. ACCOUNT PROFILE & SECURITY MANAGEMENT SHEET
 // =================================================================
-class _RoleSwitcherPill extends StatelessWidget {
-  const _RoleSwitcherPill();
-
-  @override
-  Widget build(BuildContext context) {
-    final state = EcoRouteState.instance;
-    final role = state.currentRole;
-
-    String label = 'Resident';
-    IconData icon = Icons.person;
-    if (role == 'rider') {
-      label = 'Rider';
-      icon = Icons.two_wheeler;
-    } else if (role == 'admin') {
-      label = 'Admin';
-      icon = Icons.shield;
-    }
-
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF0D2618).withValues(alpha: 0.2)),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => _showRoleSwitchModal(context),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 14, color: const Color(0xFF0D2618)),
-              const SizedBox(width: 4),
-              Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
-              const Icon(Icons.arrow_drop_down, size: 16, color: Color(0xFF0D2618)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showRoleSwitchModal(BuildContext context) {
-    final state = EcoRouteState.instance;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Quick Role Switcher (Live Test Mode)',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D2618)),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Switch between roles instantly without logging out to test full waste lifecycle:',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            _buildRoleOption(ctx, 'Resident', 'resident', Icons.person, 'Book pickups & track tricycles in real time', state),
-            _buildRoleOption(ctx, 'Rider / Collector', 'rider', Icons.two_wheeler, 'Navigate route & verify handshake code', state),
-            _buildRoleOption(ctx, 'Admin Command HQ', 'admin', Icons.shield, 'Monitor fleet, tonnage, alerts & assign routes', state),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRoleOption(BuildContext context, String title, String role, IconData icon, String subtitle, EcoRouteState state) {
-    final isSelected = state.currentRole == role;
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: isSelected ? const Color(0xFF0D2618) : const Color(0xFFE8ECE7),
-        child: Icon(icon, color: isSelected ? Colors.white : const Color(0xFF0D2618), size: 20),
-      ),
-      title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? const Color(0xFF9C3D18) : const Color(0xFF0D2618))),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 11)),
-      trailing: isSelected ? const Icon(Icons.check_circle, color: Color(0xFF9C3D18)) : null,
-      onTap: () {
-        Navigator.pop(context);
-        state.switchRole(role, context);
-      },
-    );
-  }
-}
 
 // Complete Account Profile, Security & Saved Addresses Sheet
 void showEcoRouteProfileSheet(BuildContext context) {
@@ -2063,7 +1914,7 @@ class _ResidentRootScreenState extends State<ResidentRootScreen> {
 }
 
 class ResidentHomeScreen extends StatelessWidget {
-  final Map<String, dynamic> pickup;
+  final Map<String, dynamic>? pickup;
   final VoidCallback onBookPickup;
   final VoidCallback onOpenMap;
 
@@ -2075,6 +1926,7 @@ class ResidentHomeScreen extends StatelessWidget {
   });
 
   void _showRatingModal(BuildContext context) {
+    if (pickup == null) return;
     int selectedStars = 5;
     final List<String> selectedTags = [];
     final availableTags = ['Punctual', 'Clean Tricycle', 'Polite Rider', 'Careful Handling'];
@@ -2087,7 +1939,7 @@ class ResidentHomeScreen extends StatelessWidget {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('How was your collection by ${pickup['assignedRiderName'] ?? 'Rider John B.'}?', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text('How was your collection by ${pickup!['assignedRiderName'] ?? 'Rider'}?', style: const TextStyle(fontSize: 12, color: Colors.grey)),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -2138,6 +1990,7 @@ class ResidentHomeScreen extends StatelessWidget {
   }
 
   void _showDigitalReceipt(BuildContext context) {
+    if (pickup == null) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -2170,17 +2023,17 @@ class ResidentHomeScreen extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    pickup['receiptSerial'] as String? ?? 'ECO-ARUA-${pickup['id']}',
+                    pickup!['receiptSerial'] as String? ?? 'ECO-ARUA-${pickup!['id']}',
                     style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 15, color: Color(0xFF0D2618)),
                   ),
                   const SizedBox(height: 4),
                   const Text('Arua City Council • Sustainable Solid Waste Logistics', style: TextStyle(fontSize: 10, color: Colors.grey)),
                   const SizedBox(height: 12),
                   _buildReceiptRow('Client Name', EcoRouteState.instance.userName),
-                  _buildReceiptRow('Cell / Ward', pickup['address'] as String? ?? 'Ediofe'),
-                  _buildReceiptRow('Waste Payload', '${pickup['sacks']} Sack(s) • ${pickup['wasteType']}'),
-                  _buildReceiptRow('Total Amount', '${pickup['price']} (${pickup['paymentMethod']})'),
-                  _buildReceiptRow('Assigned Unit', '${pickup['assignedRiderId']} (${pickup['assignedRiderName']})'),
+                  _buildReceiptRow('Cell / Ward', pickup!['address'] as String? ?? 'Ediofe'),
+                  _buildReceiptRow('Waste Payload', '${pickup!['sacks']} Sack(s) • ${pickup!['wasteType']}'),
+                  _buildReceiptRow('Total Amount', '${pickup!['price']} (${pickup!['paymentMethod']})'),
+                  _buildReceiptRow('Assigned Unit', '${pickup!['assignedRiderId'] ?? 'Tricycle'} (${pickup!['assignedRiderName'] ?? 'Pending'})'),
                   _buildReceiptRow('Status', 'VERIFIED & SETTLED'),
                 ],
               ),
@@ -2188,10 +2041,10 @@ class ResidentHomeScreen extends StatelessWidget {
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () {
-                final message = 'Official EcoRoute Waste Receipt: ${pickup['receiptSerial']}\n'
+                final message = 'Official EcoRoute Waste Receipt: ${pickup!['receiptSerial']}\n'
                     'Client: ${EcoRouteState.instance.userName}\n'
-                    'Sacks: ${pickup['sacks']} (${pickup['wasteType']})\n'
-                    'Paid: ${pickup['price']}\n'
+                    'Sacks: ${pickup!['sacks']} (${pickup!['wasteType']})\n'
+                    'Paid: ${pickup!['price']}\n'
                     'Verified by Arua City Fleet (+256394880352)';
                 launchEcoRouteWhatsApp(message: message);
               },
@@ -2221,7 +2074,7 @@ class ResidentHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = EcoRouteState.instance;
-    final isSettled = (pickup['step'] as int) == 3;
+    final isSettled = pickup != null && (pickup!['step'] as int? ?? 0) == 3;
 
     return Scaffold(
       appBar: AppBar(
@@ -2233,7 +2086,6 @@ class ResidentHomeScreen extends StatelessWidget {
           ],
         ),
         actions: [
-          const _RoleSwitcherPill(),
           IconButton(
             tooltip: 'Call Support (+256394880352)',
             icon: const Icon(Icons.phone_outlined),
@@ -2289,177 +2141,223 @@ class ResidentHomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // Active Tracking Card
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GestureDetector(
-                    onTap: onOpenMap,
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      child: SizedBox(
-                        height: 120,
-                        child: CustomPaint(
-                          painter: AruaMapPainter(),
-                          child: Stack(
-                            children: [
-                              Container(color: Colors.black.withValues(alpha: 0.05)),
-                              Center(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(color: const Color(0xFF0D2618), borderRadius: BorderRadius.circular(20)),
-                                  child: const Text('Tap to View Live Route', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+            if (pickup != null) ...[
+              // Active Tracking Card
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    GestureDetector(
+                      onTap: onOpenMap,
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        child: SizedBox(
+                          height: 120,
+                          child: CustomPaint(
+                            painter: AruaMapPainter(),
+                            child: Stack(
+                              children: [
+                                Container(color: Colors.black.withValues(alpha: 0.05)),
+                                Center(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(color: const Color(0xFF0D2618), borderRadius: BorderRadius.circular(20)),
+                                    child: const Text('Tap to View Live Route', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Tricycle Rider: #${pickup['id']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0D2618))),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: isSettled
-                                    ? Colors.green.withValues(alpha: 0.15)
-                                    : const Color(0xFF9C3D18).withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                pickup['status'] as String,
-                                style: TextStyle(
-                                  color: isSettled ? Colors.green : const Color(0xFF9C3D18),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('Tricycle Rider: #${pickup!['id']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0D2618))),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isSettled
+                                      ? Colors.green.withValues(alpha: 0.15)
+                                      : const Color(0xFF9C3D18).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  pickup!['status'] as String,
+                                  style: TextStyle(
+                                    color: isSettled ? Colors.green : const Color(0xFF9C3D18),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          ProgressStepper(currentStep: pickup!['step'] as int? ?? 0),
+                          const SizedBox(height: 16),
+
+                          // Handshake Verification Code Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8ECE7),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFF0D2618).withValues(alpha: 0.15)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Collection Verification Code:', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                    Text(
+                                      pickup!['verificationCode'] as String? ?? '----',
+                                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 3, color: Color(0xFF0D2618)),
+                                    ),
+                                  ],
+                                ),
+                                ElevatedButton.icon(
+                                  onPressed: () => _showQrModal(context, pickup!['verificationCode'] as String? ?? '0000'),
+                                  icon: const Icon(Icons.qr_code, size: 14, color: Colors.white),
+                                  label: const Text('Show QR', style: TextStyle(fontSize: 11, color: Colors.white)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF0D2618),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    minimumSize: const Size(0, 32),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          const Text('Order Snapshot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('${pickup!['sacks']} Sack(s) • ${pickup!['address']}', style: const TextStyle(color: Color(0xFF1A3A28), fontSize: 12)),
+                              Text(pickup!['price'] as String, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618), fontSize: 13)),
+                            ],
+                          ),
+                          if (pickup!['pickupNotes'] != null && (pickup!['pickupNotes'] as String).isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text('Notes: "${pickup!['pickupNotes']}"', style: const TextStyle(color: Color(0xFF9C3D18), fontSize: 11, fontStyle: FontStyle.italic)),
+                          ],
+                          const SizedBox(height: 2),
+                          Text('Payment: ${pickup!['paymentMethod'] ?? 'Cash on Collection'}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                          const SizedBox(height: 12),
+
+                          // Post-Collection Actions (Receipt & Rating)
+                          if (isSettled) ...[
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => _showDigitalReceipt(context),
+                                    icon: const Icon(Icons.receipt, size: 16, color: Colors.white),
+                                    label: const Text('Digital Receipt', style: TextStyle(fontSize: 12, color: Colors.white)),
+                                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => _showRatingModal(context),
+                                    icon: const Icon(Icons.star, size: 16, color: Colors.amber),
+                                    label: Text(
+                                      pickup!['riderRating'] != null ? 'Rated ${pickup!['riderRating']}★' : 'Rate Rider',
+                                      style: const TextStyle(color: Color(0xFF0D2618), fontSize: 12, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                InkWell(
+                                  onTap: onOpenMap,
+                                  child: const Text('View Live Map Tracker >', style: TextStyle(color: Color(0xFF9C3D18), fontWeight: FontWeight.bold, fontSize: 12)),
+                                ),
+                                ElevatedButton.icon(
+                                  onPressed: () => launchEcoRouteCall(),
+                                  icon: const Icon(Icons.phone, size: 14, color: Colors.white),
+                                  label: const Text('Call Dispatch', style: TextStyle(color: Colors.white, fontSize: 11)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF0D2618),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
-                        ),
-                        const SizedBox(height: 12),
-                        ProgressStepper(currentStep: pickup['step'] as int),
-                        const SizedBox(height: 16),
-
-                        // Handshake Verification Code Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE8ECE7),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFF0D2618).withValues(alpha: 0.15)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Collection Verification Code:', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                                  Text(
-                                    pickup['verificationCode'] as String? ?? '8492',
-                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 3, color: Color(0xFF0D2618)),
-                                  ),
-                                ],
-                              ),
-                              ElevatedButton.icon(
-                                onPressed: () => _showQrModal(context, pickup['verificationCode'] as String? ?? '8492'),
-                                icon: const Icon(Icons.qr_code, size: 14, color: Colors.white),
-                                label: const Text('Show QR', style: TextStyle(fontSize: 11, color: Colors.white)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF0D2618),
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  minimumSize: const Size(0, 32),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        const Text('Order Snapshot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('${pickup['sacks']} Sack(s) • ${pickup['address']}', style: const TextStyle(color: Color(0xFF1A3A28), fontSize: 12)),
-                            Text(pickup['price'] as String, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618), fontSize: 13)),
-                          ],
-                        ),
-                        if (pickup['pickupNotes'] != null && (pickup['pickupNotes'] as String).isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text('Notes: "${pickup['pickupNotes']}"', style: const TextStyle(color: Color(0xFF9C3D18), fontSize: 11, fontStyle: FontStyle.italic)),
                         ],
-                        const SizedBox(height: 2),
-                        Text('Payment: ${pickup['paymentMethod'] ?? 'Cash on Collection'}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
-                        const SizedBox(height: 12),
-
-                        // Post-Collection Actions (Receipt & Rating)
-                        if (isSettled) ...[
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () => _showDigitalReceipt(context),
-                                  icon: const Icon(Icons.receipt, size: 16, color: Colors.white),
-                                  label: const Text('Digital Receipt', style: TextStyle(fontSize: 12, color: Colors.white)),
-                                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: () => _showRatingModal(context),
-                                  icon: const Icon(Icons.star, size: 16, color: Colors.amber),
-                                  label: Text(
-                                    pickup['riderRating'] != null ? 'Rated ${pickup['riderRating']}★' : 'Rate Rider',
-                                    style: const TextStyle(color: Color(0xFF0D2618), fontSize: 12, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ] else ...[
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              InkWell(
-                                onTap: onOpenMap,
-                                child: const Text('View Live Map Tracker >', style: TextStyle(color: Color(0xFF9C3D18), fontWeight: FontWeight.bold, fontSize: 12)),
-                              ),
-                              ElevatedButton.icon(
-                                onPressed: () => launchEcoRouteCall(),
-                                icon: const Icon(Icons.phone, size: 14, color: Colors.white),
-                                label: const Text('Call Dispatch', style: TextStyle(color: Colors.white, fontSize: 11)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF0D2618),
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ] else ...[
+              // Empty State Card
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D2618).withValues(alpha: 0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.recycling_outlined, size: 48, color: Color(0xFF0D2618)),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'No Active Pickup Scheduled',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D2618)),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'You have no pending waste collection requests in Arua City. Tap "Book a New Pickup" above to request an electric tricycle to your gate.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: Colors.grey, height: 1.4),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: onBookPickup,
+                      icon: const Icon(Icons.add_circle_outline, size: 16, color: Color(0xFF0D2618)),
+                      label: const Text('Schedule Collection Now', style: TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF0D2618)),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
 
             // Live Weather Widget from Open-Meteo
@@ -2545,7 +2443,6 @@ class ResidentRequestsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Pickup Requests'),
         actions: [
-          const _RoleSwitcherPill(),
           IconButton(
             tooltip: 'My Profile',
             icon: const Icon(Icons.account_circle_outlined),
@@ -2719,7 +2616,6 @@ class _ResidentSupportScreenState extends State<ResidentSupportScreen> {
       appBar: AppBar(
         title: const Text('Support & Help Desk'),
         actions: [
-          const _RoleSwitcherPill(),
           IconButton(
             tooltip: 'My Profile',
             icon: const Icon(Icons.account_circle_outlined),
@@ -3083,7 +2979,6 @@ class RiderTasksScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Rider Dashboard'),
         actions: [
-          const _RoleSwitcherPill(),
           IconButton(
             tooltip: 'My Profile & ID Badge',
             icon: const Icon(Icons.account_circle_outlined),
@@ -3281,57 +3176,100 @@ class RiderTasksScreen extends StatelessWidget {
                   ],
                 ),
               ),
+            ] else ...[
+              // Empty State Card
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0D2618).withValues(alpha: 0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.pedal_bike, size: 48, color: Color(0xFF0D2618)),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'No Collection Tasks Assigned',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D2618)),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'You currently have no pending waste pickups in your queue. New dispatches from Arua City Admin will appear here in real time.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: Colors.grey, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
             ],
             const SizedBox(height: 20),
 
             // All Queued Tasks in Service Zone
             const Text('Collection Tasks Queue', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
             const SizedBox(height: 8),
-            ...List.generate(state.riderTasks.length, (i) {
-              final t = state.riderTasks[i];
-              final isCurrent = i == state.selectedRiderTaskIndex;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isCurrent ? const Color(0xFFE8ECE7) : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isCurrent ? const Color(0xFF0D2618) : Colors.transparent),
+            if (state.riderTasks.isEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                child: const Center(
+                  child: Text('Task queue is empty (0 pickups)', style: TextStyle(fontSize: 12, color: Colors.grey)),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+            ] else ...[
+              ...List.generate(state.riderTasks.length, (i) {
+                final t = state.riderTasks[i];
+                final isCurrent = i == state.selectedRiderTaskIndex;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isCurrent ? const Color(0xFFE8ECE7) : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: isCurrent ? const Color(0xFF0D2618) : Colors.transparent),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Task #${t['id']} • ${t['client']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
+                            Text('${t['address']} • ${t['sacks']} Sack(s)', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                      Row(
                         children: [
-                          Text('Task #${t['id']} • ${t['client']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
-                          Text('${t['address']} • ${t['sacks']} Sack(s)', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                          Text(t['distance'] as String, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF9C3D18))),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () => state.selectRiderTask(i),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isCurrent ? const Color(0xFF0D2618) : Colors.grey[300],
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              minimumSize: const Size(0, 32),
+                            ),
+                            child: Text(
+                              isCurrent ? 'Active' : 'Select',
+                              style: TextStyle(color: isCurrent ? Colors.white : const Color(0xFF0D2618), fontSize: 11),
+                            ),
+                          ),
                         ],
                       ),
-                    ),
-                    Row(
-                      children: [
-                        Text(t['distance'] as String, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF9C3D18))),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () => state.selectRiderTask(i),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isCurrent ? const Color(0xFF0D2618) : Colors.grey[300],
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            minimumSize: const Size(0, 32),
-                          ),
-                          child: Text(
-                            isCurrent ? 'Active' : 'Select',
-                            style: TextStyle(color: isCurrent ? Colors.white : const Color(0xFF0D2618), fontSize: 11),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            }),
+                    ],
+                  ),
+                );
+              }),
+            ],
           ],
         ),
       ),
@@ -3358,7 +3296,6 @@ class _RiderRouteScreenState extends State<RiderRouteScreen> {
       appBar: AppBar(
         title: const Text('Live Turn-by-Turn Route'),
         actions: [
-          const _RoleSwitcherPill(),
           IconButton(
             tooltip: 'Call Client',
             icon: const Icon(Icons.phone),
@@ -3511,7 +3448,6 @@ class RiderEarningsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Rider Earnings & Ledger'),
         actions: [
-          const _RoleSwitcherPill(),
           IconButton(
             tooltip: 'My Profile',
             icon: const Icon(Icons.account_circle_outlined),
@@ -3551,34 +3487,50 @@ class RiderEarningsScreen extends StatelessWidget {
 
             const Text('Collection Settlement Ledger', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
             const SizedBox(height: 8),
-            ...state.riderTransactions.map((tx) {
-              final isPayout = tx['isPayout'] == true;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(14),
+            if (state.riderTransactions.isEmpty) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(tx['title'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
-                        Text(tx['date'] as String, style: const TextStyle(color: Colors.grey, fontSize: 11)),
-                      ],
-                    ),
-                    Text(
-                      tx['amount'] as String,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: isPayout ? const Color(0xFF9C3D18) : Colors.green,
-                      ),
-                    ),
+                child: Column(
+                  children: const [
+                    Icon(Icons.history_toggle_off, size: 40, color: Colors.grey),
+                    SizedBox(height: 8),
+                    Text('No Completed Trips Today', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                    SizedBox(height: 4),
+                    Text('Completed pickups will record your earnings and payouts here in real time.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 12)),
                   ],
                 ),
-              );
-            }),
+              ),
+            ] else ...[
+              ...state.riderTransactions.map((tx) {
+                final isPayout = tx['isPayout'] == true;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(tx['title'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
+                          Text(tx['date'] as String, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                        ],
+                      ),
+                      Text(
+                        tx['amount'] as String,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: isPayout ? const Color(0xFF9C3D18) : Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
           ],
         ),
       ),
@@ -3908,12 +3860,13 @@ class AdminDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = EcoRouteState.instance;
+    final pendingList = state.riderTasks.where((t) => t['status'] != 'Settled').toList();
+    final firstPending = pendingList.isNotEmpty ? pendingList.first : null;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
         actions: [
-          const _RoleSwitcherPill(),
           IconButton(
             tooltip: 'Call Support (+256394880352)',
             icon: const Icon(Icons.phone_outlined),
@@ -3947,39 +3900,65 @@ class AdminDashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // Quick Triage Priority Alert
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF9C3D18).withValues(alpha: 0.4)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.warning_amber_rounded, color: Color(0xFF9C3D18), size: 24),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('${state.pendingPickupsCount} Pending Collection Alert', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0D2618))),
-                        Text('Pickup #${state.activePickup['id']} (${state.activePickup['address']}) needs rider assignment', style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                      ],
+            // Quick Triage Priority Alert or Clean Status
+            if (firstPending != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF9C3D18).withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Color(0xFF9C3D18), size: 24),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${pendingList.length} Pending Collection Alert', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0D2618))),
+                          Text('Pickup #${firstPending['id']} (${firstPending['address']}) needs rider assignment', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        ],
+                      ),
                     ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => _showAssignModal(context, state.activePickup['id'] as String),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF9C3D18),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ElevatedButton(
+                      onPressed: () => _showAssignModal(context, firstPending['id'] as String),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF9C3D18),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text('1-Tap Assign', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                     ),
-                    child: const Text('1-Tap Assign', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.check_circle_outline, color: Colors.green, size: 24),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('No Pending Collections', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0D2618))),
+                          Text('All municipal collection requests are dispatched or settled.', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
 
             // Live KPI Matrix
@@ -4090,7 +4069,6 @@ class AdminFleetMapScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Fleet Command Map'),
         actions: [
-          const _RoleSwitcherPill(),
           IconButton(
             tooltip: 'Call Support (+256394880352)',
             icon: const Icon(Icons.phone_outlined),
@@ -4241,7 +4219,6 @@ class AdminReportsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Analytics & Reports'),
         actions: [
-          const _RoleSwitcherPill(),
           IconButton(
             tooltip: 'My Profile',
             icon: const Icon(Icons.account_circle_outlined),
@@ -4653,7 +4630,7 @@ class _BookingBottomSheetState extends State<_BookingBottomSheet> {
 }
 
 class _LiveMapTrackerSheet extends StatelessWidget {
-  final Map<String, dynamic> pickup;
+  final Map<String, dynamic>? pickup;
 
   const _LiveMapTrackerSheet({required this.pickup});
 
@@ -4693,38 +4670,46 @@ class _LiveMapTrackerSheet extends StatelessWidget {
               color: Color(0xFFE8ECE7),
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Rider: ${pickup['assignedRiderName'] ?? 'John B.'} (${pickup['assignedRiderId'] ?? 'TRIC-04'})', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
-                        const Text('1.4 km away • Estimated 8 mins ETA', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                      ],
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () => launchEcoRouteCall(),
-                      icon: const Icon(Icons.phone, size: 16, color: Colors.white),
-                      label: const Text('Call (+256394880352)', style: TextStyle(color: Colors.white, fontSize: 11)),
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF9C3D18)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () => launchEcoRouteWhatsApp(message: 'Hello Dispatch (+256394880352), tracking pickup #${pickup['id']} in Arua.'),
-                  icon: const Icon(Icons.chat, size: 16, color: Color(0xFF0D2618)),
-                  label: const Text('WhatsApp Dispatch Hotline', style: TextStyle(color: Color(0xFF0D2618), fontSize: 12)),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF0D2618)),
-                    minimumSize: const Size(double.infinity, 38),
+            child: pickup != null
+                ? Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Rider: ${pickup!['assignedRiderName'] ?? 'John B.'} (${pickup!['assignedRiderId'] ?? 'TRIC-04'})', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                              const Text('1.4 km away • Estimated 8 mins ETA', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                            ],
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () => launchEcoRouteCall(),
+                            icon: const Icon(Icons.phone, size: 16, color: Colors.white),
+                            label: const Text('Call (+256394880352)', style: TextStyle(color: Colors.white, fontSize: 11)),
+                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF9C3D18)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () => launchEcoRouteWhatsApp(message: 'Hello Dispatch (+256394880352), tracking pickup #${pickup!['id']} in Arua.'),
+                        icon: const Icon(Icons.chat, size: 16, color: Color(0xFF0D2618)),
+                        label: const Text('WhatsApp Dispatch Hotline', style: TextStyle(color: Color(0xFF0D2618), fontSize: 12)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF0D2618)),
+                          minimumSize: const Size(double.infinity, 38),
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    children: const [
+                      Text('No Active Pickup Dispatched', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                      SizedBox(height: 4),
+                      Text('Live route and telemetry activate once a collection request is assigned.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    ],
                   ),
-                ),
-              ],
-            ),
           ),
         ],
       ),

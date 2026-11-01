@@ -96,7 +96,7 @@ class _SupportScreenState extends State<SupportScreen> {
             ),
             SizedBox(height: 10),
             Text(
-              'Your active request #251985 has been assigned to tricycle Rider Juma. Expected arrival at Ediofe Trading Center within 12 minutes.',
+              'Arua City dispatch officers are actively monitoring collections. For instant dispatch updates, contact our operational hotline.',
               style: TextStyle(fontFamily: 'Satoshi', fontSize: 13.5, height: 1.4),
             ),
           ],

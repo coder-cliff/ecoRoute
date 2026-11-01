@@ -557,13 +557,22 @@ class RouteDetailCard extends StatelessWidget {
                           color: theme.colorScheme.outlineVariant,
                         ),
                       ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.map_outlined, size: 14),
-                          SizedBox(width: 4),
-                          Text('Live Fleet Map', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                        ],
+                      child: const Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.map_outlined, size: 14),
+                            SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                'Live Fleet Map',
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],

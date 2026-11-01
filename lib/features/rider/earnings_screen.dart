@@ -13,7 +13,7 @@ class EarningsScreen extends StatefulWidget {
 }
 
 class _EarningsScreenState extends State<EarningsScreen> {
-  int _balanceUgx = 54350;
+  int _balanceUgx = 0;
   bool _payoutRequested = false;
 
   void _handleRequestPayout() {
@@ -260,27 +260,19 @@ class _EarningsScreenState extends State<EarningsScreen> {
           ),
           const SizedBox(height: 10),
 
-          _buildTransactionItem(
-            title: 'Pickup #251985',
-            subtitle: 'Jane A. • 2,500 UGX',
-            date: 'Date: 23, 2022, 07:35 AM',
-            isBonus: false,
-          ),
-          const SizedBox(height: 10),
-
-          _buildTransactionItem(
-            title: 'Pickup #251986',
-            subtitle: 'John B. • 5,000 UGX',
-            date: 'Date: 23, 2022, 07:35 AM',
-            isBonus: false,
-          ),
-          const SizedBox(height: 10),
-
-          _buildTransactionItem(
-            title: 'Batch Bonus: +3 Pickups',
-            subtitle: '1,500 UGX',
-            date: 'Date: 10, 2022, 07:35 PM',
-            isBonus: true,
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: EcoPalette.cardBorder),
+            ),
+            child: const Center(
+              child: Text(
+                'No completed trips recorded yet today',
+                style: TextStyle(fontFamily: 'Satoshi', fontSize: 13, color: Colors.grey),
+              ),
+            ),
           ),
           const SizedBox(height: 24),
 
@@ -410,62 +402,6 @@ class _EarningsScreenState extends State<EarningsScreen> {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
         ),
       ],
-    );
-  }
-
-  Widget _buildTransactionItem({
-    required String title,
-    required String subtitle,
-    required String date,
-    required bool isBonus,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: EcoPalette.cardBorder),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontFamily: 'Satoshi',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: isBonus ? EcoPalette.primaryDark : EcoPalette.accentTerracotta,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontFamily: 'Satoshi',
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: EcoPalette.secondaryDark,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  date,
-                  style: const TextStyle(
-                    fontFamily: 'Satoshi',
-                    fontSize: 11,
-                    color: Color(0xFF90A195),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFFB0BFB5)),
-        ],
-      ),
     );
   }
 }

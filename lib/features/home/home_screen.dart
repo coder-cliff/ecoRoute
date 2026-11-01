@@ -1183,54 +1183,18 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           if (_role == AppRole.resident) ...[
             ResidentHeroGreeting(
               user: _currentUser,
-              activeRequestsCount: residentOrders.any((o) => o.status != RequestStatus.paid && o.status != RequestStatus.cancelled)
-                  ? residentOrders.where((o) => o.status != RequestStatus.paid && o.status != RequestStatus.cancelled).length
-                  : 3,
+              activeRequestsCount: residentOrders.where((o) => o.status != RequestStatus.paid && o.status != RequestStatus.cancelled).length,
               onTapProfile: () => setState(() => _tab = 2),
             ),
             const SizedBox(height: 30),
-            ActivePickupTrackerCard(
-              request: activeResidentOrder ??
-                  PickupRequest(
-                    id: 'req-251985',
-                    wasteType: WasteType.tradingCenter,
-                    description: 'On-demand collection request dispatched to tricycle fleet.',
-                    submittedAt: DateTime.now().subtract(const Duration(minutes: 25)),
-                    status: RequestStatus.requested,
-                    sackCount: 1,
-                    priceUgx: 2500,
-                    isInstant: true,
-                    address: 'Ediofe',
-                    latitude: 3.0280,
-                    longitude: 30.9080,
-                    residentName: _currentUser?.fullName ?? 'Resident',
-                    residentPhone: _currentUser?.phone ?? '+256 700 000 000',
-                  ),
-              onTapDetails: () => _openRequestDetails(
-                activeResidentOrder ??
-                    PickupRequest(
-                      id: 'req-251985',
-                      wasteType: WasteType.tradingCenter,
-                      description: 'On-demand collection request dispatched to tricycle fleet.',
-                      submittedAt: DateTime.now().subtract(const Duration(minutes: 25)),
-                      status: RequestStatus.requested,
-                      sackCount: 1,
-                      priceUgx: 2500,
-                      isInstant: true,
-                      address: 'Ediofe',
-                      latitude: 3.0280,
-                      longitude: 30.9080,
-                      residentName: _currentUser?.fullName ?? 'Resident',
-                      residentPhone: _currentUser?.phone ?? '+256 700 000 000',
-                    ),
+            if (activeResidentOrder != null) ...[
+              ActivePickupTrackerCard(
+                request: activeResidentOrder,
+                onTapDetails: () => _openRequestDetails(activeResidentOrder),
+                onPayMoMo: () => _openMoMoPayment(activeResidentOrder),
               ),
-              onPayMoMo: () {
-                if (activeResidentOrder != null) {
-                  _openMoMoPayment(activeResidentOrder);
-                }
-              },
-            ),
-            const SizedBox(height: 30),
+              const SizedBox(height: 30),
+            ],
           ],
 
           _buildWeatherSafetyCard(),

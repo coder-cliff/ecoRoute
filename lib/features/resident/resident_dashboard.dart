@@ -11,7 +11,6 @@ import '../../core/services/waste_api_service.dart';
 import '../../core/theme/eco_palette.dart';
 import '../../domain/entities/pickup_request.dart';
 import '../../domain/enums/request_status.dart';
-import '../../domain/enums/waste_type.dart';
 import '../auth/splash_screen.dart';
 import '../common/widgets/eco_carto_map.dart';
 import '../request/order_page.dart';
@@ -281,15 +280,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
             (o) => o.status != RequestStatus.cancelled,
             orElse: () => _orders.first,
           )
-        : PickupRequest(
-            id: '251985',
-            wasteType: WasteType.household,
-            description: '1 Sack • Trading Center',
-            address: 'Ediofe Trading Center, Arua',
-            status: RequestStatus.requested,
-            priceUgx: 2500,
-            submittedAt: DateTime.now(),
-          );
+        : null;
 
     return Scaffold(
       backgroundColor: EcoPalette.surface,
@@ -357,7 +348,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
     );
   }
 
-  Widget _buildHomeView(PickupRequest activeOrder) {
+  Widget _buildHomeView(PickupRequest? activeOrder) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Column(
@@ -417,139 +408,176 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
           ),
           const SizedBox(height: 20),
 
-          // Active Tracking Card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: EcoPalette.cardBorder),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x0A000000),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Tricycle Rider Dispatched',
-                      style: TextStyle(
-                        fontFamily: 'Satoshi',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: EcoPalette.primaryDark,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.qr_code_rounded, color: EcoPalette.accentTerracotta),
-                      tooltip: 'Show Handshake QR Code',
-                      onPressed: () => _showQrHandshakeModal(activeOrder),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Embedded CartoDB Positron Map Preview
-                EcoCartoMap(
-                  center: _aruaCenter,
-                  zoom: 14.0,
-                  height: 150,
-                  routePoints: OsrmRoutingService.fallbackAruaToEdiofeRoute,
-                  onTap: () => _showQrHandshakeModal(activeOrder),
-                ),
-                const SizedBox(height: 14),
-
-                // Destination Landmark
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, size: 16, color: EcoPalette.accentTerracotta),
-                    const SizedBox(width: 6),
-                    Text(
-                      activeOrder.address.isNotEmpty
-                          ? activeOrder.address
-                          : 'Ediofe (Arua)',
-                      style: const TextStyle(
-                        fontFamily: 'Satoshi',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: EcoPalette.primaryDark,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // 4-Step Horizontal Progress Tracker
-                _buildFourStepTracker(activeOrder.status),
-                const SizedBox(height: 18),
-
-                const Divider(height: 1, color: Color(0xFFF0F4F1)),
-                const SizedBox(height: 14),
-
-                // Order Snapshot details
-                const Text(
-                  'Order Snapshot',
-                  style: TextStyle(
-                    fontFamily: 'Satoshi',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF6B8073),
+          if (activeOrder != null) ...[
+            // Active Tracking Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: EcoPalette.cardBorder),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0A000000),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  activeOrder.description.isNotEmpty
-                      ? activeOrder.description
-                      : '1 Sack • Trading Center',
-                  style: const TextStyle(
-                    fontFamily: 'Satoshi',
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                    color: EcoPalette.primaryDark,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${activeOrder.priceUgx} UGX • Pay on Collection',
-                  style: const TextStyle(
-                    fontFamily: 'Satoshi',
-                    fontSize: 13.5,
-                    color: EcoPalette.secondaryDark,
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // View Live Map Tracker action
-                InkWell(
-                  onTap: () => _showQrHandshakeModal(activeOrder),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'View Live Map Tracker',
+                      const Text(
+                        'Tricycle Rider Dispatched',
                         style: TextStyle(
                           fontFamily: 'Satoshi',
-                          fontSize: 13.5,
+                          fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          color: EcoPalette.accentTerracotta,
+                          color: EcoPalette.primaryDark,
                         ),
                       ),
-                      SizedBox(width: 4),
-                      Icon(Icons.chevron_right_rounded, size: 18, color: EcoPalette.accentTerracotta),
+                      IconButton(
+                        icon: const Icon(Icons.qr_code_rounded, color: EcoPalette.accentTerracotta),
+                        tooltip: 'Show Handshake QR Code',
+                        onPressed: () => _showQrHandshakeModal(activeOrder),
+                        visualDensity: VisualDensity.compact,
+                      ),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+
+                  // Embedded CartoDB Positron Map Preview
+                  EcoCartoMap(
+                    center: _aruaCenter,
+                    zoom: 14.0,
+                    height: 150,
+                    routePoints: OsrmRoutingService.fallbackAruaToEdiofeRoute,
+                    onTap: () => _showQrHandshakeModal(activeOrder),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Destination Landmark
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, size: 16, color: EcoPalette.accentTerracotta),
+                      const SizedBox(width: 6),
+                      Text(
+                        activeOrder.address.isNotEmpty
+                            ? activeOrder.address
+                            : 'Ediofe (Arua)',
+                        style: const TextStyle(
+                          fontFamily: 'Satoshi',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: EcoPalette.primaryDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 4-Step Horizontal Progress Tracker
+                  _buildFourStepTracker(activeOrder.status),
+                  const SizedBox(height: 18),
+
+                  const Divider(height: 1, color: Color(0xFFF0F4F1)),
+                  const SizedBox(height: 14),
+
+                  // Order Snapshot details
+                  const Text(
+                    'Order Snapshot',
+                    style: TextStyle(
+                      fontFamily: 'Satoshi',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF6B8073),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    activeOrder.description.isNotEmpty
+                        ? activeOrder.description
+                        : '1 Sack • Household',
+                    style: const TextStyle(
+                      fontFamily: 'Satoshi',
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: EcoPalette.primaryDark,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${activeOrder.priceUgx} UGX • Pay on Collection',
+                    style: const TextStyle(
+                      fontFamily: 'Satoshi',
+                      fontSize: 13.5,
+                      color: EcoPalette.secondaryDark,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // View Live Map Tracker action
+                  InkWell(
+                    onTap: () => _showQrHandshakeModal(activeOrder),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'View Live Map Tracker',
+                          style: TextStyle(
+                            fontFamily: 'Satoshi',
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: EcoPalette.accentTerracotta,
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(Icons.chevron_right_rounded, size: 18, color: EcoPalette.accentTerracotta),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: EcoPalette.cardBorder),
+              ),
+              child: Column(
+                children: const [
+                  Icon(Icons.recycling_outlined, size: 48, color: EcoPalette.primaryDark),
+                  SizedBox(height: 12),
+                  Text(
+                    'No Active Pickup Scheduled',
+                    style: TextStyle(
+                      fontFamily: 'Satoshi',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: EcoPalette.primaryDark,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'You have no pending waste collection requests in Arua City. Tap "Book a New Pickup" above to request an electric tricycle to your gate.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Satoshi',
+                      fontSize: 12.5,
+                      color: Color(0xFF6B8073),
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
 
           // Quick Utility (Open-Meteo Weather)
