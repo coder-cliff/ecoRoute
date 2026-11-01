@@ -927,7 +927,31 @@ class ResidentRequestsScreen extends StatelessWidget {
           child: Icon(Icons.local_shipping_outlined, color: statusColor),
         ),
         title: Text(id, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618), fontSize: 14)),
-        subtitle: Text('$date • $size', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('$date • $size', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            const SizedBox(height: 4),
+            InkWell(
+              onTap: onBookPickup,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D2618).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.replay, size: 12, color: Color(0xFF0D2618)),
+                    SizedBox(width: 4),
+                    Text('Repeat this Pickup (1-Tap)', style: TextStyle(color: Color(0xFF0D2618), fontSize: 11, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
@@ -1338,13 +1362,39 @@ class RiderTasksScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
+                  // High Visibility Payment Reminder Tag
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF9C3D18).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF9C3D18).withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.payments, size: 16, color: Color(0xFF9C3D18)),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'COLLECT 2,500 UGX CASH ON COLLECTION (OR MOMO: +256 394 880 352)',
+                            style: TextStyle(color: Color(0xFF9C3D18), fontSize: 10.5, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => launchEcoRouteCall(),
-                          style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF0D2618)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                          child: const Text('Call Client', style: TextStyle(color: Color(0xFF0D2618))),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFF0D2618), width: 1.5),
+                            minimumSize: const Size(double.infinity, 54),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Call Client', style: TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold, fontSize: 15)),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1353,9 +1403,13 @@ class RiderTasksScreen extends StatelessWidget {
                           onPressed: onToggleCollected,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0D2618),
+                            minimumSize: const Size(double.infinity, 54),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: Text(isCollected ? 'Mark Pending' : 'Mark Collected', style: const TextStyle(color: Colors.white)),
+                          child: Text(
+                            isCollected ? 'Mark Pending' : 'Mark Collected',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
                         ),
                       ),
                     ],
@@ -1403,15 +1457,42 @@ class RiderTasksScreen extends StatelessWidget {
   }
 }
 
-class RiderRouteScreen extends StatelessWidget {
+class RiderRouteScreen extends StatefulWidget {
   final VoidCallback onArrived;
 
   const RiderRouteScreen({super.key, required this.onArrived});
 
   @override
+  State<RiderRouteScreen> createState() => _RiderRouteScreenState();
+}
+
+class _RiderRouteScreenState extends State<RiderRouteScreen> {
+  bool _batterySaverMode = false;
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Active Navigation')),
+      appBar: AppBar(
+        title: const Text('Active Navigation'),
+        actions: [
+          Row(
+            children: [
+              const Text('Battery Saver', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              Switch(
+                value: _batterySaverMode,
+                onChanged: (val) {
+                  setState(() => _batterySaverMode = val);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(_batterySaverMode ? 'Battery Saver Active: GPU Map paused' : 'Full GPU Map rendering restored')),
+                  );
+                },
+                activeTrackColor: const Color(0xFF0D2618),
+                activeThumbColor: Colors.white,
+              ),
+            ],
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Container(
@@ -1426,7 +1507,7 @@ class RiderRouteScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: const [
                       Text('In 150m, turn right onto Ediofe Rd', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                      Text('Approaching client pickup point Jane A.', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      Text('Approaching client pickup point Jane A. (Ediofe)', style: TextStyle(color: Colors.white70, fontSize: 12)),
                     ],
                   ),
                 ),
@@ -1436,10 +1517,25 @@ class RiderRouteScreen extends StatelessWidget {
           Expanded(
             child: Stack(
               children: [
-                CustomPaint(
-                  size: Size.infinite,
-                  painter: AruaMapPainter(),
-                ),
+                _batterySaverMode
+                    ? Container(
+                        color: const Color(0xFFE8ECE7),
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Turn-by-Turn Guidance (Battery Saver Mode)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0D2618))),
+                            const SizedBox(height: 12),
+                            _buildStepItem('1', 'Head North on Arua Central Avenue toward Market Rd (400m)'),
+                            _buildStepItem('2', 'Turn Right onto Ediofe Road (1.1 km)'),
+                            _buildStepItem('3', 'Arrive at Jane A. compound on right (Blue Gate, Ediofe Center)'),
+                          ],
+                        ),
+                      )
+                    : CustomPaint(
+                        size: Size.infinite,
+                        painter: AruaMapPainter(),
+                      ),
                 Positioned(
                   bottom: 24,
                   left: 16,
@@ -1458,7 +1554,7 @@ class RiderRouteScreen extends StatelessWidget {
                           ],
                         ),
                         ElevatedButton(
-                          onPressed: onArrived,
+                          onPressed: widget.onArrived,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF9C3D18),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -1476,7 +1572,26 @@ class RiderRouteScreen extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildStepItem(String num, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 12,
+            backgroundColor: const Color(0xFF0D2618),
+            child: Text(num, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 13, color: Color(0xFF1A3A28), fontWeight: FontWeight.w500))),
+        ],
+      ),
+    );
+  }
 }
+
 
 class RiderEarningsScreen extends StatelessWidget {
   final int balance;
@@ -1665,6 +1780,45 @@ class AdminDashboardScreen extends StatelessWidget {
                   Text('All Systems Nominal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
                   Spacer(),
                   Text('LIVE', style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Quick Triage Priority Alert
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF9C3D18).withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Color(0xFF9C3D18), size: 24),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text('1 Pending Collection Alert', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0D2618))),
+                        Text('Pickup #251985 (Ediofe Center) needs rider assignment', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Auto-dispatch: Task #251985 assigned to nearest unit TRIC-04 (John B.)!')),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF9C3D18),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text('1-Tap Assign', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
                 ],
               ),
             ),
@@ -2158,7 +2312,45 @@ class _BookingBottomSheetState extends State<_BookingBottomSheet> {
             ],
           ),
           const SizedBox(height: 12),
-          const Text('Waste Category', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A3A28), fontSize: 13)),
+          
+          // Visual Sack Estimator
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8ECE7),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Sack Estimator:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                    Text('$price UGX (2,500 UGX / sack)', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF9C3D18))),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  children: List.generate(_sacks, (i) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: const Color(0xFF0D2618), borderRadius: BorderRadius.circular(6)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.inventory_2, size: 14, color: Colors.white),
+                        const SizedBox(width: 4),
+                        Text('Sack ${i + 1}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  )),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+const Text('Waste Category', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A3A28), fontSize: 13)),
           const SizedBox(height: 6),
           Row(
             children: [
