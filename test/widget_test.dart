@@ -9,7 +9,7 @@ import 'package:ecoroute/features/auth/login_screen.dart';
 import 'package:ecoroute/features/home/home_screen.dart';
 import 'package:ecoroute/features/rider/rider_task_hub.dart';
 import 'package:ecoroute/features/admin/admin_dashboard.dart';
-import 'package:ecoroute/main.dart';
+import 'package:ecoroute/main.dart' hide LoginScreen, SplashScreen;
 
 void main() {
   testWidgets('launch sequence starts with splash and transitions to Sign-In portal', (

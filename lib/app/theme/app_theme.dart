@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class EcoRouteTheme {
   EcoRouteTheme._();
 
-  static const richJade = Color(0xFF72B08D);
+  static const richJade = Color(0xFFE8ECE7);
   static const primaryInk = Color(0xFF0D2618);
   static const secondaryInk = Color(0xFF1A3A28);
   static const surfaceTint = Color(0x1F0D2618);
