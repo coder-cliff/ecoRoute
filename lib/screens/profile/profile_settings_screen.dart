@@ -9,6 +9,7 @@ import '../../providers/waste_request_provider.dart';
 import '../../services/storage_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/user_avatar.dart';
+import '../auth/login_screen.dart';
 import '../auth/register_screen.dart';
 import '../common/interactive_map_screen.dart';
 
@@ -460,6 +461,26 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                         )
                       : const Icon(Icons.save_rounded),
                   label: const Text('Save Profile & DP Changes'),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // SWITCH USER / SIGN OUT BUTTON
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.manage_accounts_rounded),
+                  label: const Text('Switch User / Sign Out / Login'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.darkForest,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
                 ),
               ),
 
