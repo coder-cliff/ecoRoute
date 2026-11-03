@@ -6,49 +6,7 @@ enum WasteCategoryType {
   paper,
   eWaste,
   metal,
-  hazardous,
   general,
-}
-
-enum WasteVolumeSize {
-  small,  // Standard 25L Bag
-  medium, // 60L Sack / Bin
-  large,  // 120L+ Bulk Cartload
-}
-
-extension WasteVolumeSizeExtension on WasteVolumeSize {
-  String get label {
-    switch (this) {
-      case WasteVolumeSize.small:
-        return 'Small (25L Bag)';
-      case WasteVolumeSize.medium:
-        return 'Medium (60L Bin)';
-      case WasteVolumeSize.large:
-        return 'Large (120L Bulk)';
-    }
-  }
-
-  String get description {
-    switch (this) {
-      case WasteVolumeSize.small:
-        return 'Fits standard grocery/rubbish sack';
-      case WasteVolumeSize.medium:
-        return 'Standard curbside household bin';
-      case WasteVolumeSize.large:
-        return 'Commercial cartload or bulk sacks';
-    }
-  }
-
-  double get multiplier {
-    switch (this) {
-      case WasteVolumeSize.small:
-        return 1.0;
-      case WasteVolumeSize.medium:
-        return 1.8;
-      case WasteVolumeSize.large:
-        return 3.2;
-    }
-  }
 }
 
 class WasteCategory {
@@ -100,10 +58,10 @@ class WasteCategory {
     ),
     WasteCategory(
       type: WasteCategoryType.eWaste,
-      title: 'E-Waste & Electronics',
-      description: 'Broken electronics, wires, old phones, circuit boards',
-      icon: Icons.electrical_services_rounded,
-      color: Color(0xFFE65100),
+      title: 'E-Waste & Batteries',
+      description: 'Broken electronics, wires, old phones, dry cells',
+      icon: Icons.battery_alert_rounded,
+      color: Color(0xFFE53935),
       pricePerUnit: 4.00,
       carbonSavedPerUnitKg: 5.0,
     ),
@@ -115,15 +73,6 @@ class WasteCategory {
       color: Color(0xFF757575),
       pricePerUnit: 2.50,
       carbonSavedPerUnitKg: 3.2,
-    ),
-    WasteCategory(
-      type: WasteCategoryType.hazardous,
-      title: 'Hazardous Refuse',
-      description: 'Batteries, CFL fluorescent tubes, solvents, chemicals',
-      icon: Icons.warning_rounded,
-      color: Color(0xFFC62828),
-      pricePerUnit: 4.50,
-      carbonSavedPerUnitKg: 6.0,
     ),
     WasteCategory(
       type: WasteCategoryType.general,

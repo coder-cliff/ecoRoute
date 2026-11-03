@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -6,12 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../models/waste_category.dart';
 import '../../models/waste_request.dart';
 import '../../providers/waste_request_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cash_payment_banner.dart';
-import '../../widgets/milestone_stepper_widget.dart';
 import '../../widgets/status_badge.dart';
 
 class RequestDetailsScreen extends StatelessWidget {
@@ -37,26 +34,6 @@ class RequestDetailsScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _callPhone(BuildContext context, String phone) async {
-    final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
-    final uri = Uri.parse('tel:$cleanPhone');
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      } else if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Dialing: $phone')),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Dialing: $phone ($e)')),
-        );
-      }
-    }
-  }
-
   void _copyReceipt(BuildContext context, WasteRequest r) {
     final text = '''
 ==============================
@@ -66,14 +43,12 @@ Receipt Number: ${r.receiptNumber}
 Request ID: ${r.id}
 Citizen Name: ${r.userName}
 Category: ${r.category.title}
-Container Size: ${r.volumeSize.label}
-Quantity: ${r.quantityBags} unit(s)
+Quantity: ${r.quantityBags} bag(s)
 Amount Paid: \$${(r.actualCashPaid ?? r.estimatedCashAmount).toStringAsFixed(2)} (Hard Cash)
 Collection Date: ${r.collectedAt != null ? DateFormat('yyyy-MM-dd HH:mm').format(r.collectedAt!) : 'Completed'}
 Collector / Rider: ${r.assignedRiderName ?? 'Assigned Collector'}
 Pickup Address: ${r.address}
 Carbon Mitigated: ~${r.totalCarbonSavedKg.toStringAsFixed(1)} kg CO2e
-Trees Equivalent: ~${r.treesSavedEquivalent.toStringAsFixed(2)} trees/yr
 ==============================
 Thank you for keeping our communities clean & green!
 ''';
@@ -88,6 +63,7 @@ Thank you for keeping our communities clean & green!
 
   @override
   Widget build(BuildContext context) {
+    // Listen to provider to receive live updates when rider updates status!
     final provider = Provider.of<WasteRequestProvider>(context);
     final currentReq = provider.requests.firstWhere(
       (r) => r.id == request.id,
@@ -112,15 +88,6 @@ Thank you for keeping our communities clean & green!
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 4-STAGE MILESTONE STEPPER PIPELINE
-            MilestoneStepperWidget(
-              status: currentReq.status,
-              requestedAt: currentReq.createdAt,
-              collectedAt: currentReq.collectedAt,
-              assignedRiderName: currentReq.assignedRiderName,
-            ),
-            const SizedBox(height: 16),
-
             // PHOTO PREVIEW CARD
             Container(
               height: 200,
@@ -163,7 +130,7 @@ Thank you for keeping our communities clean & green!
                                 ),
                               ),
                               Text(
-                                '${currentReq.volumeSize.label} • ${currentReq.quantityBags} units',
+                                '${currentReq.quantityBags} Bags • \$${currentReq.estimatedCashAmount.toStringAsFixed(2)} Estimated',
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppTheme.textMuted,
@@ -178,22 +145,13 @@ Thank you for keeping our communities clean & green!
                             color: AppTheme.accentMint,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                '~${currentReq.totalCarbonSavedKg.toStringAsFixed(1)} kg CO₂e',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.primaryGreen,
-                                ),
-                              ),
-                              Text(
-                                '~${currentReq.totalDivertedWeightKg.toStringAsFixed(1)} kg waste',
-                                style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
-                              ),
-                            ],
+                          child: Text(
+                            '~${currentReq.totalCarbonSavedKg.toStringAsFixed(1)} kg CO₂e Saved',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.primaryGreen,
+                            ),
                           ),
                         ),
                       ],
@@ -236,46 +194,6 @@ Thank you for keeping our communities clean & green!
                         Icons.notes_rounded,
                         'Rider Instructions',
                         currentReq.notes,
-                      ),
-                    ],
-
-                    // Assigned Rider Contact Bar
-                    if (currentReq.assignedRiderName != null) ...[
-                      const Divider(height: 20),
-                      Row(
-                        children: [
-                          const CircleAvatar(
-                            radius: 16,
-                            backgroundColor: AppTheme.accentMint,
-                            child: Icon(Icons.electric_moped_rounded, size: 18, color: AppTheme.primaryGreen),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Collector: ${currentReq.assignedRiderName}',
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                                ),
-                                const Text(
-                                  'Municipal Field Collector',
-                                  style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                                ),
-                              ],
-                            ),
-                          ),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primaryGreen,
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              minimumSize: Size.zero,
-                            ),
-                            icon: const Icon(Icons.call_rounded, size: 14),
-                            label: const Text('Call', style: TextStyle(fontSize: 12)),
-                            onPressed: () => _callPhone(context, '+256701987654'),
-                          ),
-                        ],
                       ),
                     ],
                   ],
@@ -329,6 +247,16 @@ Thank you for keeping our communities clean & green!
             ],
             const SizedBox(height: 20),
 
+            // STATUS TIMELINE STEPPER
+            const Text(
+              'Collection Workflow Timeline',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            _buildTimeline(currentReq),
+
+            const SizedBox(height: 24),
+
             // ACTION BUTTONS
             if (currentReq.status == RequestStatus.pending) ...[
               SizedBox(
@@ -376,24 +304,11 @@ Thank you for keeping our communities clean & green!
           ),
         ),
       );
-    } else if (path.startsWith('data:image')) {
-      try {
-        final bytes = base64Decode(path.split(',').last);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Center(
-            child: Text('Waste Photo: $categoryName'),
-          ),
-        );
-      } catch (_) {
-        return Center(child: Text('Waste Photo: $categoryName'));
-      }
     } else if (path.startsWith('http://') || path.startsWith('https://')) {
       return Image.network(
         path,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Center(
+        errorBuilder: (_, __, ___) => Center(
           child: Text('Waste Photo: $categoryName'),
         ),
       );
@@ -401,7 +316,7 @@ Thank you for keeping our communities clean & green!
       return Image.file(
         File(path),
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Center(
+        errorBuilder: (_, __, ___) => Center(
           child: Text('Waste Photo: $categoryName'),
         ),
       );
@@ -435,6 +350,88 @@ Thank you for keeping our communities clean & green!
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTimeline(WasteRequest req) {
+    final steps = [
+      {
+        'title': 'Pickup Requested & Geotagged',
+        'subtitle': DateFormat('MMM d • h:mm a').format(req.createdAt),
+        'done': true,
+      },
+      {
+        'title': req.assignedRiderName != null ? 'Dispatched to ${req.assignedRiderName}' : 'Waiting for Rider Dispatch',
+        'subtitle': req.status != RequestStatus.pending ? 'Rider confirmed assignment' : 'Pending admin or rider claim',
+        'done': req.status == RequestStatus.assigned || req.status == RequestStatus.collected,
+      },
+      {
+        'title': req.isCashCollected ? 'Physical Collection & Hard Cash Paid' : 'Physical Pickup & Cash Settlement',
+        'subtitle': req.isCashCollected && req.collectedAt != null
+            ? 'Completed at ${DateFormat('h:mm a').format(req.collectedAt!)} • Receipt #${req.receiptNumber}'
+            : 'Collector inspects bags & collects hard cash',
+        'done': req.status == RequestStatus.collected,
+      },
+    ];
+
+    return Column(
+      children: List.generate(steps.length, (index) {
+        final step = steps[index];
+        final isDone = step['done'] as bool;
+        final isLast = index == steps.length - 1;
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Column(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: isDone ? AppTheme.primaryGreen : Colors.grey.shade300,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isDone ? Icons.check : Icons.circle,
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                ),
+                if (!isLast)
+                  Container(
+                    width: 2,
+                    height: 38,
+                    color: isDone ? AppTheme.primaryGreen : Colors.grey.shade300,
+                  ),
+              ],
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      step['title'] as String,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: isDone ? AppTheme.textDark : AppTheme.textMuted,
+                      ),
+                    ),
+                    Text(
+                      step['subtitle'] as String,
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      }),
     );
   }
 }

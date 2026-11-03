@@ -1,17 +1,13 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../models/user_model.dart';
-import '../../models/waste_category.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/waste_request_provider.dart';
-import '../../services/storage_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/user_avatar.dart';
-import '../auth/login_screen.dart';
-import '../auth/register_screen.dart';
-import '../common/interactive_map_screen.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});
@@ -103,69 +99,66 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   void _showAvatarPickerModal(UserRole currentRole) {
-    final presets = UserModel.standardAvatarPresets;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.65,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Padding(
           padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: ListView(
+            controller: scrollController,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Choose Profile Picture',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
+                ),
+              ),
+              const Text(
+                'Choose Display Picture (DP)',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
               const Text(
-                'Upload a personalized photo from your device or select an official municipal avatar.',
-                style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                'Select a curated portrait, vector style, or take your own photo:',
+                style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
               ),
               const SizedBox(height: 16),
 
-              // Upload options
+              // Upload custom photo buttons
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
                       onPressed: () {
                         Navigator.pop(ctx);
                         _pickFromCamera();
                       },
-                      icon: const Icon(Icons.camera_alt_rounded),
-                      label: const Text('Camera'),
+                      icon: const Icon(Icons.camera_alt_rounded, size: 18),
+                      label: const Text('Take Photo'),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
                       onPressed: () {
                         Navigator.pop(ctx);
                         _pickFromGallery();
                       },
-                      icon: const Icon(Icons.photo_library_rounded),
-                      label: const Text('Gallery'),
+                      icon: const Icon(Icons.photo_library_rounded, size: 18),
+                      label: const Text('From Gallery'),
                     ),
                   ),
                 ],
@@ -173,8 +166,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               const SizedBox(height: 20),
 
               const Text(
-                'Standard Vector Presets',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                'Standard Profile Presets',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
 
@@ -183,13 +176,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 0.95,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 0.9,
                 ),
-                itemCount: presets.length,
+                itemCount: AppUser.standardAvatarPresets.length,
                 itemBuilder: (context, index) {
-                  final preset = presets[index];
+                  final preset = AppUser.standardAvatarPresets[index];
                   final presetId = preset['id']!;
                   final isSelected = _avatarUrl == presetId;
 
@@ -299,7 +292,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
-    final provider = Provider.of<WasteRequestProvider>(context);
     final user = auth.currentUser;
     final roleColor = _getRoleColor(user.role);
 
@@ -446,7 +438,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
               // SAVE BUTTON
               SizedBox(
@@ -463,357 +455,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   label: const Text('Save Profile & DP Changes'),
                 ),
               ),
-              const SizedBox(height: 12),
-
-              // SIGN OUT BUTTON
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    await auth.signOut();
-                    if (context.mounted) {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                        (route) => false,
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-                  label: const Text('Sign Out of Firebase Account', style: TextStyle(color: Colors.redAccent)),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.redAccent),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
-              ),
-
-              // ADMIN EXCLUSIVE SYSTEM SETTINGS
-              if (user.role == UserRole.admin) ...[
-                const SizedBox(height: 28),
-                _buildAdminSystemSettings(context, auth, provider),
-              ],
-
-              const SizedBox(height: 30),
+              const SizedBox(height: 16),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildAdminSystemSettings(
-    BuildContext context,
-    AuthProvider auth,
-    WasteRequestProvider provider,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF6F42C1).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF6F42C1), size: 20),
-            ),
-            const SizedBox(width: 10),
-            const Text(
-              'Municipal System & Admin Controls',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF6F42C1),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        // 1. Operating Hours Policy
-        const Card(
-          child: Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.schedule_rounded, color: AppTheme.primaryGreen, size: 20),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Municipal Operating Window',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                    ),
-                    Text(
-                      'ACTIVE',
-                      style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 11),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Service Window: 07:00 AM – 07:00 PM Daily',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Daylight safety guardrail actively blocks citizen scheduling during nighttime hours to safeguard collection riders.',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // 2. Collection Pricing Standard
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.tune_rounded, color: AppTheme.cashGold, size: 20),
-                    SizedBox(width: 10),
-                    Text(
-                      'Container Volume Multipliers',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: WasteVolumeSize.values.map((v) {
-                    return Column(
-                      children: [
-                        Text(
-                          '${v.multiplier}x',
-                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.cashGold),
-                        ),
-                        Text(
-                          v.label.split(' ').first,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          v.label.split(' ').last,
-                          style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
-                        ),
-                      ],
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // 3. Central Sorting Depot Hub
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                const Icon(Icons.hub_rounded, color: Color(0xFF0D6EFD), size: 20),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Central Recycling Depot',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                      Text(
-                        'Kampala Municipal Hub (0.3476, 32.5825)',
-                        style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton.filledTonal(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const InteractiveMapScreen()),
-                    );
-                  },
-                  icon: const Icon(Icons.map_rounded, size: 18),
-                  tooltip: 'View on Map',
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // 4. Municipal User Directory
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.badge_rounded, color: Color(0xFF6F42C1)),
-            title: const Text('Municipal User Directory', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            subtitle: Text('${auth.allUsers.length} registered citizens, riders & admins'),
-            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-            onTap: () => _showUserDirectoryModal(context, auth),
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // 5. CSV Export Shortcut
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.file_download_rounded, color: AppTheme.primaryGreen),
-            title: const Text('Export Operations CSV', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            subtitle: const Text('Download full audit trail (100% Free & Open)'),
-            trailing: const Icon(Icons.copy_rounded, size: 16),
-            onTap: () {
-              final csv = provider.exportMunicipalCsvReport();
-              Clipboard.setData(ClipboardData(text: csv));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Municipal Operations CSV copied to clipboard!'),
-                  backgroundColor: AppTheme.primaryGreen,
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // 6. Reset / Re-seed Data
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.restart_alt_rounded, color: Colors.orange),
-            title: const Text('Reset Demo Database', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            subtitle: const Text('Restore baseline sample requests & accounts'),
-            trailing: const Icon(Icons.refresh_rounded, size: 18),
-            onTap: () => _confirmResetDatabase(context, provider),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showUserDirectoryModal(BuildContext context, AuthProvider auth) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        height: MediaQuery.of(context).size.height * 0.75,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
-                width: 44,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Municipal User Directory',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: auth.allUsers.length,
-                separatorBuilder: (context, index) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final u = auth.allUsers[index];
-                  return ListTile(
-                    leading: UserAvatar(user: u, radius: 22, showRoleBadge: true),
-                    title: Text(u.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    subtitle: Text('${u.role.displayName} • ${u.phone}\n${u.address}'),
-                    isThreeLine: true,
-                  );
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                    );
-                  },
-                  icon: const Icon(Icons.person_add_rounded),
-                  label: const Text('Register New Personnel'),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _confirmResetDatabase(BuildContext context, WasteRequestProvider provider) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Reset Demo Data?'),
-        content: const Text(
-          'This will re-initialize sample requests and baseline accounts for viva/demonstration purposes.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await StorageService.saveRequests([]);
-              await provider.loadRequests();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Demo database re-initialized successfully!'),
-                    backgroundColor: AppTheme.primaryGreen,
-                  ),
-                );
-              }
-            },
-            child: const Text('Reset'),
-          ),
-        ],
       ),
     );
   }

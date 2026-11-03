@@ -30,7 +30,6 @@ class WasteRequest {
   final String photoPath;
   final WasteCategoryType categoryType;
   final int quantityBags;
-  final WasteVolumeSize volumeSize;
   final double latitude;
   final double longitude;
   final String address;
@@ -54,7 +53,6 @@ class WasteRequest {
     required this.photoPath,
     required this.categoryType,
     required this.quantityBags,
-    this.volumeSize = WasteVolumeSize.small,
     required this.latitude,
     required this.longitude,
     required this.address,
@@ -73,41 +71,7 @@ class WasteRequest {
 
   WasteCategory get category => WasteCategory.getByType(categoryType);
 
-  /// Scientific impact metrics
-  double get totalCarbonSavedKg =>
-      category.carbonSavedPerUnitKg * quantityBags * volumeSize.multiplier;
-
-  /// Estimated waste diversion weight (Kg)
-  double get totalDivertedWeightKg {
-    double baseWeightPerBag;
-    switch (categoryType) {
-      case WasteCategoryType.plastics:
-        baseWeightPerBag = 2.5;
-        break;
-      case WasteCategoryType.organic:
-        baseWeightPerBag = 5.0;
-        break;
-      case WasteCategoryType.paper:
-        baseWeightPerBag = 3.0;
-        break;
-      case WasteCategoryType.eWaste:
-        baseWeightPerBag = 4.0;
-        break;
-      case WasteCategoryType.metal:
-        baseWeightPerBag = 5.5;
-        break;
-      case WasteCategoryType.hazardous:
-        baseWeightPerBag = 3.0;
-        break;
-      case WasteCategoryType.general:
-        baseWeightPerBag = 4.0;
-        break;
-    }
-    return baseWeightPerBag * quantityBags * volumeSize.multiplier;
-  }
-
-  /// Trees saved equivalent (~22 kg CO2 absorbed per tree per year)
-  double get treesSavedEquivalent => totalCarbonSavedKg / 22.0;
+  double get totalCarbonSavedKg => category.carbonSavedPerUnitKg * quantityBags;
 
   WasteRequest copyWith({
     String? id,
@@ -117,7 +81,6 @@ class WasteRequest {
     String? photoPath,
     WasteCategoryType? categoryType,
     int? quantityBags,
-    WasteVolumeSize? volumeSize,
     double? latitude,
     double? longitude,
     String? address,
@@ -141,7 +104,6 @@ class WasteRequest {
       photoPath: photoPath ?? this.photoPath,
       categoryType: categoryType ?? this.categoryType,
       quantityBags: quantityBags ?? this.quantityBags,
-      volumeSize: volumeSize ?? this.volumeSize,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       address: address ?? this.address,
@@ -167,7 +129,6 @@ class WasteRequest {
         'photoPath': photoPath,
         'categoryType': categoryType.name,
         'quantityBags': quantityBags,
-        'volumeSize': volumeSize.name,
         'latitude': latitude,
         'longitude': longitude,
         'address': address,
@@ -192,9 +153,6 @@ class WasteRequest {
         photoPath: json['photoPath'] as String? ?? '',
         categoryType: WasteCategoryType.values.byName(json['categoryType'] as String),
         quantityBags: json['quantityBags'] as int,
-        volumeSize: json['volumeSize'] != null
-            ? WasteVolumeSize.values.byName(json['volumeSize'] as String)
-            : WasteVolumeSize.small,
         latitude: (json['latitude'] as num).toDouble(),
         longitude: (json['longitude'] as num).toDouble(),
         address: json['address'] as String,

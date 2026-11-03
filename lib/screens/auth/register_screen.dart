@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -21,12 +23,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
   final _vehicleController = TextEditingController();
-  final _passwordController = TextEditingController();
 
   UserRole _selectedRole = UserRole.citizen;
   String _avatarUrl = AppUser.standardAvatarPresets[0]['id']!;
   bool _isRegistering = false;
-  bool _obscurePassword = true;
   final ImagePicker _picker = ImagePicker();
 
   @override
@@ -36,7 +36,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _addressController.dispose();
     _vehicleController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
@@ -91,7 +90,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: AppUser.standardAvatarPresets.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 12),
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
                 itemBuilder: (context, index) {
                   final preset = AppUser.standardAvatarPresets[index];
                   final isSelected = _avatarUrl == preset['id'];
@@ -159,9 +158,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         role: _selectedRole,
         avatarUrl: _avatarUrl,
         address: _addressController.text.trim(),
-        password: _passwordController.text.trim().isNotEmpty
-            ? _passwordController.text.trim()
-            : 'password123',
         vehicleInfo: _vehicleController.text.trim().isNotEmpty
             ? _vehicleController.text.trim()
             : null,
@@ -283,27 +279,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 validator: (v) =>
                     (v == null || !v.contains('@')) ? 'Valid email required' : null,
-              ),
-              const SizedBox(height: 14),
-
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  labelText: 'Password (Firebase Auth)',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                      size: 20,
-                    ),
-                    onPressed: () {
-                      setState(() => _obscurePassword = !_obscurePassword);
-                    },
-                  ),
-                ),
-                validator: (v) =>
-                    (v == null || v.length < 6) ? 'Password must be at least 6 characters' : null,
               ),
               const SizedBox(height: 14),
 

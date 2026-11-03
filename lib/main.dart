@@ -1,13 +1,9 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'firebase_options.dart';
 import 'models/user_model.dart';
 import 'providers/auth_provider.dart';
 import 'providers/waste_request_provider.dart';
-import 'providers/notification_provider.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
-import 'screens/auth/login_screen.dart';
 import 'screens/citizen/citizen_home_screen.dart';
 import 'screens/rider/rider_dashboard_screen.dart';
 import 'theme/app_theme.dart';
@@ -15,23 +11,10 @@ import 'theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase (Project ecoroute-b3405)
-  try {
-    if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-    }
-  } catch (e) {
-    debugPrint('Firebase initialization notice: $e');
-  }
-
   final authProvider = AuthProvider();
   final requestProvider = WasteRequestProvider();
-  final notificationProvider = NotificationProvider();
-  requestProvider.setNotificationProvider(notificationProvider);
 
-  // Load persistent data linked to Firebase
+  // Load persistent data from SharedPreferences (Roadmap Week 7)
   await authProvider.init();
   await requestProvider.loadRequests();
 
@@ -40,7 +23,6 @@ void main() async {
       providers: [
         ChangeNotifierProvider.value(value: authProvider),
         ChangeNotifierProvider.value(value: requestProvider),
-        ChangeNotifierProvider.value(value: notificationProvider),
       ],
       child: const EcoRouteApp(),
     ),
@@ -61,7 +43,7 @@ class EcoRouteApp extends StatelessWidget {
   }
 }
 
-/// Routes user to appropriate screen based on current logged in role or to LoginScreen if not authenticated
+/// Routes user to appropriate screen based on current logged in role
 class RoleBasedMainRouter extends StatelessWidget {
   const RoleBasedMainRouter({super.key});
 
@@ -75,10 +57,6 @@ class RoleBasedMainRouter extends StatelessWidget {
           child: CircularProgressIndicator(color: AppTheme.primaryGreen),
         ),
       );
-    }
-
-    if (!auth.isAuthenticated) {
-      return const LoginScreen();
     }
 
     switch (auth.currentRole) {

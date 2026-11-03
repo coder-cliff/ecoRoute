@@ -74,7 +74,6 @@ class AppUser {
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
-        'fullName': name,
         'phone': phone,
         'email': email,
         'role': role.name,
@@ -83,31 +82,16 @@ class AppUser {
         'vehicleInfo': vehicleInfo,
       };
 
-  factory AppUser.fromJson(Map<String, dynamic> json) {
-    UserRole parsedRole = UserRole.citizen;
-    final rawRole = json['role'] as String?;
-    if (rawRole != null) {
-      final lower = rawRole.toLowerCase();
-      if (lower.contains('rider')) {
-        parsedRole = UserRole.rider;
-      } else if (lower.contains('admin')) {
-        parsedRole = UserRole.admin;
-      } else {
-        parsedRole = UserRole.citizen;
-      }
-    }
-
-    return AppUser(
-      id: json['id'] as String? ?? json['uid'] as String? ?? 'usr_${DateTime.now().millisecondsSinceEpoch}',
-      name: json['name'] as String? ?? json['fullName'] as String? ?? json['displayName'] as String? ?? 'EcoRoute User',
-      phone: json['phone'] as String? ?? json['phoneNumber'] as String? ?? '',
-      email: json['email'] as String? ?? '',
-      role: parsedRole,
-      avatarUrl: json['avatarUrl'] as String? ?? json['photoURL'] as String? ?? '',
-      address: json['address'] as String? ?? json['cell'] as String? ?? '',
-      vehicleInfo: json['vehicleInfo'] as String?,
-    );
-  }
+  factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        phone: json['phone'] as String,
+        email: json['email'] as String,
+        role: UserRole.values.byName(json['role'] as String),
+        avatarUrl: json['avatarUrl'] as String? ?? '',
+        address: json['address'] as String? ?? '',
+        vehicleInfo: json['vehicleInfo'] as String?,
+      );
 
   // Standard curated avatar presets available in profile settings
   static const List<Map<String, String>> standardAvatarPresets = [
@@ -133,17 +117,28 @@ class AppUser {
     },
     {
       'id': 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
-      'label': 'Grace (Operations Admin)',
+      'label': 'Grace (Supervisor)',
       'category': 'Admin',
     },
     {
-      'id': 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&auto=format&fit=crop&q=80',
-      'label': 'Jane (Citizen)',
-      'category': 'Citizen',
+      'id': 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&auto=format&fit=crop&q=80',
+      'label': 'David (Operations)',
+      'category': 'Admin',
+    },
+    {
+      'id': 'preset:citizen_green',
+      'label': 'Eco Resident Vector',
+      'category': 'Vector',
+    },
+    {
+      'id': 'preset:rider_tricycle',
+      'label': 'Collection Tricycle Vector',
+      'category': 'Vector',
+    },
+    {
+      'id': 'preset:admin_badge',
+      'label': 'Operations Shield Vector',
+      'category': 'Vector',
     },
   ];
 }
-
-/// Backward compatibility alias for profile settings and legacy references
-typedef UserModel = AppUser;
-
