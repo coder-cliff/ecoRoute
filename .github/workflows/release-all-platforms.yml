@@ -2,11 +2,14 @@ name: Build Cross-Platform Releases
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag name (e.g. v1.0.1)'
+        required: false
+        default: 'v1.0.0'
 
 permissions:
   contents: write
@@ -16,93 +19,63 @@ jobs:
     name: Build Android APK
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build Android Release APK
-        run: flutter build apk --release
-
-      - name: Upload Android APK
-        uses: actions/upload-artifact@v4
+      - name: Build Split & Universal APK
+        run: |
+          flutter pub get
+          flutter build apk --release
+      - uses: actions/upload-artifact@v4
         with:
           name: EcoRoute-Android-Release-APK
           path: build/app/outputs/flutter-apk/app-release.apk
 
   build-ios-ipa:
-    name: Build iOS IPA (Free Unsigned / Sideloadable)
+    name: Build iOS IPA (Unsigned)
     runs-on: macos-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build iOS App Bundle
-        run: flutter build ios --release --no-codesign
-
-      - name: Package Unsigned IPA
+      - name: Build iOS App
         run: |
-          mkdir -p Payload
-          cp -r build/ios/iphoneos/Runner.app Payload/
-          zip -r EcoRoute-iOS-Unsigned.ipa Payload
-
-      - name: Upload iOS IPA
-        uses: actions/upload-artifact@v4
+          flutter pub get
+          flutter build ios --release --no-codesign
+          cd build/ios/iphoneos
+          tar -czvf ../../../ecoroute-ios.ipa Runner.app
+      - uses: actions/upload-artifact@v4
         with:
           name: EcoRoute-iOS-Unsigned-IPA
-          path: EcoRoute-iOS-Unsigned.ipa
+          path: ecoroute-ios.ipa
 
   build-linux-desktop:
-    name: Build Linux Desktop Executable
+    name: Build Linux Desktop
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Install Linux build dependencies
+      - uses: actions/checkout@v4
+      - name: Install Linux Build Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build Linux Desktop Release
-        run: flutter build linux --release
-
-      - name: Package Linux Desktop Bundle
-        run: tar -czvf ecoroute-linux-x64.tar.gz -C build/linux/x64/release/bundle .
-
-      - name: Upload Linux Package
-        uses: actions/upload-artifact@v4
+      - name: Build Linux Desktop Bundle
+        run: |
+          flutter pub get
+          flutter build linux --release
+          tar -czvf ecoroute-linux-x64.tar.gz -C build/linux/x64/release/bundle .
+      - uses: actions/upload-artifact@v4
         with:
           name: EcoRoute-Linux-Desktop-Bundle
           path: ecoroute-linux-x64.tar.gz
@@ -111,26 +84,17 @@ jobs:
     name: Build Windows Desktop
     runs-on: windows-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build Windows Desktop Release
-        run: flutter build windows --release
-
-      - name: Package Windows Zip
-        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath ecoroute-windows-x64.zip
-
-      - name: Upload Windows Package
-        uses: actions/upload-artifact@v4
+      - name: Build Windows Desktop Bundle
+        run: |
+          flutter pub get
+          flutter build windows --release
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath ecoroute-windows-x64.zip
+      - uses: actions/upload-artifact@v4
         with:
           name: EcoRoute-Windows-Desktop-Bundle
           path: ecoroute-windows-x64.zip
@@ -139,44 +103,31 @@ jobs:
     name: Publish Official GitHub Release
     needs: [build-android-apk, build-ios-ipa, build-linux-desktop, build-windows-desktop]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
     steps:
-      - name: Download all artifacts
+      - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
           path: release-artifacts
 
-      - name: Prepare Release Assets
+      - name: Prepare Release Assets with Dynamic Tag
+        id: vars
         run: |
+          TAG="${{ github.event.inputs.release_tag || github.ref_name }}"
+          if [[ ! "$TAG" =~ ^v ]]; then TAG="v1.0.0"; fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
           mkdir -p final-assets
-          cp release-artifacts/EcoRoute-Android-Release-APK/app-release.apk final-assets/EcoRoute-v1.0.0.apk
-          cp release-artifacts/EcoRoute-iOS-Unsigned-IPA/EcoRoute-iOS-Unsigned.ipa final-assets/EcoRoute-v1.0.0-iOS-Unsigned.ipa
-          cp release-artifacts/EcoRoute-Linux-Desktop-Bundle/ecoroute-linux-x64.tar.gz final-assets/EcoRoute-v1.0.0-Linux-x64.tar.gz
-          cp release-artifacts/EcoRoute-Windows-Desktop-Bundle/ecoroute-windows-x64.zip final-assets/EcoRoute-v1.0.0-Windows-x64.zip
-          ls -la final-assets/
+          cp release-artifacts/EcoRoute-Android-Release-APK/app-release.apk "final-assets/EcoRoute-${TAG}.apk"
+          cp release-artifacts/EcoRoute-iOS-Unsigned-IPA/ecoroute-ios.ipa "final-assets/EcoRoute-${TAG}-iOS-Unsigned.ipa"
+          cp release-artifacts/EcoRoute-Linux-Desktop-Bundle/ecoroute-linux-x64.tar.gz "final-assets/EcoRoute-${TAG}-Linux-x64.tar.gz"
+          cp release-artifacts/EcoRoute-Windows-Desktop-Bundle/ecoroute-windows-x64.zip "final-assets/EcoRoute-${TAG}-Windows-x64.zip"
 
-      - name: Publish GitHub Release
+      - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0' }}
-          name: "EcoRoute Production Release ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0' }}"
-          body: |
-            ## 🌿 EcoRoute Official Release
-            **Smart Municipal Logistics & Waste Collection Platform**
-
-            ### 📱 Download Installers:
-            - **Android APK**: [EcoRoute-v1.0.0.apk](EcoRoute-v1.0.0.apk) (Universal Android release, all architectures)
-            - **Windows**: [EcoRoute-v1.0.0-Windows-x64.zip](EcoRoute-v1.0.0-Windows-x64.zip)
-            - **Linux**: [EcoRoute-v1.0.0-Linux-x64.tar.gz](EcoRoute-v1.0.0-Linux-x64.tar.gz)
-            - **iOS**: [EcoRoute-v1.0.0-iOS-Unsigned.ipa](EcoRoute-v1.0.0-iOS-Unsigned.ipa) (Sideloadable via AltStore / SideStore)
-
-            ### ✨ Key Features:
-            - **Real-Time Reactive Dispatch**: Dynamic assignment between Residents, Riders, and Admins.
-            - **Strict Role Separation**: Enforced security profiles without manual role switching.
-            - **Verification & Settlement**: Real-time 4-digit PIN verification and automatic municipal earnings credit.
-            - **Direct Hotline**: Dedicated emergency support (+256394880352).
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: "EcoRoute Production Release ${{ steps.vars.outputs.tag }}"
+          files: final-assets/*
           draft: false
           prerelease: false
-          files: |
-            final-assets/*
-
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

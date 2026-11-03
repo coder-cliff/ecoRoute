@@ -1,4 +1,4 @@
-name: Deploy Flutter web to GitHub Pages
+name: Deploy Flutter Web to GitHub Pages
 
 on:
   push:
@@ -28,10 +28,16 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Build Flutter web app
+      - name: Install dependencies & verify code quality
         run: |
           flutter pub get
+          flutter analyze --no-fatal-infos
+          flutter test
+
+      - name: Build Flutter web app (Optimized Release)
+        run: |
           flutter build web --release --base-href /ecoRoute/
+          cp build/web/index.html build/web/404.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
