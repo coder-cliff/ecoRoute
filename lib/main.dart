@@ -1,5 +1,7 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'firebase_options.dart';
 import 'models/user_model.dart';
 import 'providers/auth_provider.dart';
 import 'providers/waste_request_provider.dart';
@@ -12,12 +14,23 @@ import 'theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Firebase (Project ecoroute-b3405)
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+  } catch (e) {
+    debugPrint('Firebase initialization notice: $e');
+  }
+
   final authProvider = AuthProvider();
   final requestProvider = WasteRequestProvider();
   final notificationProvider = NotificationProvider();
   requestProvider.setNotificationProvider(notificationProvider);
 
-  // Load persistent data from SharedPreferences (Roadmap Week 7)
+  // Load persistent data linked to Firebase
   await authProvider.init();
   await requestProvider.loadRequests();
 

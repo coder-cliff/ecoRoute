@@ -159,9 +159,9 @@ class RoleHeaderAppBar extends StatelessWidget implements PreferredSizeWidget {
       builder: (ctx) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.switch_account_rounded, color: AppTheme.primaryGreen),
+            Icon(Icons.cloud_done_rounded, color: AppTheme.primaryGreen),
             SizedBox(width: 8),
-            Text('Switch Account & Role'),
+            Text('Firebase Accounts & Roles'),
           ],
         ),
         content: SizedBox(
@@ -171,7 +171,7 @@ class RoleHeaderAppBar extends StatelessWidget implements PreferredSizeWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Select an active profile or register a new user:',
+                'All personas are synced with Firebase Cloud. Select an active profile or register new personnel:',
                 style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
               ),
               const SizedBox(height: 12),
