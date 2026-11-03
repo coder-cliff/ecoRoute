@@ -1,10 +1,8 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../models/waste_request.dart';
 import '../../providers/waste_request_provider.dart';
 import '../../theme/app_theme.dart';
@@ -15,51 +13,6 @@ class RequestDetailsScreen extends StatelessWidget {
   final WasteRequest request;
 
   const RequestDetailsScreen({super.key, required this.request});
-
-  Future<void> _openMaps(BuildContext context, double lat, double lon) async {
-    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lon');
-    try {
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!launched && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Coordinates: $lat, $lon')),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Coordinates: $lat, $lon ($e)')),
-        );
-      }
-    }
-  }
-
-  void _copyReceipt(BuildContext context, WasteRequest r) {
-    final text = '''
-==============================
-   ECOROUTE OFFICIAL RECEIPT
-==============================
-Receipt Number: ${r.receiptNumber}
-Request ID: ${r.id}
-Citizen Name: ${r.userName}
-Category: ${r.category.title}
-Quantity: ${r.quantityBags} bag(s)
-Amount Paid: \$${(r.actualCashPaid ?? r.estimatedCashAmount).toStringAsFixed(2)} (Hard Cash)
-Collection Date: ${r.collectedAt != null ? DateFormat('yyyy-MM-dd HH:mm').format(r.collectedAt!) : 'Completed'}
-Collector / Rider: ${r.assignedRiderName ?? 'Assigned Collector'}
-Pickup Address: ${r.address}
-Carbon Mitigated: ~${r.totalCarbonSavedKg.toStringAsFixed(1)} kg CO2e
-==============================
-Thank you for keeping our communities clean & green!
-''';
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Official Receipt copied to clipboard for sharing!'),
-        backgroundColor: AppTheme.primaryGreen,
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -163,30 +116,10 @@ Thank you for keeping our communities clean & green!
                       scheduledStr,
                     ),
                     const SizedBox(height: 10),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.location_on_rounded, size: 18, color: AppTheme.primaryGreen),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Location & GPS', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${currentReq.address}\n(${currentReq.latitude.toStringAsFixed(4)}, ${currentReq.longitude.toStringAsFixed(4)})',
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton.filledTonal(
-                          onPressed: () => _openMaps(context, currentReq.latitude, currentReq.longitude),
-                          icon: const Icon(Icons.directions_rounded, size: 18),
-                          tooltip: 'Open in Maps',
-                        ),
-                      ],
+                    _infoRow(
+                      Icons.location_on_rounded,
+                      'Location & GPS',
+                      '${currentReq.address}\n(${currentReq.latitude.toStringAsFixed(4)}, ${currentReq.longitude.toStringAsFixed(4)})',
                     ),
                     if (currentReq.notes.isNotEmpty) ...[
                       const SizedBox(height: 10),
@@ -221,25 +154,18 @@ Thank you for keeping our communities clean & green!
                   children: [
                     const Icon(Icons.receipt_long_rounded, color: AppTheme.primaryGreen),
                     const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Official Cash Collection Receipt',
-                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                          ),
-                          Text(
-                            'Receipt ID: ${currentReq.receiptNumber} • Paid in Hard Cash',
-                            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.share_rounded, color: AppTheme.primaryGreen),
-                      tooltip: 'Copy / Share Receipt',
-                      onPressed: () => _copyReceipt(context, currentReq),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Official Cash Collection Receipt',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        ),
+                        Text(
+                          'Receipt ID: ${currentReq.receiptNumber} • Paid in Hard Cash',
+                          style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -283,7 +209,7 @@ Thank you for keeping our communities clean & green!
   }
 
   Widget _buildPhotoWidget(String path, String categoryName) {
-    if (path.isEmpty || path.startsWith('simulated_') || path.startsWith('assets/')) {
+    if (path.startsWith('simulated_') || path.isEmpty) {
       return Container(
         color: AppTheme.accentMint,
         child: Center(
@@ -304,32 +230,10 @@ Thank you for keeping our communities clean & green!
           ),
         ),
       );
-    } else if (path.startsWith('http://') || path.startsWith('https://')) {
-      return Image.network(
-        path,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Center(
-          child: Text('Waste Photo: $categoryName'),
-        ),
-      );
-    } else if (!kIsWeb && File(path).existsSync()) {
-      return Image.file(
-        File(path),
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Center(
-          child: Text('Waste Photo: $categoryName'),
-        ),
-      );
+    } else if (kIsWeb) {
+      return Image.network(path, fit: BoxFit.cover);
     } else {
-      return Container(
-        color: AppTheme.accentMint,
-        child: Center(
-          child: Text(
-            'Waste Photo: $categoryName',
-            style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.darkForest),
-          ),
-        ),
-      );
+      return Image.file(File(path), fit: BoxFit.cover);
     }
   }
 
@@ -344,7 +248,6 @@ Thank you for keeping our communities clean & green!
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
-              const SizedBox(height: 2),
               Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
             ],
           ),
@@ -354,84 +257,111 @@ Thank you for keeping our communities clean & green!
   }
 
   Widget _buildTimeline(WasteRequest req) {
-    final steps = [
-      {
-        'title': 'Pickup Requested & Geotagged',
-        'subtitle': DateFormat('MMM d • h:mm a').format(req.createdAt),
-        'done': true,
-      },
-      {
-        'title': req.assignedRiderName != null ? 'Dispatched to ${req.assignedRiderName}' : 'Waiting for Rider Dispatch',
-        'subtitle': req.status != RequestStatus.pending ? 'Rider confirmed assignment' : 'Pending admin or rider claim',
-        'done': req.status == RequestStatus.assigned || req.status == RequestStatus.collected,
-      },
-      {
-        'title': req.isCashCollected ? 'Physical Collection & Hard Cash Paid' : 'Physical Pickup & Cash Settlement',
-        'subtitle': req.isCashCollected && req.collectedAt != null
-            ? 'Completed at ${DateFormat('h:mm a').format(req.collectedAt!)} • Receipt #${req.receiptNumber}'
-            : 'Collector inspects bags & collects hard cash',
-        'done': req.status == RequestStatus.collected,
-      },
-    ];
-
     return Column(
-      children: List.generate(steps.length, (index) {
-        final step = steps[index];
-        final isDone = step['done'] as bool;
-        final isLast = index == steps.length - 1;
+      children: [
+        _stepTile(
+          title: 'Request Logged with GPS & Photo',
+          subtitle: DateFormat('h:mm a • MMM d').format(req.createdAt),
+          isDone: true,
+          isCurrent: req.status == RequestStatus.pending,
+        ),
+        _stepTile(
+          title: req.assignedRiderName != null
+              ? 'Rider Dispatched: ${req.assignedRiderName}'
+              : 'Admin Dispatching Rider',
+          subtitle: req.assignedRiderName != null
+              ? 'Collector assigned and navigating to waste location'
+              : 'Waiting for available tricycle/truck collector',
+          isDone: req.status == RequestStatus.assigned || req.status == RequestStatus.collected,
+          isCurrent: req.status == RequestStatus.assigned,
+        ),
+        _stepTile(
+          title: 'Waste Collected & Hard Cash Paid',
+          subtitle: req.collectedAt != null
+              ? 'Completed on ${DateFormat('h:mm a').format(req.collectedAt!)} • Cash settled'
+              : 'Collector confirms waste weighing and receives cash payment',
+          isDone: req.status == RequestStatus.collected,
+          isCurrent: false,
+          isLast: true,
+        ),
+      ],
+    );
+  }
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Column(
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: isDone ? AppTheme.primaryGreen : Colors.grey.shade300,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    isDone ? Icons.check : Icons.circle,
-                    size: 14,
-                    color: Colors.white,
-                  ),
+  Widget _stepTile({
+    required String title,
+    required String subtitle,
+    required bool isDone,
+    required bool isCurrent,
+    bool isLast = false,
+  }) {
+    Color color = isDone
+        ? AppTheme.primaryGreen
+        : isCurrent
+            ? const Color(0xFF0D6EFD)
+            : const Color(0xFFDDDDDD);
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: isDone ? color : Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: color, width: 2),
                 ),
-                if (!isLast)
-                  Container(
+                child: isDone
+                    ? const Icon(Icons.check, size: 14, color: Colors.white)
+                    : isCurrent
+                        ? Container(
+                            margin: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                            ),
+                          )
+                        : null,
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
                     width: 2,
-                    height: 38,
-                    color: isDone ? AppTheme.primaryGreen : Colors.grey.shade300,
+                    color: isDone ? AppTheme.primaryGreen : const Color(0xFFE0E0E0),
                   ),
-              ],
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      step['title'] as String,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        color: isDone ? AppTheme.textDark : AppTheme.textMuted,
-                      ),
-                    ),
-                    Text(
-                      step['subtitle'] as String,
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                    ),
-                  ],
                 ),
+            ],
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: isDone || isCurrent ? AppTheme.textDark : AppTheme.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                  ),
+                ],
               ),
             ),
-          ],
-        );
-      }),
+          ),
+        ],
+      ),
     );
   }
 }

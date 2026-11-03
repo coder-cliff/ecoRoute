@@ -3,28 +3,25 @@ import 'package:provider/provider.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/user_avatar.dart';
-import 'register_screen.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final auth = Provider.of<AuthProvider>(context);
-    final users = auth.allUsers;
+    final auth = Provider.of<AuthProvider>(context, listen: false);
 
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(28.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // App Logo & Branding
                 Container(
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: AppTheme.accentMint,
                     shape: BoxShape.circle,
@@ -38,138 +35,96 @@ class LoginScreen extends StatelessWidget {
                   ),
                   child: const Icon(
                     Icons.delete_sweep_rounded,
-                    size: 56,
+                    size: 64,
                     color: AppTheme.primaryGreen,
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 24),
                 const Text(
                   'EcoRoute',
                   style: TextStyle(
-                    fontSize: 30,
+                    fontSize: 32,
                     fontWeight: FontWeight.w900,
                     color: AppTheme.darkForest,
                     letterSpacing: -0.5,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 const Text(
-                  'On-Demand Community Waste Collection',
+                  'On-Demand Waste Pickup & Clean Cities',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: AppTheme.textMuted,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 36),
 
-                // Existing Accounts Section
+                // Card with Quick Role Logins
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(20.0),
+                    padding: const EdgeInsets.all(24.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Row(
-                          children: [
-                            const Text(
-                              'Select Profile Account',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.textDark,
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              '${users.length} Registered',
-                              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
                         const Text(
-                          'Each account has an individual display picture (DP) and specific role:',
-                          style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                        ),
-                        const SizedBox(height: 16),
-
-                        if (users.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20),
-                            child: Center(
-                              child: Text('No accounts registered yet.'),
-                            ),
-                          )
-                        else
-                          ...users.map(
-                            (u) => Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              decoration: BoxDecoration(
-                                color: auth.currentUser.id == u.id
-                                    ? AppTheme.accentMint.withValues(alpha: 0.4)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: auth.currentUser.id == u.id
-                                      ? AppTheme.primaryGreen
-                                      : const Color(0xFFEEEEEE),
-                                  width: auth.currentUser.id == u.id ? 1.5 : 1,
-                                ),
-                              ),
-                              child: ListTile(
-                                leading: UserAvatar(
-                                  user: u,
-                                  radius: 22,
-                                  showRoleBadge: true,
-                                ),
-                                title: Text(
-                                  u.name,
-                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                                ),
-                                subtitle: Text(
-                                  '${u.role.displayName} • ${u.phone}',
-                                  style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                                ),
-                                trailing: auth.currentUser.id == u.id
-                                    ? const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen)
-                                    : const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.textMuted),
-                                onTap: () async {
-                                  await auth.switchUser(u.id);
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Switched to ${u.name} (${u.role.displayName})'),
-                                        duration: const Duration(seconds: 1),
-                                      ),
-                                    );
-                                  }
-                                },
-                              ),
-                            ),
+                          'Choose Your Account Role',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textDark,
                           ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Select a profile to experience the complete waste collection & dispatch cycle:',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textMuted,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
 
+                        _loginButton(
+                          context: context,
+                          title: 'Continue as Citizen (Resident)',
+                          subtitle: 'Schedule pickup with photo, auto GPS & cash on collection',
+                          icon: Icons.home_rounded,
+                          color: AppTheme.primaryGreen,
+                          onPressed: () => auth.switchRole(UserRole.citizen),
+                        ),
                         const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                            );
-                          },
-                          icon: const Icon(Icons.person_add_alt_1_rounded),
-                          label: const Text('Create New User Account'),
+
+                        _loginButton(
+                          context: context,
+                          title: 'Continue as Rider (Collector)',
+                          subtitle: 'Accept jobs, navigate to GPS waste site, collect cash',
+                          icon: Icons.two_wheeler_rounded,
+                          color: const Color(0xFF0D6EFD),
+                          onPressed: () => auth.switchRole(UserRole.rider),
+                        ),
+                        const SizedBox(height: 12),
+
+                        _loginButton(
+                          context: context,
+                          title: 'Continue as Admin (Dispatcher)',
+                          subtitle: 'Live request monitoring, rider assignments & cash totals',
+                          icon: Icons.admin_panel_settings_rounded,
+                          color: const Color(0xFF6F42C1),
+                          onPressed: () => auth.switchRole(UserRole.admin),
                         ),
                       ],
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 20),
-                // Footer
+                const SizedBox(height: 24),
+                // Footer Cash notice
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
                     color: AppTheme.cashGoldLight,
                     borderRadius: BorderRadius.circular(10),
@@ -180,9 +135,9 @@ class LoginScreen extends StatelessWidget {
                       Icon(Icons.payments_rounded, size: 16, color: AppTheme.cashGold),
                       SizedBox(width: 8),
                       Text(
-                        'Direct hard cash payment settled upon physical waste collection',
+                        'Direct hard cash payment settled at waste pickup',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF664D03),
                         ),
@@ -193,6 +148,65 @@ class LoginScreen extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _loginButton({
+    required BuildContext context,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.textMuted),
+          ],
         ),
       ),
     );
