@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
-import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/common/interactive_map_screen.dart';
 import '../screens/profile/profile_settings_screen.dart';
@@ -175,38 +174,47 @@ class RoleHeaderAppBar extends StatelessWidget implements PreferredSizeWidget {
                 style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
               ),
               const SizedBox(height: 12),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: users.length,
-                  itemBuilder: (context, index) {
-                    final u = users[index];
-                    final isSelected = u.id == auth.currentUser.id;
+              if (users.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12.0),
+                  child: Text(
+                    'No additional accounts found in Firebase Firestore.',
+                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: users.length,
+                    itemBuilder: (context, index) {
+                      final u = users[index];
+                      final isSelected = u.id == auth.currentUser.id;
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.accentMint.withValues(alpha: 0.3) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isSelected ? AppTheme.primaryGreen : const Color(0xFFEEEEEE),
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppTheme.accentMint.withValues(alpha: 0.3) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected ? AppTheme.primaryGreen : const Color(0xFFEEEEEE),
+                          ),
                         ),
-                      ),
-                      child: ListTile(
-                        dense: true,
-                        leading: UserAvatar(user: u, radius: 16, showRoleBadge: true),
-                        title: Text(u.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                        subtitle: Text(u.role.displayName, style: const TextStyle(fontSize: 10)),
-                        trailing: isSelected ? const Icon(Icons.check, color: AppTheme.primaryGreen, size: 16) : null,
-                        onTap: () {
-                          auth.switchUser(u.id);
-                          Navigator.pop(ctx);
-                        },
-                      ),
-                    );
-                  },
+                        child: ListTile(
+                          dense: true,
+                          leading: UserAvatar(user: u, radius: 16, showRoleBadge: true),
+                          title: Text(u.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                          subtitle: Text(u.role.displayName, style: const TextStyle(fontSize: 10)),
+                          trailing: isSelected ? const Icon(Icons.check, color: AppTheme.primaryGreen, size: 16) : null,
+                          onTap: () {
+                            auth.switchUser(u.id);
+                            Navigator.pop(ctx);
+                          },
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
               const Divider(),
               ListTile(
                 dense: true,
@@ -222,14 +230,11 @@ class RoleHeaderAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
               ListTile(
                 dense: true,
-                leading: const Icon(Icons.manage_accounts_rounded, color: Color(0xFF0D6EFD)),
-                title: const Text('Manage Accounts / Sign Out', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                onTap: () {
+                leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+                title: const Text('Sign Out of Firebase', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.redAccent)),
+                onTap: () async {
                   Navigator.pop(ctx);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  );
+                  await auth.signOut();
                 },
               ),
             ],

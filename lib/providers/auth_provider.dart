@@ -8,25 +8,27 @@ import '../services/storage_service.dart';
 
 class AuthProvider with ChangeNotifier {
   List<AppUser> _allUsers = [];
-  AppUser _currentUser = const AppUser(
-    id: 'usr_resident_01',
-    name: 'Sarah Namukasa',
-    phone: '+256 772 123456',
-    email: 'sarah.namukasa@ecoroute.app',
-    role: UserRole.citizen,
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-    address: 'Plot 12, Acacia Avenue, Kololo, Kampala',
-  );
+  AppUser? _currentUser;
   bool _isLoading = false;
 
-  AppUser get currentUser => _currentUser;
+  AppUser get currentUser =>
+      _currentUser ??
+      const AppUser(
+        id: 'unauthenticated',
+        name: 'Guest User',
+        phone: '',
+        email: '',
+        role: UserRole.citizen,
+      );
+
+  bool get isAuthenticated => _currentUser != null;
   List<AppUser> get allUsers => _allUsers;
   bool get isLoading => _isLoading;
-  UserRole get currentRole => _currentUser.role;
+  UserRole get currentRole => currentUser.role;
 
-  bool get isCitizen => _currentUser.role == UserRole.citizen;
-  bool get isRider => _currentUser.role == UserRole.rider;
-  bool get isAdmin => _currentUser.role == UserRole.admin;
+  bool get isCitizen => currentUser.role == UserRole.citizen;
+  bool get isRider => currentUser.role == UserRole.rider;
+  bool get isAdmin => currentUser.role == UserRole.admin;
 
   List<AppUser> get riders => _allUsers.where((u) => u.role == UserRole.rider).toList();
   List<AppUser> get citizens => _allUsers.where((u) => u.role == UserRole.citizen).toList();
@@ -36,10 +38,10 @@ class AuthProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    // 1. Load users synced directly with Firebase Firestore
+    // 1. Load registered accounts dynamically from Firebase Cloud Firestore
     _allUsers = await StorageService.loadUsers();
 
-    // 2. Check if a Firebase Auth user is already active
+    // 2. Check if a Firebase Auth user session exists
     if (Firebase.apps.isNotEmpty) {
       final fbUser = fb_auth.FirebaseAuth.instance.currentUser;
       if (fbUser != null && fbUser.email != null) {
@@ -52,20 +54,39 @@ class AuthProvider with ChangeNotifier {
           notifyListeners();
           return;
         }
+
+        // Try direct Firestore lookup
+        try {
+          var doc = await FirebaseFirestore.instance.collection('users').doc(fbUser.uid).get();
+          if (!doc.exists) {
+            doc = await FirebaseFirestore.instance.collection('profiles').doc(fbUser.uid).get();
+          }
+          if (doc.exists && doc.data() != null) {
+            final user = AppUser.fromJson({...doc.data()!, 'id': fbUser.uid});
+            _currentUser = user;
+            _allUsers.add(user);
+            await StorageService.saveUser(user);
+            _isLoading = false;
+            notifyListeners();
+            return;
+          }
+        } catch (e) {
+          debugPrint('Firestore init error: $e');
+        }
       }
     }
 
-    // 3. Fall back to saved local active user ID or baseline
+    // 3. Check saved active user ID from previous session
     final savedUserId = await StorageService.getActiveUserId();
-    if (savedUserId != null) {
+    if (savedUserId != null && savedUserId.isNotEmpty) {
       final found = _allUsers.where((u) => u.id == savedUserId).toList();
       if (found.isNotEmpty) {
         _currentUser = found.first;
-      } else if (_allUsers.isNotEmpty) {
-        _currentUser = _allUsers.first;
+      } else {
+        _currentUser = null;
       }
-    } else if (_allUsers.isNotEmpty) {
-      _currentUser = _allUsers.first;
+    } else {
+      _currentUser = null;
     }
 
     _isLoading = false;
@@ -82,74 +103,73 @@ class AuthProvider with ChangeNotifier {
 
     final cleanEmail = email.trim().toLowerCase();
 
-    try {
-      if (Firebase.apps.isNotEmpty) {
-        final cred = await fb_auth.FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: cleanEmail,
-          password: password,
-        );
-        final fbUser = cred.user;
+    if (Firebase.apps.isNotEmpty) {
+      final cred = await fb_auth.FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: cleanEmail,
+        password: password,
+      );
+      final fbUser = cred.user;
 
-        // Try to fetch profile from Cloud Firestore
-        if (fbUser != null) {
-          try {
-            var doc = await FirebaseFirestore.instance.collection('users').doc(fbUser.uid).get();
-            if (!doc.exists) {
-              doc = await FirebaseFirestore.instance.collection('profiles').doc(fbUser.uid).get();
-            }
-
-            if (doc.exists && doc.data() != null) {
-              final user = AppUser.fromJson({...doc.data()!, 'id': fbUser.uid});
-              _currentUser = user;
-              await StorageService.saveUser(user);
-              await StorageService.saveActiveUserId(user.id);
-              _allUsers = await StorageService.loadUsers();
-              _isLoading = false;
-              notifyListeners();
-              return user;
-            }
-          } catch (e) {
-            debugPrint('Firestore fetch error after auth: $e');
+      if (fbUser != null) {
+        try {
+          var doc = await FirebaseFirestore.instance.collection('users').doc(fbUser.uid).get();
+          if (!doc.exists) {
+            doc = await FirebaseFirestore.instance.collection('profiles').doc(fbUser.uid).get();
           }
+
+          if (doc.exists && doc.data() != null) {
+            final user = AppUser.fromJson({...doc.data()!, 'id': fbUser.uid});
+            _currentUser = user;
+            await StorageService.saveUser(user);
+            await StorageService.saveActiveUserId(user.id);
+            _allUsers = await StorageService.loadUsers();
+            _isLoading = false;
+            notifyListeners();
+            return user;
+          }
+        } catch (e) {
+          debugPrint('Firestore fetch error: $e');
         }
-      }
-    } catch (e) {
-      debugPrint('Firebase Auth sign in notice: $e');
-      // If Firebase auth failed on network/mock, check if credentials match preconfigured personas
-      final localMatch = _allUsers.where((u) => u.email.toLowerCase() == cleanEmail).toList();
-      if (localMatch.isNotEmpty) {
-        _currentUser = localMatch.first;
-        await StorageService.saveActiveUserId(_currentUser.id);
+
+        // Fallback user from Auth credential
+        final fallbackUser = AppUser(
+          id: fbUser.uid,
+          name: fbUser.displayName ?? cleanEmail.split('@').first,
+          phone: fbUser.phoneNumber ?? '',
+          email: cleanEmail,
+          role: UserRole.citizen,
+        );
+        _currentUser = fallbackUser;
+        await StorageService.saveUser(fallbackUser);
+        await StorageService.saveActiveUserId(fallbackUser.id);
+        _allUsers = await StorageService.loadUsers();
         _isLoading = false;
         notifyListeners();
-        return _currentUser;
+        return fallbackUser;
       }
-      _isLoading = false;
-      notifyListeners();
-      rethrow;
     }
 
-    // Match against loaded Firebase/local users by email
+    // Match against local registered accounts if Firebase is offline
     final match = _allUsers.where((u) => u.email.toLowerCase() == cleanEmail).toList();
     if (match.isNotEmpty) {
       _currentUser = match.first;
-      await StorageService.saveActiveUserId(_currentUser.id);
+      await StorageService.saveActiveUserId(_currentUser!.id);
       _isLoading = false;
       notifyListeners();
-      return _currentUser;
+      return _currentUser!;
     }
 
     _isLoading = false;
     notifyListeners();
-    throw Exception('User account not found for $email');
+    throw Exception('No account found for $email. Please register a new account.');
   }
 
-  /// Switch to a specific existing user by ID
+  /// Switch to a specific existing user by ID (for multi-account management)
   Future<void> switchUser(String userId) async {
     final found = _allUsers.where((u) => u.id == userId).toList();
     if (found.isNotEmpty) {
       _currentUser = found.first;
-      await StorageService.saveActiveUserId(_currentUser.id);
+      await StorageService.saveActiveUserId(_currentUser!.id);
       notifyListeners();
     }
   }
@@ -159,7 +179,7 @@ class AuthProvider with ChangeNotifier {
     final matching = _allUsers.where((u) => u.role == role).toList();
     if (matching.isNotEmpty) {
       _currentUser = matching.first;
-      await StorageService.saveActiveUserId(_currentUser.id);
+      await StorageService.saveActiveUserId(_currentUser!.id);
       notifyListeners();
     }
   }
@@ -173,7 +193,9 @@ class AuthProvider with ChangeNotifier {
     required String avatarUrl,
     String? vehicleInfo,
   }) async {
-    final updated = _currentUser.copyWith(
+    if (_currentUser == null) return;
+
+    final updated = _currentUser!.copyWith(
       name: name,
       phone: phone,
       email: email,
@@ -209,7 +231,7 @@ class AuthProvider with ChangeNotifier {
     final cleanEmail = email.trim().toLowerCase();
     String newId = 'usr_${role == UserRole.citizen ? 'cit' : (role == UserRole.rider ? 'rid' : 'adm')}_${1000 + Random().nextInt(9000)}';
 
-    // 1. Create user in Firebase Authentication if available
+    // 1. Create user in Firebase Authentication
     if (Firebase.apps.isNotEmpty) {
       try {
         final cred = await fb_auth.FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -220,7 +242,7 @@ class AuthProvider with ChangeNotifier {
           newId = cred.user!.uid;
         }
       } catch (e) {
-        debugPrint('Firebase Auth create notice: $e');
+        debugPrint('Firebase Auth register notice: $e');
       }
     }
 
@@ -251,7 +273,7 @@ class AuthProvider with ChangeNotifier {
     return newUser;
   }
 
-  /// Sign out from Firebase Authentication
+  /// Sign out completely from Firebase Authentication and active session
   Future<void> signOut() async {
     if (Firebase.apps.isNotEmpty) {
       try {
@@ -261,9 +283,7 @@ class AuthProvider with ChangeNotifier {
       }
     }
     await StorageService.saveActiveUserId('');
-    if (_allUsers.isNotEmpty) {
-      _currentUser = _allUsers.first;
-    }
+    _currentUser = null;
     notifyListeners();
   }
 }

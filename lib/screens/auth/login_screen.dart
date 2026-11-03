@@ -1,10 +1,10 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../main.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/user_avatar.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -47,7 +47,14 @@ class _LoginScreenState extends State<LoginScreen> {
             backgroundColor: AppTheme.primaryGreen,
           ),
         );
-        Navigator.pop(context);
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const RoleBasedMainRouter()),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -65,22 +72,14 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _fillDemoPersona(AppUser user) {
-    setState(() {
-      _emailController.text = user.email;
-      _passwordController.text = 'password123';
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final auth = Provider.of<AuthProvider>(context);
-    final users = auth.allUsers;
     final isFirebaseActive = Firebase.apps.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Firebase Account Sign-In'),
+        automaticallyImplyLeading: Navigator.canPop(context),
       ),
       body: SafeArea(
         child: Center(
@@ -165,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // 1. Direct Firebase Auth Sign-In Form
+                // Direct Firebase Auth Sign-In Form
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
@@ -179,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               Icon(Icons.lock_person_rounded, color: AppTheme.primaryGreen, size: 20),
                               SizedBox(width: 8),
                               Text(
-                                'Sign In with Firebase Credentials',
+                                'Sign In with Firebase Account',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
@@ -196,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             decoration: const InputDecoration(
                               labelText: 'Email Address',
                               prefixIcon: Icon(Icons.email_outlined),
-                              hintText: 'e.g. sarah.namukasa@ecoroute.app',
+                              hintText: 'Enter your account email',
                             ),
                             validator: (v) =>
                                 (v == null || !v.contains('@')) ? 'Please enter a valid email' : null,
@@ -222,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             validator: (v) =>
                                 (v == null || v.length < 6) ? 'Password must be at least 6 characters' : null,
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 18),
 
                           ElevatedButton.icon(
                             onPressed: _isLoading ? null : _handleFirebaseLogin,
@@ -235,122 +234,28 @@ class _LoginScreenState extends State<LoginScreen> {
                                 : const Icon(Icons.login_rounded),
                             label: const Text('Sign In to Account'),
                           ),
+
+                          const SizedBox(height: 14),
+                          const Divider(),
+                          const SizedBox(height: 10),
+
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                              );
+                            },
+                            icon: const Icon(Icons.person_add_alt_1_rounded),
+                            label: const Text('Create New Account with Firebase'),
+                          ),
                         ],
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
 
-                // 2. Preconfigured Demo Personas Linked to Firebase
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          children: [
-                            const Text(
-                              'Preconfigured Demo Personas',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.textDark,
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              '${users.length} in Cloud',
-                              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Tap any persona below to autofill or switch instantly:',
-                          style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                        ),
-                        const SizedBox(height: 14),
-
-                        ...users.map(
-                          (u) => Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            decoration: BoxDecoration(
-                              color: auth.currentUser.id == u.id
-                                  ? AppTheme.accentMint.withValues(alpha: 0.3)
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: auth.currentUser.id == u.id
-                                    ? AppTheme.primaryGreen
-                                    : const Color(0xFFEEEEEE),
-                              ),
-                            ),
-                            child: ListTile(
-                              dense: true,
-                              leading: UserAvatar(
-                                user: u,
-                                radius: 18,
-                                showRoleBadge: true,
-                              ),
-                              title: Text(
-                                u.name,
-                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                              ),
-                              subtitle: Text(
-                                '${u.role.displayName} • ${u.email}',
-                                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                              ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.arrow_forward_rounded, color: AppTheme.primaryGreen, size: 18),
-                                tooltip: 'Auto-fill & Switch',
-                                onPressed: () async {
-                                  _fillDemoPersona(u);
-                                  await auth.switchUser(u.id);
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Switched to ${u.name} (${u.role.displayName})'),
-                                        duration: const Duration(seconds: 1),
-                                      ),
-                                    );
-                                  }
-                                },
-                              ),
-                              onTap: () async {
-                                _fillDemoPersona(u);
-                                await auth.switchUser(u.id);
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Switched to ${u.name} (${u.role.displayName})'),
-                                      duration: const Duration(seconds: 1),
-                                    ),
-                                  );
-                                }
-                              },
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 10),
-                        OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                            );
-                          },
-                          icon: const Icon(Icons.person_add_alt_1_rounded),
-                          label: const Text('Create New Account with Firebase'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 // Footer
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

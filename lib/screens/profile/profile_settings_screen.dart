@@ -465,20 +465,24 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               ),
               const SizedBox(height: 12),
 
-              // SWITCH USER / SIGN OUT BUTTON
+              // SIGN OUT BUTTON
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    );
+                  onPressed: () async {
+                    await auth.signOut();
+                    if (context.mounted) {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        (route) => false,
+                      );
+                    }
                   },
-                  icon: const Icon(Icons.manage_accounts_rounded),
-                  label: const Text('Switch User / Sign Out / Login'),
+                  icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+                  label: const Text('Sign Out of Firebase Account', style: TextStyle(color: Colors.redAccent)),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.darkForest,
+                    side: const BorderSide(color: Colors.redAccent),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),

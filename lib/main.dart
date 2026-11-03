@@ -7,6 +7,7 @@ import 'providers/auth_provider.dart';
 import 'providers/waste_request_provider.dart';
 import 'providers/notification_provider.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
+import 'screens/auth/login_screen.dart';
 import 'screens/citizen/citizen_home_screen.dart';
 import 'screens/rider/rider_dashboard_screen.dart';
 import 'theme/app_theme.dart';
@@ -60,7 +61,7 @@ class EcoRouteApp extends StatelessWidget {
   }
 }
 
-/// Routes user to appropriate screen based on current logged in role
+/// Routes user to appropriate screen based on current logged in role or to LoginScreen if not authenticated
 class RoleBasedMainRouter extends StatelessWidget {
   const RoleBasedMainRouter({super.key});
 
@@ -74,6 +75,10 @@ class RoleBasedMainRouter extends StatelessWidget {
           child: CircularProgressIndicator(color: AppTheme.primaryGreen),
         ),
       );
+    }
+
+    if (!auth.isAuthenticated) {
+      return const LoginScreen();
     }
 
     switch (auth.currentRole) {
