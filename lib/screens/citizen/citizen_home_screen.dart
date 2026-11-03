@@ -7,6 +7,7 @@ import '../../providers/waste_request_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/role_header_app_bar.dart';
 import '../../widgets/waste_card.dart';
+import '../../widgets/waste_sorting_guide_modal.dart';
 import '../common/eco_stats_screen.dart';
 import '../common/interactive_map_screen.dart';
 import 'new_request_screen.dart';
@@ -46,6 +47,8 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
         .toList();
 
     final totalCarbon = allCompletedRequests.fold(0.0, (sum, r) => sum + r.totalCarbonSavedKg);
+    final totalDiverted = allCompletedRequests.fold(0.0, (sum, r) => sum + r.totalDivertedWeightKg);
+    final totalTrees = allCompletedRequests.fold(0.0, (sum, r) => sum + r.treesSavedEquivalent);
 
     // Apply search and category filter
     List<WasteRequest> currentTabRequests = _tabIndex == 0 ? allActiveRequests : allCompletedRequests;
@@ -140,23 +143,81 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
                           value: '${totalCarbon.toStringAsFixed(1)} kg',
                           label: 'CO₂e Diverted',
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 14),
                         _metricBadge(
-                          icon: Icons.delete_sweep_rounded,
-                          value: '${allCompletedRequests.fold(0, (sum, r) => sum + r.quantityBags)}',
-                          label: 'Bags Cleaned',
+                          icon: Icons.scale_rounded,
+                          value: '${totalDiverted.toStringAsFixed(0)} kg',
+                          label: 'Waste Cleaned',
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 14),
                         _metricBadge(
-                          icon: Icons.payments_rounded,
-                          value: '\$${allCompletedRequests.fold(0.0, (sum, r) => sum + (r.actualCashPaid ?? 0)).toStringAsFixed(0)}',
-                          label: 'Cash Settled',
+                          icon: Icons.forest_rounded,
+                          value: totalTrees > 0.1 ? totalTrees.toStringAsFixed(1) : '0.0',
+                          label: 'Trees Absorbed',
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
+
+              // WHICH BIN GUIDE BANNER (100% Free Municipal Tool)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: InkWell(
+                  onTap: () => WasteSortingGuideModal.show(context),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade300),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentMint,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.recycling_rounded, color: AppTheme.primaryGreen, size: 24),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Which Bin? Waste Sorting Guide',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: AppTheme.textDark,
+                                ),
+                              ),
+                              Text(
+                                'Search 25+ household items & municipal rules (Offline & Free)',
+                                style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.primaryGreen),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
 
               // CALL TO ACTION BUTTON & MAP SHORTCUT
               Padding(
@@ -323,6 +384,7 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
                           ? 'Snap a picture of waste outside to summon a collection rider.'
                           : 'Completed waste collections will appear here with cash receipts.'),
                   icon: _searchQuery.isNotEmpty ? Icons.search_off_rounded : Icons.checklist_rounded,
+                  showCta: _tabIndex == 0 && _searchQuery.isEmpty,
                 )
               else
                 ...currentTabRequests.map((req) => WasteCard(
@@ -351,62 +413,73 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
           );
         },
         icon: const Icon(Icons.add_a_photo_rounded),
-        label: const Text('New Pickup'),
+        label: const Text('Schedule Pickup'),
       ),
     );
   }
 
-  Widget _categoryChip(String key, String label) {
-    final isSelected = _categoryFilter == key;
-    return ChoiceChip(
-      label: Text(label, style: const TextStyle(fontSize: 11)),
-      selected: isSelected,
-      selectedColor: AppTheme.darkForest,
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : AppTheme.textDark,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-      ),
-      backgroundColor: Colors.white,
-      showCheckmark: false,
-      onSelected: (val) {
-        if (val) {
-          setState(() => _categoryFilter = key);
-        }
-      },
-    );
-  }
-
-  Widget _metricBadge({required IconData icon, required String value, required String label}) {
+  Widget _metricBadge({
+    required IconData icon,
+    required String value,
+    required String label,
+  }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: Colors.white, size: 18),
+            Icon(icon, color: Colors.white, size: 20),
             const SizedBox(height: 6),
             Text(
               value,
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
-                fontSize: 15,
+                fontSize: 16,
               ),
             ),
             Text(
               label,
               style: const TextStyle(
                 color: Colors.white70,
-                fontSize: 10,
+                fontSize: 11,
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _categoryChip(String type, String label) {
+    final isSelected = _categoryFilter == type;
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          color: isSelected ? Colors.white : AppTheme.textDark,
+        ),
+      ),
+      selected: isSelected,
+      selectedColor: AppTheme.primaryGreen,
+      backgroundColor: Colors.white,
+      side: BorderSide(
+        color: isSelected ? AppTheme.primaryGreen : const Color(0xFFDDDDDD),
+      ),
+      onSelected: (val) {
+        if (val) {
+          setState(() {
+            _categoryFilter = type;
+          });
+        }
+      },
     );
   }
 
@@ -418,7 +491,6 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
-          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected ? AppTheme.primaryGreen : Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -426,12 +498,13 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
               color: isSelected ? AppTheme.primaryGreen : const Color(0xFFDDDDDD),
             ),
           ),
+          alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.white : AppTheme.textDark,
               fontWeight: FontWeight.w700,
               fontSize: 13,
+              color: isSelected ? Colors.white : AppTheme.textMuted,
             ),
           ),
         ),
@@ -439,27 +512,62 @@ class _CitizenHomeScreenState extends State<CitizenHomeScreen> {
     );
   }
 
-  Widget _emptyState({required String title, required String subtitle, required IconData icon}) {
-    return Padding(
-      padding: const EdgeInsets.all(40.0),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(icon, size: 54, color: AppTheme.textMuted.withValues(alpha: 0.5)),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-              textAlign: TextAlign.center,
+  Widget _emptyState({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    bool showCta = false,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 32,
+            backgroundColor: AppTheme.accentMint,
+            child: Icon(icon, size: 32, color: AppTheme.primaryGreen),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textDark,
             ),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppTheme.textMuted,
+            ),
+          ),
+          if (showCta) ...[
+            const SizedBox(height: 18),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NewRequestScreen()),
+                );
+              },
+              icon: const Icon(Icons.add_a_photo_rounded, size: 18),
+              label: const Text('Schedule First Pickup'),
             ),
           ],
-        ),
+        ],
       ),
     );
   }

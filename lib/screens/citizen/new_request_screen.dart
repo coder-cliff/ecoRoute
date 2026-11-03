@@ -9,6 +9,7 @@ import '../../services/location_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/camera_picker_widget.dart';
 import '../../widgets/cash_payment_banner.dart';
+import '../../widgets/waste_sorting_guide_modal.dart';
 import 'request_details_screen.dart';
 
 class NewRequestScreen extends StatefulWidget {
@@ -23,6 +24,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   String? _photoPath;
   WasteCategoryType _selectedCategory = WasteCategoryType.plastics;
+  WasteVolumeSize _selectedVolume = WasteVolumeSize.small;
   int _quantityBags = 2;
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
@@ -64,7 +66,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     _longitude = locResult.longitude;
     _gpsAccuracy = locResult.accuracy;
 
-    // Call OpenStreetMap Nominatim reverse geocoding REST API
+    // Call OpenStreetMap Nominatim reverse geocoding REST API (100% Free & Open)
     final address = await ApiService.reverseGeocode(
       latitude: _latitude,
       longitude: _longitude,
@@ -83,16 +85,17 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   double get _currentEstimatedCash {
     final cat = WasteCategory.getByType(_selectedCategory);
-    return cat.pricePerUnit * _quantityBags;
+    return cat.pricePerUnit * _quantityBags * _selectedVolume.multiplier;
   }
 
+  // Pick Pickup Time with Daylight Operating Hours Guardrail (7:00 AM - 7:00 PM)
   Future<void> _pickPickupDateTime() async {
     final now = DateTime.now();
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: _scheduledTime.isBefore(now) ? now : _scheduledTime,
       firstDate: now,
-      lastDate: now.add(const Duration(days: 7)),
+      lastDate: now.add(const Duration(days: 14)),
     );
 
     if (pickedDate != null && mounted) {
@@ -101,8 +104,8 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         initialTime: TimeOfDay.fromDateTime(_scheduledTime),
       );
 
-      if (pickedTime != null && mounted) {
-        final chosen = DateTime(
+      if (pickedTime != null) {
+        final combined = DateTime(
           pickedDate.year,
           pickedDate.month,
           pickedDate.day,
@@ -110,41 +113,46 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
           pickedTime.minute,
         );
 
-        // Guardrail 1: Disallow time in the past
-        if (chosen.isBefore(now.add(const Duration(minutes: 10)))) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Pickup time must be at least 15 minutes in the future.'),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
+        // Guardrail: Operating hours 7:00 AM to 7:00 PM (19:00)
+        if (pickedTime.hour < 7 || pickedTime.hour >= 19) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Collection operating hours are between 7:00 AM and 7:00 PM for rider safety.',
+                ),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
           return;
         }
 
-        // Guardrail 2: Operating collection hours (7 AM - 7 PM)
-        if (pickedTime.hour < 7 || pickedTime.hour >= 19) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Working collection hours are 7:00 AM – 7:00 PM. Please choose a daylight slot.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
+        // Guardrail: Cannot schedule in past
+        if (combined.isBefore(now.add(const Duration(minutes: 15)))) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please select a pickup time at least 15 minutes from now.'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
           return;
         }
 
         setState(() {
-          _scheduledTime = chosen;
+          _scheduledTime = combined;
         });
       }
     }
   }
 
   Future<void> _submitRequest() async {
-    // Week 5: User Input & Validation
     if (_photoPath == null || _photoPath!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please take or select a photo of the waste first!'),
+          content: Text('Please take or select a photo of the waste pile to verify volume.'),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -176,6 +184,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         photoPath: _photoPath!,
         categoryType: _selectedCategory,
         quantityBags: _quantityBags,
+        volumeSize: _selectedVolume,
         latitude: _latitude,
         longitude: _longitude,
         address: _addressController.text.trim(),
@@ -222,6 +231,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Schedule Waste Pickup'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded, color: AppTheme.primaryGreen),
+            tooltip: 'Which Bin? Waste Guide',
+            onPressed: () => WasteSortingGuideModal.show(context),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -346,18 +362,48 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               ),
               const SizedBox(height: 24),
 
-              // SECTION 3: WASTE CATEGORY
-              const Text(
-                '3. Waste Category',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textDark,
-                ),
+              // SECTION 3: WASTE CATEGORY & WHICH BIN GUIDE
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '3. Waste Category',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textDark,
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => WasteSortingGuideModal.show(context),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.accentMint,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.help_outline_rounded, size: 14, color: AppTheme.primaryGreen),
+                          SizedBox(width: 4),
+                          Text(
+                            'Which Bin? Guide',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primaryGreen,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 6),
               const Text(
-                'Select waste type for correct sorting and collection rate.',
+                'Select waste type for correct sorting and municipal collection rate.',
                 style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
               ),
               const SizedBox(height: 10),
@@ -394,9 +440,76 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               ),
               const SizedBox(height: 24),
 
-              // SECTION 4: QUANTITY & PICKUP SCHEDULE
+              // SECTION 4: VOLUME BENCHMARK & CONTAINER SIZE
               const Text(
-                '4. Volume & Preferred Pickup Time',
+                '4. Container Size / Volume',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Select the standard volume size of your waste container.',
+                style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: WasteVolumeSize.values.map((v) {
+                  final isSelected = _selectedVolume == v;
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                      child: InkWell(
+                        onTap: () => setState(() => _selectedVolume = v),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppTheme.accentMint : Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected ? AppTheme.primaryGreen : Colors.grey.shade300,
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                v == WasteVolumeSize.small
+                                    ? Icons.shopping_bag_outlined
+                                    : v == WasteVolumeSize.medium
+                                        ? Icons.delete_outline_rounded
+                                        : Icons.local_shipping_outlined,
+                                color: isSelected ? AppTheme.primaryGreen : Colors.grey.shade600,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                v.label.split(' ').first,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? AppTheme.primaryGreen : AppTheme.textDark,
+                                ),
+                              ),
+                              Text(
+                                v.label.split(' ').last,
+                                style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+
+              // SECTION 5: QUANTITY & PICKUP SCHEDULE
+              const Text(
+                '5. Units & Collection Schedule',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -416,16 +529,16 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
                     // Quantity Stepper
                     Row(
                       children: [
-                        const Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Number of Bags / Bins',
+                            const Text(
+                              'Quantity of Containers',
                               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                             ),
                             Text(
-                              'Standard 30L-50L garbage bags',
-                              style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                              _selectedVolume.description,
+                              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
                             ),
                           ],
                         ),
@@ -484,7 +597,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               ),
               const SizedBox(height: 20),
 
-              // SECTION 5: NOTES & INSTRUCTIONS
+              // SECTION 6: NOTES & INSTRUCTIONS
               TextFormField(
                 controller: _notesController,
                 maxLines: 2,
@@ -496,7 +609,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
               ),
               const SizedBox(height: 24),
 
-              // SECTION 6: HARD CASH ESTIMATION BANNER
+              // SECTION 7: HARD CASH ESTIMATION BANNER
               CashPaymentBanner(
                 amount: _currentEstimatedCash,
                 isCollected: false,

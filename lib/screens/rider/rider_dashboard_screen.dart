@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../models/waste_category.dart';
 import '../../models/waste_request.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/waste_request_provider.dart';
@@ -36,6 +37,26 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Coordinates: $lat, $lon (Maps error: $e)')),
+        );
+      }
+    }
+  }
+
+  Future<void> _callResident(String phone) async {
+    final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '');
+    final uri = Uri.parse('tel:$cleanPhone');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Calling customer: $phone')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Calling customer: $phone ($e)')),
         );
       }
     }
@@ -102,61 +123,70 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
                             ),
                           ),
                           Text(
-                            '${completed.length} pickups successfully settled & cleared',
+                            '${completed.length} cash collections settled with residents',
                             style: const TextStyle(fontSize: 11, color: Color(0xFF856404)),
                           ),
                         ],
                       ),
                     ),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.account_balance_wallet_rounded,
+                          color: AppTheme.cashGold, size: 28),
+                    ),
                   ],
                 ),
               ),
 
-              // NAVIGATION TABS
+              // SEGMENTED TABS (Assigned, Available, Completed)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Row(
                   children: [
-                    _filterChip(0, 'Assigned (${assigned.length})'),
+                    _tabChip(0, 'My Active (${assigned.length})'),
                     const SizedBox(width: 8),
-                    _filterChip(1, 'Open Jobs (${available.length})'),
+                    _tabChip(1, 'Open Queue (${available.length})'),
                     const SizedBox(width: 8),
-                    _filterChip(2, 'Settled (${completed.length})'),
+                    _tabChip(2, 'Settled (${completed.length})'),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
 
-              // LIST CONTENT
+              // LIST SECTION
               if (_selectedTab == 0) ...[
                 if (assigned.isEmpty)
-                  _emptyMsg(
-                    icon: Icons.done_all_rounded,
-                    title: 'No pending pickups assigned',
-                    subtitle: 'Check "Open Jobs" tab to claim new waste requests.',
+                  _emptyState(
+                    'No active pickups assigned',
+                    'Check the "Open Queue" tab to accept available waste pickups nearby.',
+                    Icons.two_wheeler_outlined,
                   )
                 else
-                  ...assigned.map((r) => _riderJobCard(r, isAssignedToMe: true)),
+                  ...assigned.map((r) => _buildRiderRequestCard(r, provider, isAssignedToMe: true)),
               ] else if (_selectedTab == 1) ...[
                 if (available.isEmpty)
-                  _emptyMsg(
-                    icon: Icons.hourglass_empty_rounded,
-                    title: 'No unassigned requests',
-                    subtitle: 'All waste collection requests in the city are currently dispatched.',
+                  _emptyState(
+                    'No pending pickups in area',
+                    'All scheduled pickups have been claimed. Check back shortly for new requests.',
+                    Icons.check_circle_outline,
                   )
                 else
-                  ...available.map((r) => _riderJobCard(r, isAssignedToMe: false)),
+                  ...available.map((r) => _buildRiderRequestCard(r, provider, isAssignedToMe: false)),
               ] else ...[
                 if (completed.isEmpty)
-                  _emptyMsg(
-                    icon: Icons.receipt_long_rounded,
-                    title: 'No collections completed today',
-                    subtitle: 'Cash collections made on completed jobs will be listed here.',
+                  _emptyState(
+                    'No completed pickups today',
+                    'Cash settlements and completed pickups will appear here for audit.',
+                    Icons.receipt_long_outlined,
                   )
                 else
-                  ...completed.map((r) => _completedJobCard(r)),
+                  ...completed.map((r) => _buildSettledCard(r)),
               ],
-              const SizedBox(height: 30),
+              const SizedBox(height: 80),
             ],
           ),
         ),
@@ -164,7 +194,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     );
   }
 
-  Widget _filterChip(int index, String label) {
+  Widget _tabChip(int index, String label) {
     final isSelected = _selectedTab == index;
     return Expanded(
       child: InkWell(
@@ -172,7 +202,6 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
-          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xFF0D6EFD) : Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -180,12 +209,13 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
               color: isSelected ? const Color(0xFF0D6EFD) : const Color(0xFFDDDDDD),
             ),
           ),
+          alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: isSelected ? Colors.white : AppTheme.textDark,
+              fontSize: 12,
+              color: isSelected ? Colors.white : AppTheme.textMuted,
             ),
           ),
         ),
@@ -193,8 +223,8 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     );
   }
 
-  Widget _riderJobCard(WasteRequest r, {required bool isAssignedToMe}) {
-    final distKm = LocationService.calculateDistanceKm(
+  Widget _buildRiderRequestCard(WasteRequest r, WasteRequestProvider provider, {required bool isAssignedToMe}) {
+    final distKm = LocationService.distanceInKm(
       LocationService.defaultLat,
       LocationService.defaultLon,
       r.latitude,
@@ -222,7 +252,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${r.category.title} (${r.quantityBags} bags)',
+                        '${r.category.title} (${r.volumeSize.label} • ${r.quantityBags} bags)',
                         style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                       ),
                       Text(
@@ -321,7 +351,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
                   ),
                   const Spacer(),
                   Text(
-                    '${r.quantityBags} Bags',
+                    '${r.quantityBags} Units',
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
@@ -338,30 +368,35 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
               Row(
                 children: [
                   OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      minimumSize: Size.zero,
+                    ),
                     onPressed: () => _launchMapsNavigation(r.latitude, r.longitude),
                     icon: const Icon(Icons.navigation_rounded, size: 16, color: Color(0xFF0D6EFD)),
                     label: const Text('Navigate'),
                   ),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Calling customer ${r.userName} at ${r.userPhone}')),
-                        );
-                      },
-                      icon: const Icon(Icons.phone, size: 16),
-                      label: const Text('Call'),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      minimumSize: Size.zero,
                     ),
+                    onPressed: () => _callResident(r.userPhone),
+                    icon: const Icon(Icons.phone, size: 16),
+                    label: const Text('Call'),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    flex: 2,
                     child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
-                      onPressed: () => _showCashCollectionDialog(context, r),
-                      icon: const Icon(Icons.check_circle_outline, size: 18),
-                      label: const Text('Collect Cash'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryGreen,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        minimumSize: Size.zero,
+                      ),
+                      onPressed: () => _showCollectionDialog(context, r, provider),
+                      icon: const Icon(Icons.check_circle_rounded, size: 16),
+                      label: const Text('Collect Cash', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -370,80 +405,40 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
               Row(
                 children: [
                   OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      minimumSize: Size.zero,
+                    ),
                     onPressed: () => _launchMapsNavigation(r.latitude, r.longitude),
-                    icon: const Icon(Icons.directions_rounded, size: 16, color: Color(0xFF0D6EFD)),
-                    label: const Text('Map'),
+                    icon: const Icon(Icons.map_rounded, size: 16),
+                    label: const Text('Preview'),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D6EFD)),
-                      onPressed: () async {
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0D6EFD),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        minimumSize: Size.zero,
+                      ),
+                      onPressed: () {
                         final auth = Provider.of<AuthProvider>(context, listen: false);
-                        final provider = Provider.of<WasteRequestProvider>(context, listen: false);
-                        await provider.assignRider(
+                        provider.assignRider(
                           requestId: r.id,
                           riderId: auth.currentUser.id,
                           riderName: auth.currentUser.name,
                         );
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Accepted pickup ${r.id}! Added to Assigned tab.')),
-                          );
-                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Accepted pickup ${r.id}! Added to active queue.')),
+                        );
                       },
-                      icon: const Icon(Icons.thumb_up_rounded, size: 18),
-                      label: const Text('Accept Pickup Job'),
+                      icon: const Icon(Icons.assignment_turned_in_rounded, size: 16),
+                      label: const Text('Accept Pickup'),
                     ),
                   ),
                 ],
               ),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _completedJobCard(WasteRequest r) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.check_circle, color: AppTheme.primaryGreen, size: 20),
-                const SizedBox(width: 10),
-                Text(
-                  '${r.category.title} (${r.id})',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                const Spacer(),
-                Text(
-                  'Receipt: ${r.receiptNumber ?? 'N/A'}',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(r.address, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Collected: ${r.collectedAt != null ? DateFormat('h:mm a • MMM d').format(r.collectedAt!) : 'Completed'}',
-                  style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                ),
-                Text(
-                  'Cash Collected: \$${(r.actualCashPaid ?? r.estimatedCashAmount).toStringAsFixed(2)}',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.darkForest),
-                ),
-              ],
-            ),
           ],
         ),
       ),
@@ -453,15 +448,17 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   Widget _buildPhotoThumbnail(String path, String categoryName) {
     if (path.isEmpty || path.startsWith('simulated_') || path.startsWith('assets/')) {
       return Container(
-        color: AppTheme.accentMint.withValues(alpha: 0.5),
+        color: AppTheme.accentMint,
         child: Center(
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.image, size: 20, color: AppTheme.primaryGreen),
+              const Icon(Icons.photo_camera_rounded, size: 24, color: AppTheme.primaryGreen),
               const SizedBox(width: 8),
-              Text('Waste Photo: $categoryName',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.darkForest)),
+              Text(
+                'Verified Waste: $categoryName',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkForest),
+              ),
             ],
           ),
         ),
@@ -470,119 +467,192 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
       return Image.network(
         path,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, size: 20)),
+        errorBuilder: (_, __, ___) => Container(
+          color: AppTheme.accentMint,
+          alignment: Alignment.center,
+          child: Text('Waste: $categoryName'),
+        ),
       );
     } else if (!kIsWeb && File(path).existsSync()) {
       return Image.file(
         File(path),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, size: 20)),
+        errorBuilder: (_, __, ___) => Container(
+          color: AppTheme.accentMint,
+          alignment: Alignment.center,
+          child: Text('Waste: $categoryName'),
+        ),
       );
     } else {
       return Container(
-        color: AppTheme.accentMint.withValues(alpha: 0.5),
-        child: Center(
-          child: Text('Waste Photo: $categoryName',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.darkForest)),
-        ),
+        color: AppTheme.accentMint,
+        alignment: Alignment.center,
+        child: Text('Waste: $categoryName', style: const TextStyle(fontWeight: FontWeight.bold)),
       );
     }
   }
 
-  void _showCashCollectionDialog(BuildContext context, WasteRequest r) {
+  Widget _buildSettledCard(WasteRequest r) {
+    final collectedTime = r.collectedAt != null
+        ? DateFormat('EEE, MMM d • h:mm a').format(r.collectedAt!)
+        : 'Completed';
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.verified_rounded, color: AppTheme.primaryGreen, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${r.category.title} (${r.volumeSize.label} • ${r.quantityBags} bags)',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                      ),
+                      Text(
+                        'Receipt: ${r.receiptNumber} • Settled $collectedTime',
+                        style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentMint,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '+\$${(r.actualCashPaid ?? r.estimatedCashAmount).toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.darkForest,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Resident: ${r.userName} • Address: ${r.address}',
+              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCollectionDialog(BuildContext context, WasteRequest r, WasteRequestProvider provider) {
     final cashController = TextEditingController(
       text: r.estimatedCashAmount.toStringAsFixed(2),
     );
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.payments_rounded, color: AppTheme.cashGold),
-            SizedBox(width: 10),
-            Text('Confirm Cash Payment'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Collecting from: ${r.userName}'),
-            const SizedBox(height: 4),
-            Text('Address: ${r.address}', style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-            const SizedBox(height: 16),
-            const Text(
-              'Enter Hard Cash Amount Received:',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: cashController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                prefixText: '\$ ',
-                labelText: 'Cash Collected',
+      builder: (dialogCtx) {
+        return AlertDialog(
+          title: Text('Collect Hard Cash (${r.id})'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Customer: ${r.userName}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.cashGoldLight,
-                borderRadius: BorderRadius.circular(8),
+              Text(
+                'Category: ${r.category.title} (${r.volumeSize.label} • ${r.quantityBags} units)',
+                style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
               ),
-              child: const Text(
-                'By confirming, you certify that the waste was collected and exact hard cash was handed over.',
-                style: TextStyle(fontSize: 11, color: Color(0xFF664D03)),
+              const SizedBox(height: 14),
+              const Text(
+                'Physical Cash Received (USD / Local):',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+              const SizedBox(height: 6),
+              TextField(
+                controller: cashController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.payments_rounded, color: AppTheme.cashGold),
+                  prefixText: '\$ ',
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Notice: Please ensure you count physical cash on site before tapping confirm.',
+                style: TextStyle(fontSize: 11, color: Colors.orange, fontStyle: FontStyle.italic),
+              ),
+            ],
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
-            onPressed: () async {
-              final val = double.tryParse(cashController.text) ?? r.estimatedCashAmount;
-              final provider = Provider.of<WasteRequestProvider>(context, listen: false);
-              await provider.confirmCashCollection(
-                requestId: r.id,
-                amountCollected: val,
-              );
-              if (ctx.mounted) Navigator.pop(ctx);
-              if (context.mounted) {
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+              onPressed: () {
+                final amount = double.tryParse(cashController.text.trim()) ?? r.estimatedCashAmount;
+                provider.confirmCashCollection(
+                  requestId: r.id,
+                  amountCollected: amount,
+                );
+                Navigator.pop(dialogCtx);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Payment of \$${val.toStringAsFixed(2)} confirmed! Receipt generated.'),
+                    content: Text('Collection confirmed! \$${amount.toStringAsFixed(2)} added to pouch.'),
                     backgroundColor: AppTheme.primaryGreen,
                   ),
                 );
-              }
-            },
-            child: const Text('Confirm Cash & Complete'),
-          ),
-        ],
-      ),
+              },
+              child: const Text('Confirm Cash Receipt'),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _emptyMsg({required IconData icon, required String title, required String subtitle}) {
-    return Padding(
-      padding: const EdgeInsets.all(36.0),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(icon, size: 48, color: AppTheme.textMuted.withValues(alpha: 0.5)),
-            const SizedBox(height: 12),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-            const SizedBox(height: 4),
-            Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-          ],
-        ),
+  Widget _emptyState(String title, String subtitle, IconData icon) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
+      ),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.blue.shade50,
+            child: Icon(icon, size: 30, color: const Color(0xFF0D6EFD)),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+          ),
+        ],
       ),
     );
   }

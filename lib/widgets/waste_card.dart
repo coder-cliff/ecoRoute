@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../models/waste_category.dart';
 import '../models/waste_request.dart';
 import '../theme/app_theme.dart';
 import 'status_badge.dart';
@@ -92,7 +93,7 @@ class WasteCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
 
-              // Time
+              // Time, Volume & Bags
               Row(
                 children: [
                   const Icon(Icons.access_time_rounded, size: 16, color: AppTheme.textMuted),
@@ -105,6 +106,22 @@ class WasteCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
+                  Container(
+                    margin: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentMint,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      request.volumeSize.label.split(' ').first,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryGreen,
+                      ),
+                    ),
+                  ),
                   Text(
                     '${request.quantityBags} ${request.quantityBags == 1 ? 'bag' : 'bags'}',
                     style: const TextStyle(
