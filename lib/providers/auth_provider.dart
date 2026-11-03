@@ -164,26 +164,6 @@ class AuthProvider with ChangeNotifier {
     throw Exception('No account found for $email. Please register a new account.');
   }
 
-  /// Switch to a specific existing user by ID (for multi-account management)
-  Future<void> switchUser(String userId) async {
-    final found = _allUsers.where((u) => u.id == userId).toList();
-    if (found.isNotEmpty) {
-      _currentUser = found.first;
-      await StorageService.saveActiveUserId(_currentUser!.id);
-      notifyListeners();
-    }
-  }
-
-  /// Switch to a persona by role (picks the first registered user with that role)
-  Future<void> switchRole(UserRole role) async {
-    final matching = _allUsers.where((u) => u.role == role).toList();
-    if (matching.isNotEmpty) {
-      _currentUser = matching.first;
-      await StorageService.saveActiveUserId(_currentUser!.id);
-      notifyListeners();
-    }
-  }
-
   /// Update the current user's profile details & DP in Firebase Firestore and local storage
   Future<void> updateProfile({
     required String name,

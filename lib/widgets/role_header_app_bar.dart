@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart';
-import '../screens/auth/register_screen.dart';
 import '../screens/common/interactive_map_screen.dart';
 import '../screens/profile/profile_settings_screen.dart';
 import '../theme/app_theme.dart';
@@ -13,14 +12,15 @@ import 'user_avatar.dart';
 class RoleHeaderAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final List<Widget>? actions;
-  final bool showRoleSwitcher;
+  final bool showRoleBadge;
 
   const RoleHeaderAppBar({
     super.key,
     required this.title,
     this.actions,
-    this.showRoleSwitcher = true,
-  });
+    bool? showRoleBadge,
+    bool? showRoleSwitcher,
+  }) : showRoleBadge = showRoleBadge ?? showRoleSwitcher ?? true;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -80,23 +80,41 @@ class RoleHeaderAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
-        if (showRoleSwitcher)
+        if (showRoleBadge)
           Padding(
-            padding: const EdgeInsets.only(right: 4.0),
-            child: ActionChip(
-              avatar: const Icon(Icons.swap_horiz_rounded, size: 14),
-              label: Text(
-                user.role.badgeLabel,
-                style: TextStyle(
-                  color: roleColor,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11,
+            padding: const EdgeInsets.only(right: 6.0),
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: roleColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: roleColor.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      user.role == UserRole.admin
+                          ? Icons.shield_rounded
+                          : user.role == UserRole.rider
+                              ? Icons.two_wheeler_rounded
+                              : Icons.person_rounded,
+                      size: 13,
+                      color: roleColor,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      user.role.badgeLabel,
+                      style: TextStyle(
+                        color: roleColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              backgroundColor: roleColor.withValues(alpha: 0.12),
-              side: BorderSide(color: roleColor.withValues(alpha: 0.3)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              onPressed: () => _showAccountSwitcherDialog(context, authProvider),
             ),
           ),
         // Live Waste Map Button
@@ -147,106 +165,6 @@ class RoleHeaderAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
         ...?actions,
       ],
-    );
-  }
-
-  void _showAccountSwitcherDialog(BuildContext context, AuthProvider auth) {
-    final users = auth.allUsers;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.cloud_done_rounded, color: AppTheme.primaryGreen),
-            SizedBox(width: 8),
-            Text('Firebase Accounts & Roles'),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'All personas are synced with Firebase Cloud. Select an active profile or register new personnel:',
-                style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-              ),
-              const SizedBox(height: 12),
-              if (users.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12.0),
-                  child: Text(
-                    'No additional accounts found in Firebase Firestore.',
-                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                  ),
-                )
-              else
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: users.length,
-                    itemBuilder: (context, index) {
-                      final u = users[index];
-                      final isSelected = u.id == auth.currentUser.id;
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 6),
-                        decoration: BoxDecoration(
-                          color: isSelected ? AppTheme.accentMint.withValues(alpha: 0.3) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isSelected ? AppTheme.primaryGreen : const Color(0xFFEEEEEE),
-                          ),
-                        ),
-                        child: ListTile(
-                          dense: true,
-                          leading: UserAvatar(user: u, radius: 16, showRoleBadge: true),
-                          title: Text(u.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                          subtitle: Text(u.role.displayName, style: const TextStyle(fontSize: 10)),
-                          trailing: isSelected ? const Icon(Icons.check, color: AppTheme.primaryGreen, size: 16) : null,
-                          onTap: () {
-                            auth.switchUser(u.id);
-                            Navigator.pop(ctx);
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              const Divider(),
-              ListTile(
-                dense: true,
-                leading: const Icon(Icons.person_add_alt_1_rounded, color: AppTheme.primaryGreen),
-                title: const Text('Register New User', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                  );
-                },
-              ),
-              ListTile(
-                dense: true,
-                leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-                title: const Text('Sign Out of Firebase', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.redAccent)),
-                onTap: () async {
-                  Navigator.pop(ctx);
-                  await auth.signOut();
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
     );
   }
 }
