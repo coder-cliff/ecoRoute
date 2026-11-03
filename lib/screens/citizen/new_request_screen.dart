@@ -28,6 +28,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   int _quantityBags = 2;
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
+  final ScrollController _formScrollController = ScrollController();
 
   double _latitude = LocationService.defaultLat;
   double _longitude = LocationService.defaultLon;
@@ -52,6 +53,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   void dispose() {
     _notesController.dispose();
     _addressController.dispose();
+    _formScrollController.dispose();
     super.dispose();
   }
 
@@ -150,6 +152,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
   Future<void> _submitRequest() async {
     if (_photoPath == null || _photoPath!.isEmpty) {
+      if (_formScrollController.hasClients) {
+        _formScrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please take or select a photo of the waste pile to verify volume.'),
@@ -160,6 +169,13 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     }
 
     if (_addressController.text.trim().isEmpty) {
+      if (_formScrollController.hasClients) {
+        _formScrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Waste location address cannot be empty.'),
@@ -240,6 +256,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         ],
       ),
       body: SingleChildScrollView(
+        controller: _formScrollController,
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,

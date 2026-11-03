@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -375,6 +376,19 @@ Thank you for keeping our communities clean & green!
           ),
         ),
       );
+    } else if (path.startsWith('data:image')) {
+      try {
+        final bytes = base64Decode(path.split(',').last);
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Center(
+            child: Text('Waste Photo: $categoryName'),
+          ),
+        );
+      } catch (_) {
+        return Center(child: Text('Waste Photo: $categoryName'));
+      }
     } else if (path.startsWith('http://') || path.startsWith('https://')) {
       return Image.network(
         path,

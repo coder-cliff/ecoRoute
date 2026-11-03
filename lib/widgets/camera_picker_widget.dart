@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -32,16 +33,23 @@ class _CameraPickerWidgetState extends State<CameraPickerWidget> {
     try {
       final XFile? photo = await _picker.pickImage(
         source: ImageSource.camera,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
+        maxWidth: 600,
+        maxHeight: 600,
+        imageQuality: 65,
       );
 
       if (photo != null) {
+        final String path;
+        if (kIsWeb) {
+          final bytes = await photo.readAsBytes();
+          path = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+        } else {
+          path = photo.path;
+        }
         setState(() {
-          _selectedImagePath = photo.path;
+          _selectedImagePath = path;
         });
-        widget.onImageSelected(photo.path);
+        widget.onImageSelected(path);
       }
     } catch (e) {
       debugPrint('Camera error: $e. Opening sample picker.');
@@ -53,16 +61,23 @@ class _CameraPickerWidgetState extends State<CameraPickerWidget> {
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
+        maxWidth: 600,
+        maxHeight: 600,
+        imageQuality: 65,
       );
 
       if (image != null) {
+        final String path;
+        if (kIsWeb) {
+          final bytes = await image.readAsBytes();
+          path = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+        } else {
+          path = image.path;
+        }
         setState(() {
-          _selectedImagePath = image.path;
+          _selectedImagePath = path;
         });
-        widget.onImageSelected(image.path);
+        widget.onImageSelected(path);
       }
     } catch (e) {
       debugPrint('Gallery error: $e. Opening sample picker.');
@@ -129,12 +144,12 @@ class _CameraPickerWidgetState extends State<CameraPickerWidget> {
                     subtitle: Text('Sample photo: ${s['tag']}'),
                     trailing: const Icon(Icons.check_circle_outline),
                     onTap: () {
-                      Navigator.pop(ctx);
                       final path = 'simulated_${s['tag']}';
                       setState(() {
                         _selectedImagePath = path;
                       });
                       widget.onImageSelected(path);
+                      Navigator.pop(ctx);
                     },
                   )),
             ],
@@ -146,91 +161,72 @@ class _CameraPickerWidgetState extends State<CameraPickerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasImage = _selectedImagePath != null && _selectedImagePath!.isNotEmpty;
+    final hasImage = _selectedImagePath != null && _selectedImagePath!.isNotEmpty;
 
     return Container(
-      width: double.infinity,
       decoration: BoxDecoration(
-        color: hasImage ? AppTheme.accentMint.withValues(alpha: 0.5) : Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: hasImage ? AppTheme.primaryGreen : const Color(0xFFDDDDDD),
           width: hasImage ? 2 : 1,
         ),
       ),
-      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          if (hasImage) ...[
-            Container(
-              height: 150,
+          // PREVIEW BOX
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+            child: SizedBox(
+              height: 180,
               width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: _buildImagePreview(),
-              ),
+              child: _buildImagePreview(),
             ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          ),
+
+          // BUTTON BAR
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFAFAFA),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(15)),
+            ),
+            child: Row(
               children: [
-                const Icon(Icons.check_circle, color: AppTheme.primaryGreen, size: 18),
-                const SizedBox(width: 6),
-                const Text(
-                  'Waste photo verified & attached',
-                  style: TextStyle(
-                    color: AppTheme.primaryGreen,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: _showOptions,
+                    icon: Icon(hasImage ? Icons.cached_rounded : Icons.add_a_photo_rounded, size: 18),
+                    label: Text(
+                      hasImage ? 'Change Photo' : 'Capture Waste Photo',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: _showOptions,
-                  icon: const Icon(Icons.refresh, size: 16),
-                  label: const Text('Retake'),
-                ),
+                if (hasImage) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _selectedImagePath = null;
+                      });
+                      widget.onImageSelected('');
+                    },
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                    tooltip: 'Remove photo',
+                  ),
+                ],
               ],
             ),
-          ] else ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceGrey,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.camera_alt_rounded,
-                size: 38,
-                color: AppTheme.primaryGreen,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Move Closer & Take a Photo of the Waste',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textDark,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Helps the collector inspect volume, sorting & equipment needed.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-            ),
-            const SizedBox(height: 14),
-            ElevatedButton.icon(
-              onPressed: _showOptions,
-              icon: const Icon(Icons.photo_camera_rounded),
-              label: const Text('Capture Waste Photo'),
-            ),
-          ],
+          ),
         ],
       ),
     );
@@ -238,6 +234,42 @@ class _CameraPickerWidgetState extends State<CameraPickerWidget> {
 
   Widget _buildImagePreview() {
     final path = _selectedImagePath ?? '';
+    if (path.isEmpty) {
+      return Container(
+        color: AppTheme.accentMint,
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.photo_camera_rounded, size: 48, color: AppTheme.primaryGreen),
+              SizedBox(height: 8),
+              Text(
+                'No photo attached yet',
+                style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.darkForest),
+              ),
+              Text(
+                'Tap below to take photo or choose sample',
+                style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (path.startsWith('data:image')) {
+      try {
+        final bytes = base64Decode(path.split(',').last);
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.broken_image, size: 40)),
+        );
+      } catch (e) {
+        return const Center(child: Icon(Icons.broken_image, size: 40));
+      }
+    }
+
     if (path.startsWith('simulated_') || path.startsWith('assets/')) {
       return Container(
         color: AppTheme.accentMint,
@@ -284,34 +316,54 @@ class _CameraPickerWidgetState extends State<CameraPickerWidget> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_rounded, color: AppTheme.primaryGreen),
-              title: const Text('Take Picture Now (Camera)'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _captureWithCamera();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_rounded, color: AppTheme.lightGreen),
-              title: const Text('Choose From Device Gallery'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _pickFromGallery();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.collections_rounded, color: Colors.blueAccent),
-              title: const Text('Choose Verified Sample Waste Photo'),
-              subtitle: const Text('Instant simulation for testing/emulator'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _showSampleSelectorModal();
-              },
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Attach Waste Photo',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: AppTheme.accentMint,
+                  child: Icon(Icons.camera_alt, color: AppTheme.primaryGreen),
+                ),
+                title: const Text('Take Photo with Camera'),
+                subtitle: const Text('Live capture of waste pile/bin'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _captureWithCamera();
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFE3F2FD),
+                  child: Icon(Icons.photo_library, color: Color(0xFF1976D2)),
+                ),
+                title: const Text('Choose from Gallery'),
+                subtitle: const Text('Select existing photo on device'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickFromGallery();
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFFFF3E0),
+                  child: Icon(Icons.layers_rounded, color: Color(0xFFF57C00)),
+                ),
+                title: const Text('Select Sample Waste Photo'),
+                subtitle: const Text('Quick test without physical camera'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showSampleSelectorModal();
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -261,8 +262,14 @@ class _InteractiveMapScreenState extends State<InteractiveMapScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'org.ecoroute.app',
+                // Carto Voyager provides OpenStreetMap data with full CORS headers for Flutter Web Canvas,
+                // while native mobile/desktop builds hit standard OSM tiles with a package User-Agent.
+                urlTemplate: kIsWeb
+                    ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+                    : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                subdomains: kIsWeb ? const ['a', 'b', 'c', 'd'] : const [],
+                userAgentPackageName: 'com.codercliff.ecoroute',
+                maxZoom: 19,
               ),
               MarkerLayer(markers: markers),
             ],

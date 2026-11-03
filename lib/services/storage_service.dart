@@ -9,12 +9,16 @@ class StorageService {
   static const String _keyRequests = 'ecoroute_waste_requests_v2';
   static const String _keyActiveUserId = 'ecoroute_active_user_id_v2';
   static const String _keyUsers = 'ecoroute_registered_users_v2';
+  static const int maxPersistedRequests = 100;
 
-  /// Saves list of requests to persistent storage
+  /// Saves list of requests to persistent storage (capped at 100 to respect browser localStorage quota)
   static Future<bool> saveRequests(List<WasteRequest> requests) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final listJson = requests.map((r) => r.toJson()).toList();
+      final cappedRequests = requests.length > maxPersistedRequests
+          ? requests.sublist(0, maxPersistedRequests)
+          : requests;
+      final listJson = cappedRequests.map((r) => r.toJson()).toList();
       final encoded = jsonEncode(listJson);
       return await prefs.setString(_keyRequests, encoded);
     } catch (e) {

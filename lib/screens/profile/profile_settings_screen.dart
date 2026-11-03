@@ -509,13 +509,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         const SizedBox(height: 12),
 
         // 1. Operating Hours Policy
-        Card(
+        const Card(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
                     Icon(Icons.schedule_rounded, color: AppTheme.primaryGreen, size: 20),
                     SizedBox(width: 10),
@@ -531,13 +531,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                const Text(
+                SizedBox(height: 8),
+                Text(
                   'Service Window: 07:00 AM – 07:00 PM Daily',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
-                const SizedBox(height: 4),
-                const Text(
+                SizedBox(height: 4),
+                Text(
                   'Daylight safety guardrail actively blocks citizen scheduling during nighttime hours to safeguard collection riders.',
                   style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                 ),
