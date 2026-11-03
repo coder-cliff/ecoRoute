@@ -39,6 +39,10 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
   @override
   void initState() {
     super.initState();
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (auth.currentUser.address.isNotEmpty) {
+      _addressController.text = auth.currentUser.address;
+    }
     _autoCaptureGPS();
   }
 
@@ -68,7 +72,9 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
 
     if (mounted) {
       setState(() {
-        _addressController.text = address;
+        if (_addressController.text.trim().isEmpty) {
+          _addressController.text = address;
+        }
         _isFetchingLocation = false;
         _isLocationAutoCaptured = true;
       });
@@ -84,7 +90,7 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
     final now = DateTime.now();
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: _scheduledTime,
+      initialDate: _scheduledTime.isBefore(now) ? now : _scheduledTime,
       firstDate: now,
       lastDate: now.add(const Duration(days: 7)),
     );
@@ -95,15 +101,39 @@ class _NewRequestScreenState extends State<NewRequestScreen> {
         initialTime: TimeOfDay.fromDateTime(_scheduledTime),
       );
 
-      if (pickedTime != null) {
-        setState(() {
-          _scheduledTime = DateTime(
-            pickedDate.year,
-            pickedDate.month,
-            pickedDate.day,
-            pickedTime.hour,
-            pickedTime.minute,
+      if (pickedTime != null && mounted) {
+        final chosen = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+
+        // Guardrail 1: Disallow time in the past
+        if (chosen.isBefore(now.add(const Duration(minutes: 10)))) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Pickup time must be at least 15 minutes in the future.'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
+          return;
+        }
+
+        // Guardrail 2: Operating collection hours (7 AM - 7 PM)
+        if (pickedTime.hour < 7 || pickedTime.hour >= 19) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Working collection hours are 7:00 AM – 7:00 PM. Please choose a daylight slot.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          return;
+        }
+
+        setState(() {
+          _scheduledTime = chosen;
         });
       }
     }

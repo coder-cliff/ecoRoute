@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/user_model.dart';
 import '../../models/waste_request.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/waste_request_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/role_header_app_bar.dart';
 import '../../widgets/status_badge.dart';
+import '../../widgets/user_avatar.dart';
+import '../auth/register_screen.dart';
 import '../citizen/request_details_screen.dart';
 import '../common/eco_stats_screen.dart';
 
@@ -19,8 +22,13 @@ class AdminDashboardScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: RoleHeaderAppBar(
-        title: 'Dispatch & Operations Admin',
+        title: 'Operations & Dispatch',
         actions: [
+          IconButton(
+            icon: const Icon(Icons.account_balance_wallet_rounded, color: AppTheme.cashGold),
+            tooltip: 'Reconcile Rider Cash Pouches',
+            onPressed: () => _showReconciliationDialog(context, provider),
+          ),
           IconButton(
             icon: const Icon(Icons.bar_chart_rounded, color: AppTheme.primaryGreen),
             tooltip: 'Eco Impact Stats',
@@ -66,7 +74,7 @@ class AdminDashboardScreen extends StatelessWidget {
                     Row(
                       children: [
                         _kpiCard(
-                          title: 'Cash Collected',
+                          title: 'Hard Cash Collected',
                           value: '\$${provider.totalCashCollected.toStringAsFixed(2)}',
                           icon: Icons.payments_rounded,
                           color: AppTheme.cashGold,
@@ -293,23 +301,8 @@ class AdminDashboardScreen extends StatelessWidget {
   }
 
   void _showAssignRiderDialog(BuildContext context, WasteRequest r, WasteRequestProvider provider) {
-    final availableRiders = [
-      AppUser.demoRider,
-      const AppUser(
-        id: 'rider_02',
-        name: 'Brian Kato (Rider #05)',
-        phone: '+256 702 334455',
-        email: 'brian@ecoroute.app',
-        role: UserRole.rider,
-      ),
-      const AppUser(
-        id: 'rider_03',
-        name: 'Emmanuel Ssebo (Rider #09)',
-        phone: '+256 771 889900',
-        email: 'emmanuel@ecoroute.app',
-        role: UserRole.rider,
-      ),
-    ];
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final availableRiders = auth.riders;
 
     showModalBottomSheet(
       context: context,
@@ -333,34 +326,116 @@ class AdminDashboardScreen extends StatelessWidget {
                 style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
               ),
               const SizedBox(height: 16),
-              ...availableRiders.map((rider) => ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: Color(0xFFE7F1FF),
-                      child: Icon(Icons.two_wheeler, color: Color(0xFF0D6EFD)),
-                    ),
-                    title: Text(rider.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text('Contact: ${rider.phone}'),
-                    trailing: const Icon(Icons.send_rounded, color: Color(0xFF0D6EFD)),
-                    onTap: () async {
-                      await provider.assignRider(
-                        requestId: r.id,
-                        riderId: rider.id,
-                        riderName: rider.name,
-                      );
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Dispatched request ${r.id} to ${rider.name}!'),
-                            backgroundColor: AppTheme.primaryGreen,
-                          ),
+              if (availableRiders.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Column(
+                    children: [
+                      const Text('No riders currently registered in fleet.'),
+                      const SizedBox(height: 10),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                          );
+                        },
+                        icon: const Icon(Icons.person_add_rounded),
+                        label: const Text('Register Collection Rider'),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ...availableRiders.map((rider) => ListTile(
+                      leading: UserAvatar(
+                        user: rider,
+                        radius: 20,
+                        showRoleBadge: true,
+                      ),
+                      title: Text(rider.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text('${rider.vehicleInfo ?? 'Tricycle Unit'} • ${rider.phone}'),
+                      trailing: const Icon(Icons.send_rounded, color: Color(0xFF0D6EFD)),
+                      onTap: () async {
+                        await provider.assignRider(
+                          requestId: r.id,
+                          riderId: rider.id,
+                          riderName: rider.name,
                         );
-                      }
-                    },
-                  )),
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Dispatched request ${r.id} to ${rider.name}!'),
+                              backgroundColor: AppTheme.primaryGreen,
+                            ),
+                          );
+                        }
+                      },
+                    )),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showReconciliationDialog(BuildContext context, WasteRequestProvider provider) {
+    final collectedRequests = provider.requests.where((r) => r.isCashCollected).toList();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.account_balance_wallet_rounded, color: AppTheme.cashGold),
+            SizedBox(width: 8),
+            Text('Daily Cash Reconciliation'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Total Hard Cash Collected: \$${provider.totalCashCollected.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF664D03)),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Audit records for ${collectedRequests.length} completed physical pickups:',
+                style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: collectedRequests.length,
+                  itemBuilder: (context, index) {
+                    final r = collectedRequests[index];
+                    return ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.receipt_rounded, color: AppTheme.primaryGreen),
+                      title: Text('${r.id} - ${r.receiptNumber ?? 'Receipt'}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text('Rider: ${r.assignedRiderName ?? 'Assigned'} • Cash: \$${(r.actualCashPaid ?? r.estimatedCashAmount).toStringAsFixed(2)}'),
+                      trailing: const Icon(Icons.verified_rounded, color: AppTheme.primaryGreen, size: 18),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close Audit View'),
+          ),
+        ],
       ),
     );
   }

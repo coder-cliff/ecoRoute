@@ -237,7 +237,8 @@ class _CameraPickerWidgetState extends State<CameraPickerWidget> {
   }
 
   Widget _buildImagePreview() {
-    if (_selectedImagePath!.startsWith('simulated_')) {
+    final path = _selectedImagePath ?? '';
+    if (path.startsWith('simulated_') || path.startsWith('assets/')) {
       return Container(
         color: AppTheme.accentMint,
         child: Center(
@@ -247,17 +248,32 @@ class _CameraPickerWidgetState extends State<CameraPickerWidget> {
               const Icon(Icons.delete_outline_rounded, size: 48, color: AppTheme.primaryGreen),
               const SizedBox(height: 8),
               Text(
-                'Waste Photo Captured: ${_selectedImagePath!.replaceAll('simulated_', '')}',
+                'Waste Photo Attached: ${path.replaceAll('simulated_', '').replaceAll('assets/', '')}',
                 style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.darkForest),
               ),
             ],
           ),
         ),
       );
-    } else if (kIsWeb) {
-      return Image.network(_selectedImagePath!, fit: BoxFit.cover);
+    } else if (path.startsWith('http://') || path.startsWith('https://')) {
+      return Image.network(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, size: 40)),
+      );
+    } else if (!kIsWeb && File(path).existsSync()) {
+      return Image.file(
+        File(path),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, size: 40)),
+      );
     } else {
-      return Image.file(File(_selectedImagePath!), fit: BoxFit.cover);
+      return Container(
+        color: AppTheme.accentMint,
+        child: const Center(
+          child: Icon(Icons.photo_camera_rounded, size: 40, color: AppTheme.primaryGreen),
+        ),
+      );
     }
   }
 

@@ -4,6 +4,30 @@ enum UserRole {
   admin,
 }
 
+extension UserRoleExtension on UserRole {
+  String get displayName {
+    switch (this) {
+      case UserRole.citizen:
+        return 'Resident / Citizen';
+      case UserRole.rider:
+        return 'Collection Rider';
+      case UserRole.admin:
+        return 'Operations Admin';
+    }
+  }
+
+  String get badgeLabel {
+    switch (this) {
+      case UserRole.citizen:
+        return 'Citizen';
+      case UserRole.rider:
+        return 'Rider';
+      case UserRole.admin:
+        return 'Admin';
+    }
+  }
+}
+
 class AppUser {
   final String id;
   final String name;
@@ -11,6 +35,8 @@ class AppUser {
   final String email;
   final UserRole role;
   final String avatarUrl;
+  final String address;
+  final String? vehicleInfo;
 
   const AppUser({
     required this.id,
@@ -19,7 +45,31 @@ class AppUser {
     required this.email,
     required this.role,
     this.avatarUrl = '',
+    this.address = '',
+    this.vehicleInfo,
   });
+
+  AppUser copyWith({
+    String? id,
+    String? name,
+    String? phone,
+    String? email,
+    UserRole? role,
+    String? avatarUrl,
+    String? address,
+    String? vehicleInfo,
+  }) {
+    return AppUser(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      role: role ?? this.role,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      address: address ?? this.address,
+      vehicleInfo: vehicleInfo ?? this.vehicleInfo,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -28,6 +78,8 @@ class AppUser {
         'email': email,
         'role': role.name,
         'avatarUrl': avatarUrl,
+        'address': address,
+        'vehicleInfo': vehicleInfo,
       };
 
   factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
@@ -37,30 +89,56 @@ class AppUser {
         email: json['email'] as String,
         role: UserRole.values.byName(json['role'] as String),
         avatarUrl: json['avatarUrl'] as String? ?? '',
+        address: json['address'] as String? ?? '',
+        vehicleInfo: json['vehicleInfo'] as String?,
       );
 
-  // Predefined demo personas for live demonstration & defence
-  static const AppUser demoCitizen = AppUser(
-    id: 'user_cit_01',
-    name: 'Sarah Namukasa',
-    phone: '+256 772 123456',
-    email: 'sarah.citizen@ecoroute.org',
-    role: UserRole.citizen,
-  );
-
-  static const AppUser demoRider = AppUser(
-    id: 'user_rid_01',
-    name: 'Alex Mukasa (Rider #12)',
-    phone: '+256 701 987654',
-    email: 'alex.rider@ecoroute.org',
-    role: UserRole.rider,
-  );
-
-  static const AppUser demoAdmin = AppUser(
-    id: 'user_adm_01',
-    name: 'Grace Atuhaire (Supervisor)',
-    phone: '+256 750 334455',
-    email: 'grace.admin@ecoroute.org',
-    role: UserRole.admin,
-  );
+  // Standard curated avatar presets available in profile settings
+  static const List<Map<String, String>> standardAvatarPresets = [
+    {
+      'id': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+      'label': 'Sarah (Resident)',
+      'category': 'Citizen',
+    },
+    {
+      'id': 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80',
+      'label': 'Amina (Resident)',
+      'category': 'Citizen',
+    },
+    {
+      'id': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
+      'label': 'Alex (Rider #12)',
+      'category': 'Rider',
+    },
+    {
+      'id': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+      'label': 'Brian (Rider #05)',
+      'category': 'Rider',
+    },
+    {
+      'id': 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
+      'label': 'Grace (Supervisor)',
+      'category': 'Admin',
+    },
+    {
+      'id': 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&auto=format&fit=crop&q=80',
+      'label': 'David (Operations)',
+      'category': 'Admin',
+    },
+    {
+      'id': 'preset:citizen_green',
+      'label': 'Eco Resident Vector',
+      'category': 'Vector',
+    },
+    {
+      'id': 'preset:rider_tricycle',
+      'label': 'Collection Tricycle Vector',
+      'category': 'Vector',
+    },
+    {
+      'id': 'preset:admin_badge',
+      'label': 'Operations Shield Vector',
+      'category': 'Vector',
+    },
+  ];
 }
