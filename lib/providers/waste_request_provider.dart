@@ -1,17 +1,24 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import '../models/waste_request.dart';
 import '../models/waste_category.dart';
 import '../services/storage_service.dart';
+import 'notification_provider.dart';
 
 class WasteRequestProvider with ChangeNotifier {
   List<WasteRequest> _requests = [];
   bool _isLoading = false;
   String _selectedFilter = 'all'; // 'all', 'pending', 'assigned', 'collected'
+  NotificationProvider? _notificationProvider;
 
   List<WasteRequest> get requests => _requests;
   bool get isLoading => _isLoading;
   String get selectedFilter => _selectedFilter;
+
+  void setNotificationProvider(NotificationProvider np) {
+    _notificationProvider = np;
+  }
 
   void setFilter(String filter) {
     _selectedFilter = filter;
@@ -132,6 +139,12 @@ class WasteRequestProvider with ChangeNotifier {
 
     _requests.insert(0, newRequest);
     await StorageService.saveRequests(_requests);
+    _notificationProvider?.triggerNotification(
+      title: 'Pickup Scheduled ($id)',
+      message: 'Your ${category.title} collection is booked & pending dispatch.',
+      icon: Icons.schedule_rounded,
+      color: AppTheme.primaryGreen,
+    );
     notifyListeners();
     return newRequest;
   }
@@ -150,6 +163,12 @@ class WasteRequestProvider with ChangeNotifier {
         assignedRiderName: riderName,
       );
       await StorageService.saveRequests(_requests);
+      _notificationProvider?.triggerNotification(
+        title: 'Rider Dispatched ($requestId)',
+        message: '$riderName is on route for your waste collection.',
+        icon: Icons.two_wheeler_rounded,
+        color: const Color(0xFF0D6EFD),
+      );
       notifyListeners();
     }
   }
@@ -170,6 +189,12 @@ class WasteRequestProvider with ChangeNotifier {
         receiptNumber: receiptNum,
       );
       await StorageService.saveRequests(_requests);
+      _notificationProvider?.triggerNotification(
+        title: 'Hard Cash Settle & Receipt ($receiptNum)',
+        message: 'Pickup completed! \$${amountCollected.toStringAsFixed(2)} cash collected.',
+        icon: Icons.receipt_long_rounded,
+        color: AppTheme.cashGold,
+      );
       notifyListeners();
     }
   }
@@ -182,6 +207,12 @@ class WasteRequestProvider with ChangeNotifier {
         status: RequestStatus.cancelled,
       );
       await StorageService.saveRequests(_requests);
+      _notificationProvider?.triggerNotification(
+        title: 'Pickup Cancelled ($requestId)',
+        message: 'The waste pickup request was cancelled.',
+        icon: Icons.cancel_outlined,
+        color: Colors.redAccent,
+      );
       notifyListeners();
     }
   }

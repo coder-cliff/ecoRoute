@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'models/user_model.dart';
 import 'providers/auth_provider.dart';
 import 'providers/waste_request_provider.dart';
+import 'providers/notification_provider.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/citizen/citizen_home_screen.dart';
 import 'screens/rider/rider_dashboard_screen.dart';
@@ -13,6 +14,8 @@ void main() async {
 
   final authProvider = AuthProvider();
   final requestProvider = WasteRequestProvider();
+  final notificationProvider = NotificationProvider();
+  requestProvider.setNotificationProvider(notificationProvider);
 
   // Load persistent data from SharedPreferences (Roadmap Week 7)
   await authProvider.init();
@@ -23,6 +26,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider.value(value: authProvider),
         ChangeNotifierProvider.value(value: requestProvider),
+        ChangeNotifierProvider.value(value: notificationProvider),
       ],
       child: const EcoRouteApp(),
     ),

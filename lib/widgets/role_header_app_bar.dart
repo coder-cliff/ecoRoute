@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/notification_provider.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
+import '../screens/common/interactive_map_screen.dart';
 import '../screens/profile/profile_settings_screen.dart';
 import '../theme/app_theme.dart';
+import 'notification_center_modal.dart';
 import 'user_avatar.dart';
 
 class RoleHeaderAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -80,7 +83,7 @@ class RoleHeaderAppBar extends StatelessWidget implements PreferredSizeWidget {
       actions: [
         if (showRoleSwitcher)
           Padding(
-            padding: const EdgeInsets.only(right: 6.0),
+            padding: const EdgeInsets.only(right: 4.0),
             child: ActionChip(
               avatar: const Icon(Icons.swap_horiz_rounded, size: 14),
               label: Text(
@@ -97,15 +100,51 @@ class RoleHeaderAppBar extends StatelessWidget implements PreferredSizeWidget {
               onPressed: () => _showAccountSwitcherDialog(context, authProvider),
             ),
           ),
+        // Live Waste Map Button
         IconButton(
-          icon: const Icon(Icons.settings_outlined, size: 20),
-          tooltip: 'Profile & DP Settings',
+          icon: const Icon(Icons.map_outlined, size: 20),
+          tooltip: 'Live Waste Map',
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const ProfileSettingsScreen()),
+              MaterialPageRoute(builder: (_) => const InteractiveMapScreen()),
             );
           },
+        ),
+        // Notification Bell with Badge
+        Consumer<NotificationProvider>(
+          builder: (ctx, notif, _) => Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined, size: 20),
+                tooltip: 'Notification Center',
+                onPressed: () => NotificationCenterModal.show(context),
+              ),
+              if (notif.unreadCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: const BoxDecoration(
+                      color: Colors.redAccent,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                    child: Text(
+                      '${notif.unreadCount}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
         ...?actions,
       ],
