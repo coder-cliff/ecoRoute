@@ -379,7 +379,7 @@ Thank you for keeping our communities clean & green!
       return Image.network(
         path,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Center(
+        errorBuilder: (context, error, stackTrace) => Center(
           child: Text('Waste Photo: $categoryName'),
         ),
       );
@@ -387,7 +387,7 @@ Thank you for keeping our communities clean & green!
       return Image.file(
         File(path),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Center(
+        errorBuilder: (context, error, stackTrace) => Center(
           child: Text('Waste Photo: $categoryName'),
         ),
       );

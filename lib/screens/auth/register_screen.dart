@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -90,7 +88,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: AppUser.standardAvatarPresets.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                separatorBuilder: (context, index) => const SizedBox(width: 12),
                 itemBuilder: (context, index) {
                   final preset = AppUser.standardAvatarPresets[index];
                   final isSelected = _avatarUrl == preset['id'];

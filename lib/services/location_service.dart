@@ -101,4 +101,11 @@ class LocationService {
     );
     return distanceInMeters / 1000.0;
   }
+
+  static double distanceInKm(
+    double startLat,
+    double startLon,
+    double endLat,
+    double endLon,
+  ) => calculateDistanceKm(startLat, startLon, endLat, endLon);
 }

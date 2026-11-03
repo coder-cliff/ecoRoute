@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -725,7 +723,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               child: ListView.separated(
                 padding: const EdgeInsets.all(16),
                 itemCount: auth.allUsers.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (context, index) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final u = auth.allUsers[index];
                   return ListTile(

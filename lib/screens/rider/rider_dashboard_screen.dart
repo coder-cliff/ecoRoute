@@ -467,7 +467,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
       return Image.network(
         path,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
+        errorBuilder: (context, error, stackTrace) => Container(
           color: AppTheme.accentMint,
           alignment: Alignment.center,
           child: Text('Waste: $categoryName'),
@@ -477,7 +477,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
       return Image.file(
         File(path),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
+        errorBuilder: (context, error, stackTrace) => Container(
           color: AppTheme.accentMint,
           alignment: Alignment.center,
           child: Text('Waste: $categoryName'),

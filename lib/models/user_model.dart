@@ -142,3 +142,6 @@ class AppUser {
     },
   ];
 }
+
+typedef UserModel = AppUser;
+

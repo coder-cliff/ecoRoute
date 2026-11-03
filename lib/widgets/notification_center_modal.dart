@@ -55,7 +55,7 @@ class NotificationCenterModal {
                       child: ListView.separated(
                         shrinkWrap: true,
                         itemCount: items.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        separatorBuilder: (context, index) => const Divider(height: 1),
                         itemBuilder: (context, index) {
                           final n = items[index];
                           final timeStr = DateFormat('h:mm a • MMM d').format(n.timestamp);
@@ -98,8 +98,7 @@ class NotificationCenterModal {
                               ],
                             ),
                             onTap: () {
-                              n.isRead = true;
-                              notifProvider.notifyListeners();
+                              notifProvider.markAsRead(n.id);
                             },
                           );
                         },

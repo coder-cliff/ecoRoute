@@ -259,13 +259,13 @@ class _CameraPickerWidgetState extends State<CameraPickerWidget> {
       return Image.network(
         path,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, size: 40)),
+        errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.broken_image, size: 40)),
       );
     } else if (!kIsWeb && File(path).existsSync()) {
       return Image.file(
         File(path),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, size: 40)),
+        errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.broken_image, size: 40)),
       );
     } else {
       return Container(

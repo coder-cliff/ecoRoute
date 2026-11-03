@@ -66,6 +66,14 @@ class NotificationProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void markAsRead(String id) {
+    final index = _notifications.indexWhere((n) => n.id == id);
+    if (index != -1 && !_notifications[index].isRead) {
+      _notifications[index].isRead = true;
+      notifyListeners();
+    }
+  }
+
   void markAllAsRead() {
     for (final n in _notifications) {
       n.isRead = true;

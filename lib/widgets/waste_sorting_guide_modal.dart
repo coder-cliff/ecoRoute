@@ -169,7 +169,7 @@ class _WasteSortingGuideModalState extends State<WasteSortingGuideModal> {
                 : ListView.separated(
                     padding: const EdgeInsets.all(16.0),
                     itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    separatorBuilder: (context, index) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final item = filtered[index];
                       return Container(
