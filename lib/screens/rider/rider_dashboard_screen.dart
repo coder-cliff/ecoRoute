@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/waste_request.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/waste_request_provider.dart';
@@ -10,6 +11,7 @@ import '../../services/location_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/role_header_app_bar.dart';
 import '../../widgets/status_badge.dart';
+import '../../widgets/user_avatar.dart';
 
 class RiderDashboardScreen extends StatefulWidget {
   const RiderDashboardScreen({super.key});
@@ -20,6 +22,24 @@ class RiderDashboardScreen extends StatefulWidget {
 
 class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   int _selectedTab = 0; // 0: Assigned, 1: Available, 2: Cash Settled
+
+  Future<void> _launchMapsNavigation(double lat, double lon) async {
+    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lon');
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('GPS Coordinates: $lat, $lon')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Coordinates: $lat, $lon (Maps error: $e)')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,15 +75,12 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: const BoxDecoration(
-                        color: AppTheme.cashGold,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.payments_rounded, color: Colors.white, size: 24),
+                    UserAvatar(
+                      user: auth.currentUser,
+                      radius: 26,
+                      showRoleBadge: true,
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,8 +183,8 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
           child: Text(
             label,
             style: TextStyle(
-              fontWeight: FontWeight.w700,
               fontSize: 12,
+              fontWeight: FontWeight.w700,
               color: isSelected ? Colors.white : AppTheme.textDark,
             ),
           ),
@@ -177,13 +194,13 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   }
 
   Widget _riderJobCard(WasteRequest r, {required bool isAssignedToMe}) {
-    final category = r.category;
     final distKm = LocationService.calculateDistanceKm(
       LocationService.defaultLat,
       LocationService.defaultLon,
       r.latitude,
       r.longitude,
     );
+    final scheduledStr = DateFormat('EEE, MMM d • h:mm a').format(r.scheduledPickupTime);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -192,22 +209,26 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top Row
+            // Header
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: category.color.withValues(alpha: 0.15),
-                  child: Icon(category.icon, color: category.color, size: 20),
+                  backgroundColor: r.category.color.withValues(alpha: 0.15),
+                  child: Icon(r.category.icon, color: r.category.color, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(category.title,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                      Text('Citizen: ${r.userName} • ${r.userPhone}',
-                          style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                      Text(
+                        '${r.category.title} (${r.quantityBags} bags)',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                      ),
+                      Text(
+                        'Customer: ${r.userName} • ID: ${r.id}',
+                        style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                      ),
                     ],
                   ),
                 ),
@@ -215,28 +236,37 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            const Divider(height: 1),
+
+            // Photo Preview
+            Container(
+              height: 120,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFEEEEEE)),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: _buildPhotoThumbnail(r.photoPath, r.category.title),
+              ),
+            ),
             const SizedBox(height: 12),
 
-            // Photo preview if available
-            if (r.photoPath.isNotEmpty) ...[
-              Container(
-                height: 100,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: AppTheme.accentMint,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: _buildPhotoThumbnail(r.photoPath, category.title),
-                ),
-              ),
-              const SizedBox(height: 10),
-            ],
-
-            // GPS Location & Distance
+            // Time & Location
             Row(
+              children: [
+                const Icon(Icons.access_time_rounded, size: 16, color: AppTheme.textMuted),
+                const SizedBox(width: 6),
+                Text(
+                  'Pickup window: $scheduledStr',
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Icon(Icons.location_on, size: 16, color: Colors.redAccent),
                 const SizedBox(width: 6),
@@ -307,6 +337,12 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
             if (isAssignedToMe) ...[
               Row(
                 children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _launchMapsNavigation(r.latitude, r.longitude),
+                    icon: const Icon(Icons.navigation_rounded, size: 16, color: Color(0xFF0D6EFD)),
+                    label: const Text('Navigate'),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () {
@@ -318,40 +354,49 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
                       label: const Text('Call'),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
                     flex: 2,
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
                       onPressed: () => _showCashCollectionDialog(context, r),
                       icon: const Icon(Icons.check_circle_outline, size: 18),
-                      label: const Text('Collect & Settle Cash'),
+                      label: const Text('Collect Cash'),
                     ),
                   ),
                 ],
               ),
             ] else ...[
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D6EFD)),
-                  onPressed: () async {
-                    final auth = Provider.of<AuthProvider>(context, listen: false);
-                    final provider = Provider.of<WasteRequestProvider>(context, listen: false);
-                    await provider.assignRider(
-                      requestId: r.id,
-                      riderId: auth.currentUser.id,
-                      riderName: auth.currentUser.name,
-                    );
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Accepted pickup ${r.id}! Added to Assigned tab.')),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.thumb_up_rounded, size: 18),
-                  label: const Text('Accept This Waste Pickup Job'),
-                ),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _launchMapsNavigation(r.latitude, r.longitude),
+                    icon: const Icon(Icons.directions_rounded, size: 16, color: Color(0xFF0D6EFD)),
+                    label: const Text('Map'),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D6EFD)),
+                      onPressed: () async {
+                        final auth = Provider.of<AuthProvider>(context, listen: false);
+                        final provider = Provider.of<WasteRequestProvider>(context, listen: false);
+                        await provider.assignRider(
+                          requestId: r.id,
+                          riderId: auth.currentUser.id,
+                          riderName: auth.currentUser.name,
+                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Accepted pickup ${r.id}! Added to Assigned tab.')),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.thumb_up_rounded, size: 18),
+                      label: const Text('Accept Pickup Job'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ],
@@ -406,22 +451,41 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   }
 
   Widget _buildPhotoThumbnail(String path, String categoryName) {
-    if (path.startsWith('simulated_') || path.isEmpty) {
-      return Center(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.image, size: 20, color: AppTheme.primaryGreen),
-            const SizedBox(width: 8),
-            Text('Waste Photo: $categoryName',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.darkForest)),
-          ],
+    if (path.isEmpty || path.startsWith('simulated_') || path.startsWith('assets/')) {
+      return Container(
+        color: AppTheme.accentMint.withValues(alpha: 0.5),
+        child: Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.image, size: 20, color: AppTheme.primaryGreen),
+              const SizedBox(width: 8),
+              Text('Waste Photo: $categoryName',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.darkForest)),
+            ],
+          ),
         ),
       );
-    } else if (kIsWeb) {
-      return Image.network(path, fit: BoxFit.cover);
+    } else if (path.startsWith('http://') || path.startsWith('https://')) {
+      return Image.network(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, size: 20)),
+      );
+    } else if (!kIsWeb && File(path).existsSync()) {
+      return Image.file(
+        File(path),
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, size: 20)),
+      );
     } else {
-      return Image.file(File(path), fit: BoxFit.cover);
+      return Container(
+        color: AppTheme.accentMint.withValues(alpha: 0.5),
+        child: Center(
+          child: Text('Waste Photo: $categoryName',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.darkForest)),
+        ),
+      );
     }
   }
 

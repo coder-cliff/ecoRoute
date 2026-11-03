@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
+import '../screens/auth/login_screen.dart';
+import '../screens/auth/register_screen.dart';
+import '../screens/profile/profile_settings_screen.dart';
 import '../theme/app_theme.dart';
+import 'user_avatar.dart';
 
 class RoleHeaderAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -25,126 +29,172 @@ class RoleHeaderAppBar extends StatelessWidget implements PreferredSizeWidget {
     final user = authProvider.currentUser;
 
     Color roleColor;
-    String roleLabel;
-    IconData roleIcon;
-
     switch (user.role) {
       case UserRole.citizen:
         roleColor = AppTheme.primaryGreen;
-        roleLabel = 'Citizen';
-        roleIcon = Icons.person_rounded;
         break;
       case UserRole.rider:
         roleColor = const Color(0xFF0D6EFD);
-        roleLabel = 'Rider';
-        roleIcon = Icons.two_wheeler_rounded;
         break;
       case UserRole.admin:
         roleColor = const Color(0xFF6F42C1);
-        roleLabel = 'Admin';
-        roleIcon = Icons.admin_panel_settings_rounded;
         break;
     }
 
     return AppBar(
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      title: Row(
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+          // Profile DP with tap to open profile settings
+          UserAvatar(
+            user: user,
+            radius: 18,
+            showRoleBadge: true,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileSettingsScreen()),
+              );
+            },
           ),
-          Text(
-            user.name,
-            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  user.name,
+                  style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ],
       ),
       actions: [
         if (showRoleSwitcher)
           Padding(
-            padding: const EdgeInsets.only(right: 8.0),
+            padding: const EdgeInsets.only(right: 6.0),
             child: ActionChip(
-              avatar: Icon(roleIcon, size: 14, color: roleColor),
+              avatar: const Icon(Icons.swap_horiz_rounded, size: 14),
               label: Text(
-                roleLabel,
+                user.role.badgeLabel,
                 style: TextStyle(
                   color: roleColor,
                   fontWeight: FontWeight.w700,
-                  fontSize: 12,
+                  fontSize: 11,
                 ),
               ),
               backgroundColor: roleColor.withValues(alpha: 0.12),
               side: BorderSide(color: roleColor.withValues(alpha: 0.3)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              onPressed: () => _showRoleDialog(context, authProvider),
+              onPressed: () => _showAccountSwitcherDialog(context, authProvider),
             ),
           ),
+        IconButton(
+          icon: const Icon(Icons.settings_outlined, size: 20),
+          tooltip: 'Profile & DP Settings',
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileSettingsScreen()),
+            );
+          },
+        ),
         ...?actions,
       ],
     );
   }
 
-  void _showRoleDialog(BuildContext context, AuthProvider auth) {
+  void _showAccountSwitcherDialog(BuildContext context, AuthProvider auth) {
+    final users = auth.allUsers;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.swap_horiz_rounded, color: AppTheme.primaryGreen),
+            Icon(Icons.switch_account_rounded, color: AppTheme.primaryGreen),
             SizedBox(width: 8),
-            Text('Switch Persona'),
+            Text('Switch Account & Role'),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Switch between system roles to demonstrate the full end-to-end workflow:',
-              style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
-            ),
-            const SizedBox(height: 16),
-            _roleTile(
-              context: ctx,
-              title: 'Citizen (Sarah Namukasa)',
-              subtitle: 'Takes waste photo, auto GPS, schedules & pays cash',
-              role: UserRole.citizen,
-              color: AppTheme.primaryGreen,
-              icon: Icons.person_rounded,
-              currentRole: auth.currentRole,
-              onTap: () {
-                auth.switchRole(UserRole.citizen);
-                Navigator.pop(ctx);
-              },
-            ),
-            _roleTile(
-              context: ctx,
-              title: 'Rider / Collector (Alex Mukasa)',
-              subtitle: 'Receives alerts, views GPS map, collects hard cash',
-              role: UserRole.rider,
-              color: const Color(0xFF0D6EFD),
-              icon: Icons.two_wheeler_rounded,
-              currentRole: auth.currentRole,
-              onTap: () {
-                auth.switchRole(UserRole.rider);
-                Navigator.pop(ctx);
-              },
-            ),
-            _roleTile(
-              context: ctx,
-              title: 'Admin / Dispatcher (Grace Atuhaire)',
-              subtitle: 'Monitors incoming pickups, assigns riders & tracks cash',
-              role: UserRole.admin,
-              color: const Color(0xFF6F42C1),
-              icon: Icons.admin_panel_settings_rounded,
-              currentRole: auth.currentRole,
-              onTap: () {
-                auth.switchRole(UserRole.admin);
-                Navigator.pop(ctx);
-              },
-            ),
-          ],
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Select an active profile or register a new user:',
+                style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: users.length,
+                  itemBuilder: (context, index) {
+                    final u = users[index];
+                    final isSelected = u.id == auth.currentUser.id;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppTheme.accentMint.withValues(alpha: 0.3) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected ? AppTheme.primaryGreen : const Color(0xFFEEEEEE),
+                        ),
+                      ),
+                      child: ListTile(
+                        dense: true,
+                        leading: UserAvatar(user: u, radius: 16, showRoleBadge: true),
+                        title: Text(u.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        subtitle: Text(u.role.displayName, style: const TextStyle(fontSize: 10)),
+                        trailing: isSelected ? const Icon(Icons.check, color: AppTheme.primaryGreen, size: 16) : null,
+                        onTap: () {
+                          auth.switchUser(u.id);
+                          Navigator.pop(ctx);
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const Divider(),
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.person_add_alt_1_rounded, color: AppTheme.primaryGreen),
+                title: const Text('Register New User', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                  );
+                },
+              ),
+              ListTile(
+                dense: true,
+                leading: const Icon(Icons.manage_accounts_rounded, color: Color(0xFF0D6EFD)),
+                title: const Text('Manage Accounts / Sign Out', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -152,40 +202,6 @@ class RoleHeaderAppBar extends StatelessWidget implements PreferredSizeWidget {
             child: const Text('Close'),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _roleTile({
-    required BuildContext context,
-    required String title,
-    required String subtitle,
-    required UserRole role,
-    required Color color,
-    required IconData icon,
-    required UserRole currentRole,
-    required VoidCallback onTap,
-  }) {
-    final isSelected = currentRole == role;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? color.withValues(alpha: 0.1) : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected ? color : const Color(0xFFEEEEEE),
-          width: isSelected ? 1.5 : 1,
-        ),
-      ),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.15),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 11)),
-        trailing: isSelected ? Icon(Icons.check_circle, color: color, size: 18) : null,
-        onTap: onTap,
       ),
     );
   }
