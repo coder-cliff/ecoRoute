@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.ecoroute" "\0"
-            VALUE "FileDescription", "ecoroute" "\0"
+            VALUE "CompanyName", "com.example" "\0"
+            VALUE "FileDescription", "EcoRoute" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "ecoroute" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.ecoroute. All rights reserved." "\0"
-            VALUE "OriginalFilename", "ecoroute.exe" "\0"
-            VALUE "ProductName", "ecoroute" "\0"
+            VALUE "InternalName", "EcoRoute" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
+            VALUE "OriginalFilename", "EcoRoute.exe" "\0"
+            VALUE "ProductName", "EcoRoute" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

@@ -1,0 +1,5 @@
+# EcoRoute repository attributes
+*.dart text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf linguist-documentation=true
+docs/* linguist-documentation=true

@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Profiles collection (residents, riders, administrators)
+    // Read is allowed publicly to enable username/phone to email resolution before sign-in
+    match /profiles/{userId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+
+    // Collection pickup requests (created by residents, accepted by riders, verified by admins)
+    match /pickupRequests/{requestId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Invited collection riders registry
+    // Read is allowed so riders can verify their invite code during registration
+    match /invitedRiders/{riderEmail} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Legacy/auxiliary collections fallback
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+  }
+}

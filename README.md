@@ -1,17 +1,11 @@
-# ecoroute
+# EcoRoute — Municipal Waste Collection & Smart Dispatch Platform
 
-A new Flutter project.
+[![Flutter Tests](https://img.shields.io/badge/Flutter%20Tests-49%20Passed-2EA043?style=flat-square&logo=flutter)](test/)
+[![Analysis](https://img.shields.io/badge/Flutter%20Analyze-0%20Issues-2EA043?style=flat-square&logo=dart)](lib/)
+[![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web%20%7C%20Desktop-2EAD65?style=flat-square)](lib/)
 
-## Getting Started
+EcoRoute is an offline-first Flutter application connecting residents, waste collection route riders, and municipal administrators for on-demand waste collection, GPS routing, and smart dispatch in Arua City, Uganda.
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Live Deployment & Access
+- **Web Application**: Hosted via GitHub Pages at [coder-cliff.github.io/ecoRoute](https://coder-cliff.github.io/ecoRoute/)
+- **Mobile Application**: Native Android APK supporting hardware camera capture and real-time GPS boundary verification.
