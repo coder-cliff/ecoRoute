@@ -21,6 +21,8 @@ class AppRouter {
   }) {
     switch (role) {
       case AppRole.admin:
+      case AppRole.operationsManager:
+      case AppRole.routeSupervisor:
         return AdminDashboard(
           repository: repository,
           authService: authService,

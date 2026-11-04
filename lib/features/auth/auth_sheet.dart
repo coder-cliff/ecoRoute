@@ -236,6 +236,10 @@ class _AuthSheetState extends State<AuthSheet> {
             emailLower == 'techcliff451@gmail.com' ||
             emailLower.contains('admin')) {
           authenticatedRole = AppRole.admin;
+        } else if (emailLower.contains('manager')) {
+          authenticatedRole = AppRole.operationsManager;
+        } else if (emailLower.contains('supervisor')) {
+          authenticatedRole = AppRole.routeSupervisor;
         } else if (emailLower.contains('rider')) {
           authenticatedRole = AppRole.rider;
         } else {

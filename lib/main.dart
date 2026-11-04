@@ -180,6 +180,67 @@ class EcoRouteState extends ChangeNotifier {
     return riderRoster.where((r) => r['status'] == 'Approved' || r['status'] == 'Active').length;
   }
 
+  // Real-world physical cash in pouch and settlement desk
+  int riderCashInPouch = 0;
+  int totalDepotReconciledCash = 0;
+  List<Map<String, dynamic>> pendingPayoutRequests = [];
+  List<Map<String, dynamic>> cashReconciliationLog = [];
+
+  // Municipal Tariff Rules & Commission
+  int baseSackPriceUgx = 2500;
+  int bulkyWasteSurchargeUgx = 5000;
+  int riderCommissionPercent = 70;
+
+  // Municipal Administrative Staff Roster (RBAC)
+  List<Map<String, dynamic>> staffRoster = [
+    {
+      'id': 'STF-01',
+      'name': 'Director Arua Operations',
+      'role': 'admin',
+      'email': 'admin@ecoroute.ug',
+      'phone': '+256 394 880 352',
+      'status': 'Active',
+    },
+    {
+      'id': 'STF-02',
+      'name': 'Kassim Ondoa (Depot Lead)',
+      'role': 'manager',
+      'email': 'manager@ecoroute.ug',
+      'phone': '+256 394 880 353',
+      'status': 'Active',
+    },
+    {
+      'id': 'STF-03',
+      'name': 'David Anguyo (Field Dispatch)',
+      'role': 'supervisor',
+      'email': 'supervisor@ecoroute.ug',
+      'phone': '+256 394 880 354',
+      'status': 'Active',
+    },
+  ];
+
+  bool get isSuperAdmin => currentRole == 'admin';
+  bool get isOperationsManager => currentRole == 'manager';
+  bool get isRouteSupervisor => currentRole == 'supervisor';
+  bool get isAdminTier => isSuperAdmin || isOperationsManager || isRouteSupervisor;
+
+  String get roleDisplayName {
+    if (isSuperAdmin) return 'Super Admin';
+    if (isOperationsManager) return 'Operations Manager';
+    if (isRouteSupervisor) return 'Route Supervisor';
+    if (currentRole == 'rider') return 'Rider';
+    return 'Resident';
+  }
+
+  int get totalCashInPouches {
+    int sum = 0;
+    for (final t in tricycles) {
+      sum += (t['cashInPouch'] as int? ?? 0);
+    }
+    if (sum == 0 && riderCashInPouch > 0) sum = riderCashInPouch;
+    return sum;
+  }
+
   // Initialize and load saved state from SharedPreferences
   Future<void> init() async {
     try {
@@ -196,9 +257,14 @@ class EcoRouteState extends ChangeNotifier {
         if (map['userPhotoBase64'] != null) userPhotoBase64 = map['userPhotoBase64'] as String?;
         if (map['ecoCredits'] != null) ecoCredits = (map['ecoCredits'] as num).toInt();
         if (map['riderLedgerBalance'] != null) riderLedgerBalance = (map['riderLedgerBalance'] as num).toInt();
+        if (map['riderCashInPouch'] != null) riderCashInPouch = (map['riderCashInPouch'] as num).toInt();
+        if (map['totalDepotReconciledCash'] != null) totalDepotReconciledCash = (map['totalDepotReconciledCash'] as num).toInt();
         if (map['totalTonnes'] != null) totalTonnes = (map['totalTonnes'] as num).toDouble();
         if (map['activePickup'] != null) activePickup = Map<String, dynamic>.from(map['activePickup'] as Map);
         if (map['systemBroadcast'] != null) systemBroadcast = map['systemBroadcast'] as String?;
+        if (map['baseSackPriceUgx'] != null) baseSackPriceUgx = (map['baseSackPriceUgx'] as num).toInt();
+        if (map['bulkyWasteSurchargeUgx'] != null) bulkyWasteSurchargeUgx = (map['bulkyWasteSurchargeUgx'] as num).toInt();
+        if (map['riderCommissionPercent'] != null) riderCommissionPercent = (map['riderCommissionPercent'] as num).toInt();
         if (map['residentRequests'] != null) {
           residentRequests = (map['residentRequests'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
         }
@@ -207,6 +273,15 @@ class EcoRouteState extends ChangeNotifier {
         }
         if (map['riderTransactions'] != null) {
           riderTransactions = (map['riderTransactions'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+        if (map['pendingPayoutRequests'] != null) {
+          pendingPayoutRequests = (map['pendingPayoutRequests'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+        if (map['cashReconciliationLog'] != null) {
+          cashReconciliationLog = (map['cashReconciliationLog'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+        if (map['staffRoster'] != null) {
+          staffRoster = (map['staffRoster'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
         }
       }
     } catch (e) {
@@ -229,12 +304,20 @@ class EcoRouteState extends ChangeNotifier {
         'userPhotoBase64': userPhotoBase64,
         'ecoCredits': ecoCredits,
         'riderLedgerBalance': riderLedgerBalance,
+        'riderCashInPouch': riderCashInPouch,
+        'totalDepotReconciledCash': totalDepotReconciledCash,
         'totalTonnes': totalTonnes,
         'activePickup': activePickup,
         'systemBroadcast': systemBroadcast,
+        'baseSackPriceUgx': baseSackPriceUgx,
+        'bulkyWasteSurchargeUgx': bulkyWasteSurchargeUgx,
+        'riderCommissionPercent': riderCommissionPercent,
         'residentRequests': residentRequests,
         'riderTasks': riderTasks,
         'riderTransactions': riderTransactions,
+        'pendingPayoutRequests': pendingPayoutRequests,
+        'cashReconciliationLog': cashReconciliationLog,
+        'staffRoster': staffRoster,
       };
       await _prefs?.setString(_kStorageKey, jsonEncode(stateMap));
     } catch (e) {
@@ -253,6 +336,14 @@ class EcoRouteState extends ChangeNotifier {
       userName = activeRider != null ? '${activeRider['name']} (${activeRider['tricycleId']})' : 'EcoRoute Rider (Awaiting Invite)';
       userUsername = activeRider != null ? (activeRider['name'] as String).toLowerCase().replaceAll(' ', '_') : 'rider_invite_required';
       userEmail = activeRider != null ? (activeRider['email'] as String? ?? 'rider@ecoroute.ug') : 'rider.invite@ecoroute.ug';
+    } else if (role == 'supervisor') {
+      userName = 'David Anguyo (Field Dispatch)';
+      userUsername = 'supervisor_arua';
+      userEmail = 'supervisor@ecoroute.ug';
+    } else if (role == 'manager') {
+      userName = 'Kassim Ondoa (Depot Lead)';
+      userUsername = 'manager_arua';
+      userEmail = 'manager@ecoroute.ug';
     } else {
       userName = 'Arua Command HQ';
       userUsername = 'admin_arua';
@@ -261,7 +352,7 @@ class EcoRouteState extends ChangeNotifier {
     _saveState();
     notifyListeners();
 
-    if (role == 'admin') {
+    if (role == 'admin' || role == 'manager' || role == 'supervisor') {
       Navigator.pushNamedAndRemoveUntil(context, '/admin', (route) => false);
     } else if (role == 'rider') {
       Navigator.pushNamedAndRemoveUntil(context, '/rider', (route) => false);
@@ -428,7 +519,8 @@ class EcoRouteState extends ChangeNotifier {
     }
 
     final sacks = (activeTask['sacks'] as num).toInt();
-    final earn = sacks * 2500;
+    final totalPrice = sacks * baseSackPriceUgx;
+    final earn = ((totalPrice * riderCommissionPercent) / 100).round();
 
     // Advance status
     activeTask['status'] = 'Settled';
@@ -445,12 +537,20 @@ class EcoRouteState extends ChangeNotifier {
       }
     }
 
-    // Ledger update (+2,500 UGX/sack)
+    // Real-world physical cash in pouch and ledger commission update
+    riderCashInPouch += totalPrice;
     riderLedgerBalance += earn;
+    final assignedTriId = (activeTask['assignedRiderId'] as String?) ?? 'TRIC-04';
+    final triIdx = tricycles.indexWhere((t) => t['id'] == assignedTriId);
+    if (triIdx != -1) {
+      tricycles[triIdx]['cashInPouch'] = (tricycles[triIdx]['cashInPouch'] as int? ?? 0) + totalPrice;
+    }
+
     riderTransactions.insert(0, {
-      'title': 'Pickup #${activeTask['id']} Verified & Settled',
+      'title': 'Pickup #${activeTask['id']} Cash Handover Verified',
       'date': 'Just now',
       'amount': '+$earn UGX',
+      'pouchInfo': '+$totalPrice UGX in Pouch',
       'isPayout': false,
     });
 
@@ -463,7 +563,7 @@ class EcoRouteState extends ChangeNotifier {
     notifyListeners();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Handshake Verified! Pickup #${activeTask['id']} settled. +$earn UGX added to Ledger.')),
+      SnackBar(content: Text('Handshake Verified! Pickup #${activeTask['id']} settled. +$totalPrice UGX cash collected in pouch. +$earn UGX commission credited.')),
     );
   }
 
@@ -510,10 +610,22 @@ class EcoRouteState extends ChangeNotifier {
     }
 
     riderLedgerBalance -= amount;
-    riderTransactions.insert(0, {
-      'title': 'Instant Mobile Money Payout to $line',
+    final payoutId = 'PO-${1000 + pendingPayoutRequests.length + 1}';
+    pendingPayoutRequests.insert(0, {
+      'id': payoutId,
+      'riderName': userName,
+      'tricycleId': riderRoster.isNotEmpty ? riderRoster.first['tricycleId'] : 'TRIC-04',
+      'phone': line,
+      'amount': amount,
       'date': 'Just now',
-      'amount': '-$amount UGX',
+      'status': 'Pending Approval',
+      'txRef': null,
+    });
+
+    riderTransactions.insert(0, {
+      'title': 'Payout Request #$payoutId ($line)',
+      'date': 'Just now',
+      'amount': '-$amount UGX (Awaiting Manager Approval)',
       'isPayout': true,
     });
 
@@ -521,8 +633,152 @@ class EcoRouteState extends ChangeNotifier {
     notifyListeners();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Payout of $amount UGX dispatched immediately to $line.')),
+      SnackBar(content: Text('Payout request #$payoutId of $amount UGX submitted! Awaiting Operations Manager authorization.')),
     );
+  }
+
+  void reconcileRiderCashPouch({
+    required String tricycleId,
+    required BuildContext context,
+  }) {
+    final tIdx = tricycles.indexWhere((t) => t['id'] == tricycleId);
+    if (tIdx == -1) return;
+    final currentPouch = tricycles[tIdx]['cashInPouch'] as int? ?? 0;
+    if (currentPouch <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$tricycleId has 0 UGX outstanding in cash pouch.')),
+      );
+      return;
+    }
+
+    tricycles[tIdx]['cashInPouch'] = 0;
+    totalDepotReconciledCash += currentPouch;
+    if (riderCashInPouch > 0) {
+      riderCashInPouch = (riderCashInPouch - currentPouch).clamp(0, 999999999);
+    }
+
+    cashReconciliationLog.insert(0, {
+      'id': 'REC-${500 + cashReconciliationLog.length + 1}',
+      'tricycleId': tricycleId,
+      'riderName': tricycles[tIdx]['riderName'] ?? 'Rider',
+      'amount': currentPouch,
+      'date': 'Just now',
+      'reconciledBy': roleDisplayName,
+      'notes': 'End-of-shift physical cash turned in at Depot Safe',
+    });
+
+    _saveState();
+    notifyListeners();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Successfully reconciled $currentPouch UGX from $tricycleId into Depot Safe!')),
+    );
+  }
+
+  void approvePayoutRequest(String payoutId, String txRef, BuildContext context) {
+    final idx = pendingPayoutRequests.indexWhere((p) => p['id'] == payoutId);
+    if (idx != -1) {
+      final generatedRef = txRef.trim().isNotEmpty ? txRef.trim() : 'MM-ARUA-${DateTime.now().millisecondsSinceEpoch % 100000}';
+      pendingPayoutRequests[idx]['status'] = 'Approved';
+      pendingPayoutRequests[idx]['txRef'] = generatedRef;
+      _saveState();
+      notifyListeners();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Payout #$payoutId authorized! MoMo Ref: $generatedRef')),
+      );
+    }
+  }
+
+  void rejectPayoutRequest(String payoutId, String reason, BuildContext context) {
+    final idx = pendingPayoutRequests.indexWhere((p) => p['id'] == payoutId);
+    if (idx != -1) {
+      final refundAmount = (pendingPayoutRequests[idx]['amount'] as num).toInt();
+      riderLedgerBalance += refundAmount;
+      pendingPayoutRequests[idx]['status'] = 'Rejected ($reason)';
+      riderTransactions.insert(0, {
+        'title': 'Payout #$payoutId Rejected ($reason)',
+        'date': 'Just now',
+        'amount': '+$refundAmount UGX (Restored)',
+        'isPayout': false,
+      });
+      _saveState();
+      notifyListeners();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Payout #$payoutId rejected. $refundAmount UGX refunded to balance.')),
+      );
+    }
+  }
+
+  void addStaffMember({
+    required String name,
+    required String email,
+    required String role,
+    required String phone,
+    required BuildContext context,
+  }) {
+    final staffId = 'STF-0${staffRoster.length + 1}';
+    staffRoster.add({
+      'id': staffId,
+      'name': name,
+      'role': role,
+      'email': email,
+      'phone': phone,
+      'status': 'Active',
+    });
+    _saveState();
+    notifyListeners();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Staff member $name provisioned as $role ($staffId).')),
+    );
+  }
+
+  void updateMunicipalTariffs({
+    required int basePrice,
+    required int bulkySurcharge,
+    required int commissionPercent,
+    required BuildContext context,
+  }) {
+    baseSackPriceUgx = basePrice;
+    bulkyWasteSurchargeUgx = bulkySurcharge;
+    riderCommissionPercent = commissionPercent;
+    _saveState();
+    notifyListeners();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Municipal tariff configuration successfully updated!')),
+    );
+  }
+
+  void supervisorOverrideVerification(String taskId, BuildContext context) {
+    final tIdx = riderTasks.indexWhere((t) => t['id'] == taskId);
+    if (tIdx != -1) {
+      final task = riderTasks[tIdx];
+      task['status'] = 'Settled';
+      final sacks = (task['sacks'] as num).toInt();
+      final totalPrice = sacks * baseSackPriceUgx;
+      final earn = ((totalPrice * riderCommissionPercent) / 100).round();
+      riderCashInPouch += totalPrice;
+      riderLedgerBalance += earn;
+      totalTonnes += (sacks * 0.05);
+
+      final triId = (task['assignedRiderId'] as String?) ?? 'TRIC-04';
+      final triIdx = tricycles.indexWhere((t) => t['id'] == triId);
+      if (triIdx != -1) {
+        tricycles[triIdx]['cashInPouch'] = (tricycles[triIdx]['cashInPouch'] as int? ?? 0) + totalPrice;
+      }
+
+      for (final req in residentRequests) {
+        if (req['pickupId'] == taskId) {
+          req['status'] = 'Settled';
+          req['color'] = 0xFF0D2618;
+        }
+      }
+      _syncPickupRequestToFirestore(task);
+      _saveState();
+      notifyListeners();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Supervisor Override: Pickup #$taskId marked verified & settled (+$totalPrice UGX in Pouch).')),
+      );
+    }
   }
 
   void toggleRiderShift(bool active) {
@@ -1135,7 +1391,7 @@ class _LoginScreenState extends State<LoginScreen> {
             photoBase64: resolvedPhoto,
           );
 
-          if (resolvedRole == 'admin') {
+          if (resolvedRole == 'admin' || resolvedRole == 'manager' || resolvedRole == 'supervisor') {
             Navigator.pushNamedAndRemoveUntil(context, '/admin', (route) => false);
           } else if (resolvedRole == 'rider') {
             Navigator.pushNamedAndRemoveUntil(context, '/rider', (route) => false);
@@ -1167,7 +1423,11 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     final clean = identifier.toLowerCase();
-    if (clean.contains('admin')) {
+    if (clean.contains('supervisor')) {
+      EcoRouteState.instance.switchRole('supervisor', context);
+    } else if (clean.contains('manager')) {
+      EcoRouteState.instance.switchRole('manager', context);
+    } else if (clean.contains('admin')) {
       EcoRouteState.instance.switchRole('admin', context);
     } else if (clean.contains('rider')) {
       EcoRouteState.instance.switchRole('rider', context);
@@ -3483,6 +3743,42 @@ class RiderEarningsScreen extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 12),
+
+            // Hard Cash in Pouch Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF9C3D18).withValues(alpha: 0.3), width: 1.5),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF9C3D18).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.payments_rounded, color: Color(0xFF9C3D18), size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Hard Cash in Pouch (Physical)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF9C3D18))),
+                        const SizedBox(height: 2),
+                        Text('${state.riderCashInPouch} UGX', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                        const SizedBox(height: 2),
+                        const Text('Collected from residents. Present to Depot Supervisor at shift end.', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 20),
 
             const Text('Collection Settlement Ledger', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
@@ -3556,22 +3852,46 @@ class _AdminRootScreenState extends State<AdminRootScreen> {
     final screens = [
       AdminDashboardScreen(onSwitchToFleet: () => setState(() => _currentIndex = 1)),
       const AdminFleetMapScreen(),
+      const AdminSettlementScreen(),
       const AdminReportsScreen(),
     ];
 
-    return Scaffold(
-      body: screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        selectedItemColor: const Color(0xFF0D2618),
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard), label: 'Dashboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.map_outlined), activeIcon: Icon(Icons.map), label: 'Fleet'),
-          BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), activeIcon: Icon(Icons.analytics), label: 'Reports'),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 850;
+
+        if (isWide) {
+          return Scaffold(
+            body: Row(
+              children: [
+                _AdminSidebar(
+                  currentIndex: _currentIndex,
+                  onSelect: (index) => setState(() => _currentIndex = index),
+                ),
+                const VerticalDivider(width: 1, thickness: 1, color: Color(0xFFE2EAE1)),
+                Expanded(child: screens[_currentIndex]),
+              ],
+            ),
+          );
+        }
+
+        return Scaffold(
+          body: screens[_currentIndex],
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) => setState(() => _currentIndex = index),
+            selectedItemColor: const Color(0xFF0D2618),
+            unselectedItemColor: Colors.grey,
+            type: BottomNavigationBarType.fixed,
+            items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard), label: 'Dashboard'),
+              BottomNavigationBarItem(icon: Icon(Icons.map_outlined), activeIcon: Icon(Icons.map), label: 'Fleet'),
+              BottomNavigationBarItem(icon: Icon(Icons.payments_outlined), activeIcon: Icon(Icons.payments), label: 'Settlement'),
+              BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), activeIcon: Icon(Icons.analytics), label: 'Reports'),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -3865,7 +4185,31 @@ class AdminDashboardScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Dashboard'),
+        title: Row(
+          children: [
+            const Text('Admin Dashboard'),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: state.isSuperAdmin
+                    ? Colors.green.withValues(alpha: 0.15)
+                    : (state.isOperationsManager ? Colors.orange.withValues(alpha: 0.15) : Colors.blue.withValues(alpha: 0.15)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                state.roleDisplayName,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.bold,
+                  color: state.isSuperAdmin
+                      ? Colors.green.shade800
+                      : (state.isOperationsManager ? Colors.orange.shade900 : Colors.blue.shade900),
+                ),
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: 'Call Support (+256394880352)',
@@ -3926,11 +4270,23 @@ class AdminDashboardScreen extends StatelessWidget {
                       onPressed: () => _showAssignModal(context, firstPending['id'] as String),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF9C3D18),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                       child: const Text('1-Tap Assign', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                     ),
+                    if (state.isRouteSupervisor || state.isOperationsManager || state.isSuperAdmin) ...[
+                      const SizedBox(width: 6),
+                      OutlinedButton(
+                        onPressed: () => state.supervisorOverrideVerification(firstPending['id'] as String, context),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF0D2618)),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: const Text('Supervisor Verify', style: TextStyle(color: Color(0xFF0D2618), fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -3965,10 +4321,12 @@ class AdminDashboardScreen extends StatelessWidget {
             Row(
               children: [
                 Expanded(child: _buildMetricCard(context, '${state.activeRidersCount}', 'Active Riders')),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(child: _buildMetricCard(context, '${state.pendingPickupsCount}', 'Pending Pickups')),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(child: _buildMetricCard(context, '98%', 'Route Efficiency')),
+                const SizedBox(width: 6),
+                Expanded(child: _buildMetricCard(context, '${state.totalCashInPouches} UGX', 'Field Cash')),
               ],
             ),
             const SizedBox(height: 12),
@@ -4161,6 +4519,7 @@ class AdminFleetMapScreen extends StatelessWidget {
                       _buildTriStat('Speed', selectedTri['speed'] as String),
                       _buildTriStat('Battery', '${selectedTri['battery']}%'),
                       _buildTriStat('Payload', selectedTri['payload'] as String),
+                      _buildTriStat('Pouch', '${selectedTri['cashInPouch'] ?? 0} UGX'),
                     ],
                   ),
                   const Spacer(),
@@ -4200,16 +4559,545 @@ class AdminFleetMapScreen extends StatelessWidget {
   Widget _buildTriStat(String label, String val) {
     return Column(
       children: [
-        Text(val, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0D2618))),
+        Text(val, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
       ],
+    );
+  }
+}
+
+// =================================================================
+// CASH SETTLEMENT, POUCH RECONCILIATION & PAYOUTS DESK
+// =================================================================
+class AdminSettlementScreen extends StatelessWidget {
+  const AdminSettlementScreen({super.key});
+
+  void _showReconcileDialog(BuildContext context, Map<String, dynamic> tri) {
+    final state = EcoRouteState.instance;
+    final currentPouch = tri['cashInPouch'] as int? ?? 0;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Reconcile Pouch: ${tri['id']}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Operator: ${tri['riderName']} (${tri['zone']})', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text('Physical cash collected in pouch today: $currentPouch UGX.'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: const Color(0xFFE8ECE7), borderRadius: BorderRadius.circular(8)),
+              child: const Text(
+                'Confirm that the physical cash has been counted and locked into the municipal depot safe vault.',
+                style: TextStyle(fontSize: 11, color: Color(0xFF1A3A28)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              state.reconcileRiderCashPouch(tricycleId: tri['id'] as String, context: context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+            child: const Text('Confirm Cash Deposit', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showApprovePayoutDialog(BuildContext context, Map<String, dynamic> payout) {
+    final state = EcoRouteState.instance;
+    final txCtrl = TextEditingController(text: 'MM-ARUA-${DateTime.now().millisecondsSinceEpoch % 100000}');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Authorize Payout #${payout['id']}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Recipient: ${payout['riderName']} • ${payout['phone']}'),
+            const SizedBox(height: 6),
+            Text('Amount to Release: ${payout['amount']} UGX', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF9C3D18))),
+            const SizedBox(height: 12),
+            TextField(
+              controller: txCtrl,
+              decoration: const InputDecoration(labelText: 'Mobile Money Tx Ref', border: OutlineInputBorder()),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              state.rejectPayoutRequest(payout['id'] as String, 'Rejected by manager', context);
+            },
+            child: const Text('Reject', style: TextStyle(color: Colors.red)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              state.approvePayoutRequest(payout['id'] as String, txCtrl.text.trim(), context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+            child: const Text('Approve & Release', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = EcoRouteState.instance;
+    final pendingPayouts = state.pendingPayoutRequests.where((p) => p['status'] == 'Pending Approval').toList();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Cash Settlement & Reconciliation'),
+        actions: [
+          IconButton(
+            tooltip: 'HQ Profile',
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: () => showEcoRouteProfileSheet(context),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // KPI Summary Row
+            Row(
+              children: [
+                Expanded(child: _buildStatCard('City Cash Today', '${state.totalCashInPouches + state.totalDepotReconciledCash} UGX', Colors.green)),
+                const SizedBox(width: 8),
+                Expanded(child: _buildStatCard('Field Pouches', '${state.totalCashInPouches} UGX', const Color(0xFF9C3D18))),
+                const SizedBox(width: 8),
+                Expanded(child: _buildStatCard('Depot Vault Safe', '${state.totalDepotReconciledCash} UGX', const Color(0xFF0D2618))),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Pouch Reconciliation Section
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Field Tricycle Cash Pouches', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: const Color(0xFFE8ECE7), borderRadius: BorderRadius.circular(8)),
+                  child: Text('${state.tricycles.length} Units Monitored', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text('Cash collected directly from households on-site. Reconcile upon return to depot.', style: TextStyle(fontSize: 11, color: Colors.grey)),
+            const SizedBox(height: 10),
+
+            ...state.tricycles.map((tri) {
+              final pouch = tri['cashInPouch'] as int? ?? 0;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: pouch > 0 ? const Color(0xFF9C3D18).withValues(alpha: 0.1) : const Color(0xFFE8ECE7),
+                      child: Icon(Icons.payments_outlined, color: pouch > 0 ? const Color(0xFF9C3D18) : Colors.grey, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${tri['id']} • ${tri['riderName']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
+                          Text('${tri['zone']} • Pouch: $pouch UGX', style: TextStyle(fontSize: 11, color: pouch > 0 ? const Color(0xFF9C3D18) : Colors.grey, fontWeight: pouch > 0 ? FontWeight.bold : FontWeight.normal)),
+                        ],
+                      ),
+                    ),
+                    if (pouch > 0) ...[
+                      ElevatedButton(
+                        onPressed: () => _showReconcileDialog(context, tri),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0D2618),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: const Text('Reconcile Cash', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                      ),
+                    ] else ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
+                        child: const Text('Clear', style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 20),
+
+            // Payout Approvals Queue
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Rider Instant Payout Requests', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                if (pendingPayouts.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: const Color(0xFF9C3D18), borderRadius: BorderRadius.circular(8)),
+                    child: Text('${pendingPayouts.length} Action Required', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            if (state.pendingPayoutRequests.isEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                child: const Center(
+                  child: Text('No payout requests yet. Rider instant payout claims appear here.', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                ),
+              ),
+            ] else ...[
+              ...state.pendingPayoutRequests.map((po) {
+                final isPending = po['status'] == 'Pending Approval';
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: isPending ? Border.all(color: const Color(0xFF9C3D18).withValues(alpha: 0.3)) : null,
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: isPending ? const Color(0xFF9C3D18).withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1),
+                        child: Icon(isPending ? Icons.pending_actions : Icons.check_circle_outline, color: isPending ? const Color(0xFF9C3D18) : Colors.green, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${po['riderName']} • ${po['amount']} UGX', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
+                            Text('${po['phone']} • ${po['date']} • ${po['status']}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                            if (po['txRef'] != null)
+                              Text('MoMo Ref: ${po['txRef']}', style: const TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                      if (isPending) ...[
+                        if (state.isOperationsManager || state.isSuperAdmin) ...[
+                          ElevatedButton(
+                            onPressed: () => _showApprovePayoutDialog(context, po),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF9C3D18),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: const Text('Review', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                          ),
+                        ] else ...[
+                          const Text('Manager Gated', style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic)),
+                        ],
+                      ],
+                    ],
+                  ),
+                );
+              }),
+            ],
+            const SizedBox(height: 20),
+
+            // Depot Cash Vault Audit Trail
+            const Text('Depot Vault Audit Trail', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+            const SizedBox(height: 8),
+            if (state.cashReconciliationLog.isEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                child: const Center(child: Text('Vault clean. Cash deposits from field units will log here.', style: TextStyle(fontSize: 11, color: Colors.grey))),
+              ),
+            ] else ...[
+              ...state.cashReconciliationLog.map((rec) => Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${rec['id']}: Received ${rec['amount']} UGX from ${rec['tricycleId']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0D2618))),
+                            Text('Reconciled by ${rec['reconciledBy']} • ${rec['date']}', style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                          ],
+                        ),
+                        const Icon(Icons.verified_user, color: Colors.green, size: 16),
+                      ],
+                    ),
+                  )),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String val, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 10)),
+          const SizedBox(height: 4),
+          Text(val, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+// =================================================================
+// DESKTOP & TABLET ADAPTIVE SIDEBAR
+// =================================================================
+class _AdminSidebar extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onSelect;
+
+  const _AdminSidebar({required this.currentIndex, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = EcoRouteState.instance;
+
+    return Container(
+      width: 250,
+      color: const Color(0xFF0D2618),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), shape: BoxShape.circle),
+                child: const Icon(Icons.eco, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text('EcoRoute HQ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text('Arua Operations', style: TextStyle(color: Colors.white60, fontSize: 11)),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Staff Profile Pill
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: Colors.white24,
+                  child: Text(state.userName.isNotEmpty ? state.userName[0].toUpperCase() : 'A', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(state.userName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                      Text(
+                        state.roleDisplayName,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: state.isSuperAdmin ? Colors.greenAccent : (state.isOperationsManager ? Colors.amberAccent : Colors.lightBlueAccent),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          _buildNavItem(0, 'Dispatch Console', Icons.assignment_outlined, Icons.assignment),
+          _buildNavItem(1, 'Fleet & Depot', Icons.pedal_bike_outlined, Icons.pedal_bike),
+          _buildNavItem(2, 'Cash & Settlements', Icons.payments_outlined, Icons.payments),
+          _buildNavItem(3, 'Reports & Governance', Icons.admin_panel_settings_outlined, Icons.admin_panel_settings),
+
+          const Spacer(),
+
+          // System Status & Sign Out
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(8)),
+            child: Row(
+              children: const [
+                Icon(Icons.circle, color: Colors.green, size: 8),
+                SizedBox(width: 6),
+                Text('Arua Node: Online', style: TextStyle(color: Colors.white70, fontSize: 11)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.logout, color: Colors.white60, size: 18),
+            title: const Text('Sign Out', style: TextStyle(color: Colors.white60, fontSize: 12)),
+            onTap: () {
+              Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, String label, IconData icon, IconData activeIcon) {
+    final isSelected = currentIndex == index;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color: isSelected ? Colors.white.withValues(alpha: 0.15) : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: ListTile(
+        dense: true,
+        leading: Icon(isSelected ? activeIcon : icon, color: isSelected ? Colors.white : Colors.white60, size: 20),
+        title: Text(
+          label,
+          style: TextStyle(color: isSelected ? Colors.white : Colors.white70, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, fontSize: 12),
+        ),
+        onTap: () => onSelect(index),
+      ),
     );
   }
 }
 
 class AdminReportsScreen extends StatelessWidget {
   const AdminReportsScreen({super.key});
+
+  void _showAddStaffDialog(BuildContext context) {
+    final nameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController(text: '+256 394 880 352');
+    String selectedRole = 'supervisor';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Provision Municipal Staff', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Staff Full Name')),
+            const SizedBox(height: 8),
+            TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email Address')),
+            const SizedBox(height: 8),
+            TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Phone Number')),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: selectedRole,
+              decoration: const InputDecoration(labelText: 'Assigned Job Role'),
+              items: const [
+                DropdownMenuItem(value: 'supervisor', child: Text('Route Supervisor (Field Dispatch)')),
+                DropdownMenuItem(value: 'manager', child: Text('Operations Manager (Depot & Finance)')),
+                DropdownMenuItem(value: 'admin', child: Text('Super Admin (Municipal Director)')),
+              ],
+              onChanged: (val) => selectedRole = val ?? 'supervisor',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (nameCtrl.text.trim().isEmpty || emailCtrl.text.trim().isEmpty) return;
+              Navigator.pop(ctx);
+              EcoRouteState.instance.addStaffMember(
+                name: nameCtrl.text.trim(),
+                email: emailCtrl.text.trim(),
+                role: selectedRole,
+                phone: phoneCtrl.text.trim(),
+                context: context,
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+            child: const Text('Provision Staff', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditTariffsDialog(BuildContext context) {
+    final state = EcoRouteState.instance;
+    final baseCtrl = TextEditingController(text: '${state.baseSackPriceUgx}');
+    final bulkyCtrl = TextEditingController(text: '${state.bulkyWasteSurchargeUgx}');
+    final commissionCtrl = TextEditingController(text: '${state.riderCommissionPercent}');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Configure Municipal Tariffs', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: baseCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Base Price per Sack (UGX)')),
+            const SizedBox(height: 8),
+            TextField(controller: bulkyCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Bulky Waste Surcharge (UGX)')),
+            const SizedBox(height: 8),
+            TextField(controller: commissionCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Rider Commission Percentage (%)')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final base = int.tryParse(baseCtrl.text.trim()) ?? state.baseSackPriceUgx;
+              final bulky = int.tryParse(bulkyCtrl.text.trim()) ?? state.bulkyWasteSurchargeUgx;
+              final comm = int.tryParse(commissionCtrl.text.trim()) ?? state.riderCommissionPercent;
+              Navigator.pop(ctx);
+              state.updateMunicipalTariffs(
+                basePrice: base,
+                bulkySurcharge: bulky,
+                commissionPercent: comm,
+                context: context,
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+            child: const Text('Save Tariffs', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -4287,6 +5175,120 @@ class AdminReportsScreen extends StatelessWidget {
             _buildReportDownloadTile(context, 'Daily Operations - Oct 31, 2026', 'October 31, 2026'),
             _buildReportDownloadTile(context, 'Weekly Operations Summary - W44', 'Week 44, 2026'),
             _buildReportDownloadTile(context, 'Rider Fleet Monthly Report', 'October 2026'),
+            const SizedBox(height: 24),
+
+            // MUNICIPAL GOVERNANCE & STAFF RBAC
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Staff Roster & Operational RBAC', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                if (state.isSuperAdmin)
+                  ElevatedButton.icon(
+                    onPressed: () => _showAddStaffDialog(context),
+                    icon: const Icon(Icons.person_add, size: 14, color: Colors.white),
+                    label: const Text('Add Staff', style: TextStyle(color: Colors.white, fontSize: 11)),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            ...state.staffRoster.map((stf) {
+              final role = stf['role'] as String;
+              final roleColor = role == 'admin' ? Colors.green : (role == 'manager' ? Colors.orange : Colors.blue);
+              final roleName = role == 'admin' ? 'Super Admin' : (role == 'manager' ? 'Operations Manager' : 'Route Supervisor');
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: roleColor.withValues(alpha: 0.15),
+                      child: Icon(Icons.shield_outlined, color: roleColor, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${stf['name']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
+                          Text('${stf['email']} • ${stf['phone'] ?? '+256 394 880 352'}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: roleColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
+                      child: Text(roleName, style: TextStyle(color: roleColor, fontSize: 10.5, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 20),
+
+            // MUNICIPAL TARIFF ENGINE
+            const Text('Municipal Pricing & Commission Engine', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+            const SizedBox(height: 6),
+            if (state.isSuperAdmin) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Base Waste Sack Fee:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        Text('${state.baseSackPriceUgx} UGX / Sack', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Bulky Surcharge:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        Text('${state.bulkyWasteSurchargeUgx} UGX', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF9C3D18))),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Rider Commission Share:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        Text('${state.riderCommissionPercent}% to Rider (${100 - state.riderCommissionPercent}% City)', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    OutlinedButton.icon(
+                      onPressed: () => _showEditTariffsDialog(context),
+                      icon: const Icon(Icons.tune, size: 16, color: Color(0xFF0D2618)),
+                      label: const Text('Edit Municipal Tariffs', style: TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 44)),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: const Color(0xFFE8ECE7), borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Color(0xFF0D2618), size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Tariffs set at ${state.baseSackPriceUgx} UGX/sack with ${state.riderCommissionPercent}% rider commission. Modifications require Super Admin credentials.',
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF1A3A28)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

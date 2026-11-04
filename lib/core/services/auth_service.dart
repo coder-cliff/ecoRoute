@@ -34,6 +34,12 @@ class AuthService {
   static AppRole parseRole(String? raw) {
     if (raw == null) return AppRole.resident;
     final clean = raw.trim().toLowerCase();
+    if (clean == 'routesupervisor' || clean == 'route_supervisor' || clean == 'supervisor') {
+      return AppRole.routeSupervisor;
+    }
+    if (clean == 'operationsmanager' || clean == 'operations_manager' || clean == 'manager') {
+      return AppRole.operationsManager;
+    }
     return AppRole.values.firstWhere(
       (r) => r.name.toLowerCase() == clean,
       orElse: () => AppRole.resident,

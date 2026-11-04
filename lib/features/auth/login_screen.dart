@@ -94,6 +94,10 @@ class _LoginScreenState extends State<LoginScreen> {
             emailLower == 'saviordeogratius@yahoo.com' ||
             emailLower == 'techcliff451@hotmail.com') {
           resolvedRole = AppRole.admin;
+        } else if (emailLower.contains('manager')) {
+          resolvedRole = AppRole.operationsManager;
+        } else if (emailLower.contains('supervisor')) {
+          resolvedRole = AppRole.routeSupervisor;
         } else if (emailLower.contains('rider') ||
             emailLower == 'rider.juma@ecoroute.ug') {
           resolvedRole = AppRole.rider;

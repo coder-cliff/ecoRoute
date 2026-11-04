@@ -236,19 +236,6 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
             ),
             const SizedBox(height: 20),
             ListTile(
-              leading: const Icon(Icons.swap_horiz_rounded, color: EcoPalette.primaryDark),
-              title: const Text('Switch Role / Workspace', style: TextStyle(fontWeight: FontWeight.w700)),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                AppRouter.routeToRoleSelect(
-                  context,
-                  repository: widget.repository,
-                  authService: widget.authService,
-                  wasteApiService: widget.wasteApiService,
-                );
-              },
-            ),
-            ListTile(
               leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
               title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700)),
               onTap: () async {
