@@ -228,23 +228,7 @@ class _AuthSheetState extends State<AuthSheet> {
           return;
         }
       } else {
-        // Fallback for tests when authService is not injected
-        final emailLower = _email.text.trim().toLowerCase();
-        if (emailLower == 'saviordeogratius@yahoo.com' ||
-            emailLower == 'techcliff451@hotmail.com' ||
-            emailLower == 'saviordeogratius@gmail.com' ||
-            emailLower == 'techcliff451@gmail.com' ||
-            emailLower.contains('admin')) {
-          authenticatedRole = AppRole.admin;
-        } else if (emailLower.contains('manager')) {
-          authenticatedRole = AppRole.operationsManager;
-        } else if (emailLower.contains('supervisor')) {
-          authenticatedRole = AppRole.routeSupervisor;
-        } else if (emailLower.contains('rider')) {
-          authenticatedRole = AppRole.rider;
-        } else {
-          authenticatedRole = AppRole.resident;
-        }
+        authenticatedRole = AppRole.resident;
       }
     } on StateError catch (error) {
       if (!mounted) return;

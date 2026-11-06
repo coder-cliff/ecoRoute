@@ -17,6 +17,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'core/services/pdf_report_service.dart';
 import 'core/services/rider_invite_service.dart';
+import 'core/layout/adaptive_layout.dart';
+import 'features/auth/responsive_sign_in_screen.dart';
+import 'features/resident/responsive_resident_dashboard.dart';
+import 'features/rider/responsive_rider_dashboard.dart';
+import 'features/admin/responsive_admin_dashboard.dart';
 import 'firebase_options.dart';
 
 // =================================================================
@@ -60,21 +65,25 @@ class EcoRouteState extends ChangeNotifier {
   static const String _kStorageKey = 'ecoroute_app_state_v4';
   SharedPreferences? _prefs;
 
-  // Active Role and Profile
+  // Active Role and Profile (Strictly Authentic - No Hardcoded Demo Accounts)
   String currentRole = 'resident'; // 'resident', 'rider', 'admin'
-  String userName = 'Jane Agondua';
-  String userUsername = 'jane_arua';
-  String userEmail = 'resident.arua@ecoroute.ug';
-  String userPhone = '+256 394 880 352';
-  String userCell = 'Ediofe, Trading Center';
+  String userName = '';
+  String userUsername = '';
+  String userEmail = '';
+  String userPhone = '';
+  String userCell = '';
   String? userPhotoBase64;
-  int ecoCredits = 150;
+  int ecoCredits = 0;
+  bool isDarkMode = false;
+
+  void toggleTheme() {
+    isDarkMode = !isDarkMode;
+    _saveState();
+    notifyListeners();
+  }
 
   // Saved addresses
-  List<Map<String, String>> savedAddresses = [
-    {'label': 'Home', 'address': 'Ediofe, Trading Center'},
-    {'label': 'Store', 'address': 'Arua Central Market'},
-  ];
+  List<Map<String, String>> savedAddresses = [];
 
   // Active Pickup State (Pure dynamic state - populated strictly when Resident books)
   Map<String, dynamic>? activePickup;
@@ -91,60 +100,11 @@ class EcoRouteState extends ChangeNotifier {
 
   List<Map<String, dynamic>> riderTransactions = [];
 
-  // Tricycle Fleet for Admin & Map (Tricycles start unassigned until Admin issues invitation)
-  List<Map<String, dynamic>> tricycles = [
-    {
-      'id': 'TRIC-04',
-      'riderName': 'Unassigned',
-      'phone': '-',
-      'battery': 100,
-      'speed': 'Idle',
-      'status': 'Available',
-      'zone': 'Ediofe Depot',
-      'payload': '0 Sacks (Empty)',
-      'xRatio': 0.28,
-      'yRatio': 0.38,
-    },
-    {
-      'id': 'TRIC-09',
-      'riderName': 'Unassigned',
-      'phone': '-',
-      'battery': 100,
-      'speed': 'Idle',
-      'status': 'Available',
-      'zone': 'Onduparaka Depot',
-      'payload': '0 Sacks (Empty)',
-      'xRatio': 0.72,
-      'yRatio': 0.25,
-    },
-    {
-      'id': 'TRIC-12',
-      'riderName': 'Unassigned',
-      'phone': '-',
-      'battery': 100,
-      'speed': 'Idle',
-      'status': 'Available',
-      'zone': 'Arua Hill Depot',
-      'payload': '0 Sacks (Empty)',
-      'xRatio': 0.55,
-      'yRatio': 0.65,
-    },
-    {
-      'id': 'TRIC-18',
-      'riderName': 'Unassigned',
-      'phone': '-',
-      'battery': 100,
-      'speed': 'Idle',
-      'status': 'Available',
-      'zone': 'Arua Central Market Depot',
-      'payload': '0 Sacks (Empty)',
-      'xRatio': 0.45,
-      'yRatio': 0.45,
-    },
-  ];
+  // Tricycle Fleet for Admin & Map (Populated dynamically)
+  List<Map<String, dynamic>> tricycles = [];
   int selectedTricycleIndex = 0;
 
-  // Registered Rider Roster for Municipal Governance (Populated strictly via Admin Invitation)
+  // Registered Rider Roster for Municipal Governance
   List<Map<String, dynamic>> riderRoster = [];
 
   // Live Weather
@@ -157,13 +117,7 @@ class EcoRouteState extends ChangeNotifier {
   String? systemBroadcast;
 
   // In-App Dispatch Chat
-  List<Map<String, dynamic>> dispatchMessages = [
-    {
-      'sender': 'dispatch',
-      'text': 'Welcome to EcoRoute Dispatch. How can we support your waste collection in Arua today?',
-      'time': '08:00 AM',
-    },
-  ];
+  List<Map<String, dynamic>> dispatchMessages = [];
 
   // Admin KPIs & Tonnage (Dynamic municipal metrics)
   double totalTonnes = 0.0;
@@ -191,33 +145,8 @@ class EcoRouteState extends ChangeNotifier {
   int bulkyWasteSurchargeUgx = 5000;
   int riderCommissionPercent = 70;
 
-  // Municipal Administrative Staff Roster (RBAC)
-  List<Map<String, dynamic>> staffRoster = [
-    {
-      'id': 'STF-01',
-      'name': 'Director Arua Operations',
-      'role': 'admin',
-      'email': 'admin@ecoroute.ug',
-      'phone': '+256 394 880 352',
-      'status': 'Active',
-    },
-    {
-      'id': 'STF-02',
-      'name': 'Kassim Ondoa (Depot Lead)',
-      'role': 'manager',
-      'email': 'manager@ecoroute.ug',
-      'phone': '+256 394 880 353',
-      'status': 'Active',
-    },
-    {
-      'id': 'STF-03',
-      'name': 'David Anguyo (Field Dispatch)',
-      'role': 'supervisor',
-      'email': 'supervisor@ecoroute.ug',
-      'phone': '+256 394 880 354',
-      'status': 'Active',
-    },
-  ];
+  // Municipal Administrative Staff Roster (Dynamic RBAC - populated via Firestore)
+  List<Map<String, dynamic>> staffRoster = [];
 
   bool get isSuperAdmin => currentRole == 'admin';
   bool get isOperationsManager => currentRole == 'manager';
@@ -241,53 +170,75 @@ class EcoRouteState extends ChangeNotifier {
     return sum;
   }
 
-  // Initialize and load saved state from SharedPreferences
+  // Initialize and load saved state from SharedPreferences (Demo-Free Sanitized)
   Future<void> init() async {
     try {
       _prefs = await SharedPreferences.getInstance();
+
+      // Cleanse any legacy demo data or hardcoded mock accounts from local storage
       final saved = _prefs?.getString(_kStorageKey);
       if (saved != null) {
-        final map = jsonDecode(saved) as Map<String, dynamic>;
-        if (map['currentRole'] != null) currentRole = map['currentRole'] as String;
-        if (map['userName'] != null) userName = map['userName'] as String;
-        if (map['userUsername'] != null) userUsername = map['userUsername'] as String;
-        if (map['userEmail'] != null) userEmail = map['userEmail'] as String;
-        if (map['userPhone'] != null) userPhone = map['userPhone'] as String;
-        if (map['userCell'] != null) userCell = map['userCell'] as String;
-        if (map['userPhotoBase64'] != null) userPhotoBase64 = map['userPhotoBase64'] as String?;
-        if (map['ecoCredits'] != null) ecoCredits = (map['ecoCredits'] as num).toInt();
-        if (map['riderLedgerBalance'] != null) riderLedgerBalance = (map['riderLedgerBalance'] as num).toInt();
-        if (map['riderCashInPouch'] != null) riderCashInPouch = (map['riderCashInPouch'] as num).toInt();
-        if (map['totalDepotReconciledCash'] != null) totalDepotReconciledCash = (map['totalDepotReconciledCash'] as num).toInt();
-        if (map['totalTonnes'] != null) totalTonnes = (map['totalTonnes'] as num).toDouble();
-        if (map['activePickup'] != null) activePickup = Map<String, dynamic>.from(map['activePickup'] as Map);
-        if (map['systemBroadcast'] != null) systemBroadcast = map['systemBroadcast'] as String?;
-        if (map['baseSackPriceUgx'] != null) baseSackPriceUgx = (map['baseSackPriceUgx'] as num).toInt();
-        if (map['bulkyWasteSurchargeUgx'] != null) bulkyWasteSurchargeUgx = (map['bulkyWasteSurchargeUgx'] as num).toInt();
-        if (map['riderCommissionPercent'] != null) riderCommissionPercent = (map['riderCommissionPercent'] as num).toInt();
-        if (map['residentRequests'] != null) {
-          residentRequests = (map['residentRequests'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        if (saved.contains('Jane Agondua') ||
+            saved.contains('jane_arua') ||
+            saved.contains('resident.arua') ||
+            saved.contains('admin@ecoroute.ug') ||
+            saved.contains('TRIC-04')) {
+          await _prefs?.remove(_kStorageKey);
+        } else {
+          final map = jsonDecode(saved) as Map<String, dynamic>;
+          if (map['currentRole'] != null) currentRole = map['currentRole'] as String;
+          if (map['userName'] != null) userName = map['userName'] as String;
+          if (map['userUsername'] != null) userUsername = map['userUsername'] as String;
+          if (map['userEmail'] != null) userEmail = map['userEmail'] as String;
+          if (map['userPhone'] != null) userPhone = map['userPhone'] as String;
+          if (map['userCell'] != null) userCell = map['userCell'] as String;
+          if (map['userPhotoBase64'] != null) userPhotoBase64 = map['userPhotoBase64'] as String?;
+          if (map['ecoCredits'] != null) ecoCredits = (map['ecoCredits'] as num).toInt();
+          if (map['isDarkMode'] != null) isDarkMode = map['isDarkMode'] as bool;
+          if (map['riderLedgerBalance'] != null) riderLedgerBalance = (map['riderLedgerBalance'] as num).toInt();
+          if (map['riderCashInPouch'] != null) riderCashInPouch = (map['riderCashInPouch'] as num).toInt();
+          if (map['totalDepotReconciledCash'] != null) totalDepotReconciledCash = (map['totalDepotReconciledCash'] as num).toInt();
+          if (map['totalTonnes'] != null) totalTonnes = (map['totalTonnes'] as num).toDouble();
+          if (map['activePickup'] != null) activePickup = Map<String, dynamic>.from(map['activePickup'] as Map);
+          if (map['systemBroadcast'] != null) systemBroadcast = map['systemBroadcast'] as String?;
+          if (map['baseSackPriceUgx'] != null) baseSackPriceUgx = (map['baseSackPriceUgx'] as num).toInt();
+          if (map['bulkyWasteSurchargeUgx'] != null) bulkyWasteSurchargeUgx = (map['bulkyWasteSurchargeUgx'] as num).toInt();
+          if (map['riderCommissionPercent'] != null) riderCommissionPercent = (map['riderCommissionPercent'] as num).toInt();
+          if (map['residentRequests'] != null) {
+            residentRequests = (map['residentRequests'] as List)
+                .map((e) => Map<String, dynamic>.from(e as Map))
+                .where((r) => !(r['id']?.toString().startsWith('req-arua-') ?? false))
+                .toList();
+          }
+          if (map['riderTasks'] != null) {
+            riderTasks = (map['riderTasks'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          }
         }
-        if (map['riderTasks'] != null) {
-          riderTasks = (map['riderTasks'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        }
-        if (map['riderTransactions'] != null) {
-          riderTransactions = (map['riderTransactions'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        }
-        if (map['pendingPayoutRequests'] != null) {
-          pendingPayoutRequests = (map['pendingPayoutRequests'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        }
-        if (map['cashReconciliationLog'] != null) {
-          cashReconciliationLog = (map['cashReconciliationLog'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        }
-        if (map['staffRoster'] != null) {
-          staffRoster = (map['staffRoster'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+
+      // Check genuine Firebase Auth user if present
+      if (Firebase.apps.isNotEmpty) {
+        final currentFbUser = FirebaseAuth.instance.currentUser;
+        if (currentFbUser != null) {
+          userEmail = currentFbUser.email ?? '';
+          userName = currentFbUser.displayName ?? userEmail.split('@').first;
+          try {
+            final doc = await FirebaseFirestore.instance.collection('profiles').doc(currentFbUser.uid).get();
+            if (doc.exists && doc.data() != null) {
+              final d = doc.data()!;
+              currentRole = (d['role'] as String?)?.toLowerCase().trim() ?? 'resident';
+              userName = (d['fullName'] as String?) ?? userName;
+              userPhone = (d['phone'] as String?) ?? userPhone;
+              userCell = (d['cell'] as String?) ?? (d['address'] as String?) ?? userCell;
+            }
+          } catch (e) {
+            debugPrint('Firestore auth load notice: $e');
+          }
         }
       }
     } catch (e) {
       debugPrint('State initialization notice: $e');
     }
-    // Fetch live weather from Open-Meteo Arua
     fetchLiveWeather();
     notifyListeners();
   }
@@ -303,6 +254,7 @@ class EcoRouteState extends ChangeNotifier {
         'userCell': userCell,
         'userPhotoBase64': userPhotoBase64,
         'ecoCredits': ecoCredits,
+        'isDarkMode': isDarkMode,
         'riderLedgerBalance': riderLedgerBalance,
         'riderCashInPouch': riderCashInPouch,
         'totalDepotReconciledCash': totalDepotReconciledCash,
@@ -327,28 +279,6 @@ class EcoRouteState extends ChangeNotifier {
 
   void switchRole(String role, BuildContext context) {
     currentRole = role;
-    if (role == 'resident') {
-      userName = 'Jane Agondua';
-      userUsername = 'jane_arua';
-      userEmail = 'resident.arua@ecoroute.ug';
-    } else if (role == 'rider') {
-      final activeRider = riderRoster.isNotEmpty ? riderRoster.first : null;
-      userName = activeRider != null ? '${activeRider['name']} (${activeRider['tricycleId']})' : 'EcoRoute Rider (Awaiting Invite)';
-      userUsername = activeRider != null ? (activeRider['name'] as String).toLowerCase().replaceAll(' ', '_') : 'rider_invite_required';
-      userEmail = activeRider != null ? (activeRider['email'] as String? ?? 'rider@ecoroute.ug') : 'rider.invite@ecoroute.ug';
-    } else if (role == 'supervisor') {
-      userName = 'David Anguyo (Field Dispatch)';
-      userUsername = 'supervisor_arua';
-      userEmail = 'supervisor@ecoroute.ug';
-    } else if (role == 'manager') {
-      userName = 'Kassim Ondoa (Depot Lead)';
-      userUsername = 'manager_arua';
-      userEmail = 'manager@ecoroute.ug';
-    } else {
-      userName = 'Arua Command HQ';
-      userUsername = 'admin_arua';
-      userEmail = 'admin@ecoroute.ug';
-    }
     _saveState();
     notifyListeners();
 
@@ -1033,41 +963,20 @@ class EcoRouteApp extends StatelessWidget {
     return ListenableBuilder(
       listenable: EcoRouteState.instance,
       builder: (context, _) {
+        final state = EcoRouteState.instance;
         return MaterialApp(
-          title: 'EcoRoute Arua',
+          title: 'EcoRoute Antigravity',
           debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            scaffoldBackgroundColor: const Color(0xFFE8ECE7),
-            primaryColor: const Color(0xFF0D2618),
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF0D2618),
-              surface: const Color(0xFFE8ECE7),
-              primary: const Color(0xFF0D2618),
-              secondary: const Color(0xFF9C3D18),
-              onPrimary: Colors.white,
-              onSecondary: Colors.white,
-            ),
-            fontFamily: 'Satoshi',
-            textTheme: const TextTheme(
-              displayLarge: TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold, fontSize: 32),
-              headlineMedium: TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold, fontSize: 22),
-              bodyLarge: TextStyle(color: Color(0xFF1A3A28), fontSize: 16),
-              bodyMedium: TextStyle(color: Color(0xFF1A3A28), fontSize: 14),
-            ),
-            appBarTheme: const AppBarTheme(
-              backgroundColor: Color(0xFFE8ECE7),
-              elevation: 0,
-              iconTheme: IconThemeData(color: Color(0xFF0D2618)),
-              titleTextStyle: TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold, fontSize: 20),
-            ),
-          ),
+          theme: AntigravityTheme.buildTheme(isDarkMode: state.isDarkMode),
+          darkTheme: AntigravityTheme.buildTheme(isDarkMode: true),
+          themeMode: state.isDarkMode ? ThemeMode.dark : ThemeMode.light,
           initialRoute: '/',
           routes: {
             '/': (context) => const SplashScreen(),
-            '/login': (context) => const LoginScreen(),
-            '/resident': (context) => const ResidentRootScreen(),
-            '/rider': (context) => const RiderRootScreen(),
-            '/admin': (context) => const AdminRootScreen(),
+            '/login': (context) => const ResponsiveSignInScreen(),
+            '/resident': (context) => const ResponsiveResidentDashboard(),
+            '/rider': (context) => const ResponsiveRiderDashboard(),
+            '/admin': (context) => const ResponsiveAdminDashboard(),
           },
         );
       },

@@ -87,24 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
         return;
       } else {
-        // Fallback for isolated widget tests without auth service
-        final emailLower = email.toLowerCase();
-        final AppRole resolvedRole;
-        if (emailLower.contains('admin') ||
-            emailLower == 'saviordeogratius@yahoo.com' ||
-            emailLower == 'techcliff451@hotmail.com') {
-          resolvedRole = AppRole.admin;
-        } else if (emailLower.contains('manager')) {
-          resolvedRole = AppRole.operationsManager;
-        } else if (emailLower.contains('supervisor')) {
-          resolvedRole = AppRole.routeSupervisor;
-        } else if (emailLower.contains('rider') ||
-            emailLower == 'rider.juma@ecoroute.ug') {
-          resolvedRole = AppRole.rider;
-        } else {
-          resolvedRole = AppRole.resident;
-        }
-
+        const resolvedRole = AppRole.resident;
         if (!mounted) return;
         AppRouter.routeToRole(
           context,

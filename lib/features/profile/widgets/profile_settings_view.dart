@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -1007,49 +1006,7 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
                   );
                 },
               ),
-              if (kDebugMode && role == AppRole.admin) ...[
-                const Divider(height: 1),
-                _buildSettingTile(
-                  icon: Icons.replay_rounded,
-                  title: 'Reset / Re-seed Demo Municipal Records',
-                  subtitle: 'Debug Admin only: Restores demo pickups across Arua',
-                  trailing: const Icon(Icons.delete_sweep_rounded, color: Color(0xFFC62828)),
-                  onTap: () async {
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Reset Demo Records?'),
-                        content: const Text(
-                          'This will overwrite current local pickup requests with default municipal demo data. Continue?',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(false),
-                            child: const Text('Cancel'),
-                          ),
-                          FilledButton(
-                            onPressed: () => Navigator.of(ctx).pop(true),
-                            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC62828)),
-                            child: const Text('Reset'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirmed == true) {
-                      await widget.repository.seedDemoData(force: true);
-                      widget.onRefreshOrders?.call();
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Demonstration instant collection orders restored.'),
-                            backgroundColor: Color(0xFF2E7D32),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                ),
-              ],
+
             ],
           ),
           const SizedBox(height: 24),

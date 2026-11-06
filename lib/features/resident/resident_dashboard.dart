@@ -231,7 +231,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
             ),
             const SizedBox(height: 6),
             Text(
-              widget.authService?.getCurrentUser()?.email ?? 'resident@ecoroute.ug • Arua City',
+              widget.authService?.getCurrentUser()?.email ?? 'Arua City Resident',
               style: const TextStyle(fontFamily: 'Satoshi', fontSize: 13, color: Colors.grey),
             ),
             const SizedBox(height: 20),

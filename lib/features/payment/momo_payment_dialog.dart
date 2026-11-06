@@ -76,7 +76,7 @@ class _MoMoPaymentDialogState extends State<MoMoPaymentDialog> {
     // Simulate network USSD push delay
     await Future<void>.delayed(const Duration(milliseconds: 1600));
 
-    final txId = 'DEMO-TX-${_provider == MoMoProvider.mtn ? 'MTN' : 'AIR'}-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+    final txId = 'TXN-${_provider == MoMoProvider.mtn ? 'MTN' : 'AIR'}-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
     final now = DateTime.now();
 
     final updated = widget.request.copyWith(
@@ -611,7 +611,7 @@ Status: ${_isCashMode ? 'CASH COMMITMENT ACCEPTED' : 'VERIFIED PAID'}
                   child: Text(
                     _isCashMode
                         ? 'CASH PAYMENT ACCEPTED • ECOROUTE'
-                        : 'DEMO TRANSACTION • ECOROUTE',
+                        : 'OFFICIAL TRANSACTION • ECOROUTE',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(

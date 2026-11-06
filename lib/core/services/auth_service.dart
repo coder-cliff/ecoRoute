@@ -720,7 +720,15 @@ class AuthService {
     }
     try {
       final list = jsonDecode(raw) as List<dynamic>;
-      return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      return list
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .where((u) {
+            final email = (u['email'] as String? ?? '').toLowerCase();
+            return !email.contains('demo') &&
+                !email.contains('saviordeogratius') &&
+                !email.contains('techcliff');
+          })
+          .toList();
     } catch (_) {
       return <Map<String, dynamic>>[];
     }
