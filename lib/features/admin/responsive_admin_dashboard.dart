@@ -18,6 +18,20 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+
+    if (width < 700) {
+      return _buildMobileLayout();
+    }
+
+    if (width < 1100) {
+      return _buildTabletLayout();
+    }
+
+    return _buildDesktopLayout();
+  }
+
+  Widget _buildDesktopLayout() {
     final state = EcoRouteState.instance;
     final isDark = AntigravityTheme.isDark(context);
     final surfaceColor = AntigravityTheme.surface(context);
@@ -26,292 +40,767 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
     final subtextColor = AntigravityTheme.textSecondary(context);
     final accentGreen = AntigravityTheme.ecoAccent(context);
 
-    // Responsive container
     return Scaffold(
       backgroundColor: surfaceColor,
-      body: Row(
-        children: [
-          // 280px NAVIGATION SIDEBAR (Wireframe C Specification)
-          Container(
-            width: ViewportBreakpoints.sidebarWidth,
-            color: isDark ? const Color(0xFF161616) : const Color(0xFF0D2618),
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.eco, color: Color(0xFF4CAF50), size: 24),
+      body: SafeArea(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSidebar(width: ViewportBreakpoints.sidebarWidth),
+            Expanded(
+              child: Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    color: cardColor,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final compact = constraints.maxWidth < 560;
+                        return compact
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      'ADMINISTRATIVE COMMAND MATRIX',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: textColor,
+                                        letterSpacing: 0.8,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      IconButton(
+                                        tooltip: 'Toggle Theme',
+                                        icon: Icon(
+                                          isDark ? Icons.light_mode : Icons.dark_mode,
+                                          color: textColor,
+                                        ),
+                                        onPressed: () => state.toggleTheme(),
+                                      ),
+                                      FilledButton.icon(
+                                        onPressed: () => showEcoRouteProfileSheet(context),
+                                        icon: const Icon(Icons.tune, size: 16),
+                                        label: const Text('Municipal Settings'),
+                                        style: FilledButton.styleFrom(backgroundColor: accentGreen),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'ADMINISTRATIVE COMMAND MATRIX',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: textColor,
+                                        letterSpacing: 0.8,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      IconButton(
+                                        tooltip: 'Toggle Theme',
+                                        icon: Icon(
+                                          isDark ? Icons.light_mode : Icons.dark_mode,
+                                          color: textColor,
+                                        ),
+                                        onPressed: () => state.toggleTheme(),
+                                      ),
+                                      FilledButton.icon(
+                                        onPressed: () => showEcoRouteProfileSheet(context),
+                                        icon: const Icon(Icons.tune, size: 16),
+                                        label: const Text('Municipal Settings'),
+                                        style: FilledButton.styleFrom(backgroundColor: accentGreen),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              );
+                      },
                     ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'Antigravity',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'Command HQ • Arua',
-                          style: TextStyle(color: Colors.white60, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
-
-                _buildAdminNavItem(0, 'Fleet Summary', Icons.directions_bike),
-                _buildAdminNavItem(1, 'System Ledgers', Icons.receipt_long),
-                _buildAdminNavItem(2, 'Zone Management', Icons.map_outlined),
-                _buildAdminNavItem(3, 'Access Control', Icons.security),
-                _buildAdminNavItem(4, 'Global Config', Icons.settings_outlined),
-
-                const Spacer(),
-
-                // Admin Status Panel
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: accentGreen,
-                        radius: 16,
-                        child: Text(
-                          state.userName.isNotEmpty ? state.userName[0].toUpperCase() : 'A',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              state.userName.isNotEmpty ? state.userName : 'Administrator',
-                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              state.roleDisplayName,
-                              style: const TextStyle(color: Color(0xFF81C784), fontSize: 10),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // CENTRAL ADMINISTRATIVE COMMAND MATRIX PANEL (Wireframe C)
-          Expanded(
-            child: Column(
-              children: [
-                // Top Header
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  color: cardColor,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'ADMINISTRATIVE COMMAND MATRIX',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: textColor,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      Row(
+                  const Divider(height: 1),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          IconButton(
-                            tooltip: 'Toggle Theme',
-                            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode, color: textColor),
-                            onPressed: () => state.toggleTheme(),
+                          Text(
+                            'OVERVIEW METRICS',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: subtextColor,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                          const SizedBox(width: 12),
-                          FilledButton.icon(
-                            onPressed: () => showEcoRouteProfileSheet(context),
-                            icon: const Icon(Icons.tune, size: 16),
-                            label: const Text('Municipal Settings'),
-                            style: FilledButton.styleFrom(backgroundColor: accentGreen),
+                          const SizedBox(height: 12),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final availableWidth = constraints.maxWidth;
+                              final columnCount = availableWidth < 720 ? 1 : availableWidth < 980 ? 2 : 3;
+                              final gap = 16.0;
+                              final itemWidth = (availableWidth - gap * (columnCount - 1)) / columnCount;
+
+                              return Wrap(
+                                spacing: gap,
+                                runSpacing: gap,
+                                children: [
+                                  SizedBox(
+                                    width: itemWidth,
+                                    child: _buildMetricCard(
+                                      title: 'Total Volume',
+                                      value: '${state.totalTonnes > 0 ? state.totalTonnes.toStringAsFixed(1) : '4.2'} Tons',
+                                      subtitle: 'Municipal waste diverted',
+                                      icon: Icons.scale,
+                                      color: accentGreen,
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: itemWidth,
+                                    child: _buildMetricCard(
+                                      title: 'Fleet Online',
+                                      value: '${state.activeRidersCount > 0 ? state.activeRidersCount : 14}/18',
+                                      subtitle: 'Tricycles in service',
+                                      icon: Icons.electric_moped,
+                                      color: const Color(0xFF1976D2),
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: itemWidth,
+                                    child: _buildMetricCard(
+                                      title: 'Unreconciled SMS',
+                                      value: '0',
+                                      subtitle: 'Telecom stream cleared',
+                                      icon: Icons.sms_outlined,
+                                      color: const Color(0xFFF57C00),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 28),
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AntigravityTheme.border(context)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'LOGISTICS & MONITORING CENTRAL LEDGER GRID FRAME',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: textColor,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      'Real-time Firestore Synchronized',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: accentGreen,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: SizedBox(
+                                    width: 860,
+                                    child: Table(
+                                      border: TableBorder.all(
+                                        color: AntigravityTheme.border(context),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      columnWidths: const {
+                                        0: FlexColumnWidth(1.2),
+                                        1: FlexColumnWidth(1.8),
+                                        2: FlexColumnWidth(1.4),
+                                        3: FlexColumnWidth(1.4),
+                                        4: FlexColumnWidth(1.8),
+                                      },
+                                      children: [
+                                        TableRow(
+                                          decoration: BoxDecoration(
+                                            color: isDark ? const Color(0xFF242424) : const Color(0xFFF1F5F2),
+                                          ),
+                                          children: [
+                                            _buildTableCell('ID', isHeader: true),
+                                            _buildTableCell('ASSIGNED RIDER', isHeader: true),
+                                            _buildTableCell('STATUS', isHeader: true),
+                                            _buildTableCell('RECORDED WEIGHT', isHeader: true),
+                                            _buildTableCell('REF CODE', isHeader: true),
+                                          ],
+                                        ),
+                                        if (state.riderTasks.isEmpty) ...[
+                                          TableRow(
+                                            children: [
+                                              _buildTableCell('#1001'),
+                                              _buildTableCell('TRIC-18 (Field Active)'),
+                                              _buildTableCell('In Progress', statusColor: Colors.orange),
+                                              _buildTableCell('45 kg'),
+                                              _buildTableCell('REF-ARUA-7821'),
+                                            ],
+                                          ),
+                                          TableRow(
+                                            children: [
+                                              _buildTableCell('#1002'),
+                                              _buildTableCell('TRIC-09 (Field Active)'),
+                                              _buildTableCell('Collected', statusColor: Colors.green),
+                                              _buildTableCell('60 kg'),
+                                              _buildTableCell('REF-ARUA-7822'),
+                                            ],
+                                          ),
+                                          TableRow(
+                                            children: [
+                                              _buildTableCell('#1003'),
+                                              _buildTableCell('TRIC-12 (Field Active)'),
+                                              _buildTableCell('Settled', statusColor: Colors.blue),
+                                              _buildTableCell('35 kg'),
+                                              _buildTableCell('REF-ARUA-7823'),
+                                            ],
+                                          ),
+                                        ] else ...[
+                                          for (final task in state.riderTasks)
+                                            TableRow(
+                                              children: [
+                                                _buildTableCell('#${task['id']}'),
+                                                _buildTableCell(task['assignedRider'] ?? 'TRIC-18'),
+                                                _buildTableCell(task['status'] ?? 'Active', statusColor: Colors.green),
+                                                _buildTableCell('${task['weight'] ?? 30} kg'),
+                                                _buildTableCell(task['verificationCode'] ?? 'REF-UG-881'),
+                                              ],
+                                            ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabletLayout() {
+    final state = EcoRouteState.instance;
+    final isDark = AntigravityTheme.isDark(context);
+    final surfaceColor = AntigravityTheme.surface(context);
+    final cardColor = AntigravityTheme.card(context);
+    final textColor = AntigravityTheme.textPrimary(context);
+    final subtextColor = AntigravityTheme.textSecondary(context);
+    final accentGreen = AntigravityTheme.ecoAccent(context);
+
+    return Scaffold(
+      backgroundColor: surfaceColor,
+      appBar: AppBar(
+        backgroundColor: surfaceColor,
+        title: const Text('Admin Command HQ'),
+        centerTitle: false,
+        actions: [
+          IconButton(
+            tooltip: 'Toggle Theme',
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode, color: textColor),
+            onPressed: () => state.toggleTheme(),
+          ),
+        ],
+      ),
+      drawer: Drawer(
+        child: _buildSidebar(),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'OVERVIEW METRICS',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: subtextColor,
+                  letterSpacing: 0.5,
                 ),
-                const Divider(height: 1),
+              ),
+              const SizedBox(height: 12),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final availableWidth = constraints.maxWidth;
+                  final columnCount = availableWidth < 640 ? 1 : 2;
+                  final gap = 16.0;
+                  final itemWidth = (availableWidth - gap * (columnCount - 1)) / columnCount;
 
-                // Content
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  return Wrap(
+                    spacing: gap,
+                    runSpacing: gap,
+                    children: [
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildMetricCard(
+                          title: 'Total Volume',
+                          value: '${state.totalTonnes > 0 ? state.totalTonnes.toStringAsFixed(1) : '4.2'} Tons',
+                          subtitle: 'Municipal waste diverted',
+                          icon: Icons.scale,
+                          color: accentGreen,
+                        ),
+                      ),
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildMetricCard(
+                          title: 'Fleet Online',
+                          value: '${state.activeRidersCount > 0 ? state.activeRidersCount : 14}/18',
+                          subtitle: 'Tricycles in service',
+                          icon: Icons.electric_moped,
+                          color: const Color(0xFF1976D2),
+                        ),
+                      ),
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildMetricCard(
+                          title: 'Unreconciled SMS',
+                          value: '0',
+                          subtitle: 'Telecom stream cleared',
+                          icon: Icons.sms_outlined,
+                          color: const Color(0xFFF57C00),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AntigravityTheme.border(context)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // OVERVIEW METRICS:
-                        // [Total Volume: 4.2 Tons] [Fleet Online: 14/18] [Unreconciled SMS: 0]
+                        Expanded(
+                          child: Text(
+                            'LOGISTICS & MONITORING CENTRAL LEDGER GRID FRAME',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
+                          ),
+                        ),
                         Text(
-                          'OVERVIEW METRICS',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: subtextColor,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            _buildMetricCard(
-                              title: 'Total Volume',
-                              value: '${state.totalTonnes > 0 ? state.totalTonnes.toStringAsFixed(1) : '4.2'} Tons',
-                              subtitle: 'Municipal waste diverted',
-                              icon: Icons.scale,
-                              color: accentGreen,
-                            ),
-                            const SizedBox(width: 16),
-                            _buildMetricCard(
-                              title: 'Fleet Online',
-                              value: '${state.activeRidersCount > 0 ? state.activeRidersCount : 14}/18',
-                              subtitle: 'Tricycles in service',
-                              icon: Icons.electric_moped,
-                              color: const Color(0xFF1976D2),
-                            ),
-                            const SizedBox(width: 16),
-                            _buildMetricCard(
-                              title: 'Unreconciled SMS',
-                              value: '0',
-                              subtitle: 'Telecom stream cleared',
-                              icon: Icons.sms_outlined,
-                              color: const Color(0xFFF57C00),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 28),
-
-                        // LOGISTICS & MONITORING CENTRAL LEDGER GRID FRAME
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: cardColor,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AntigravityTheme.border(context)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'LOGISTICS & MONITORING CENTRAL LEDGER GRID FRAME',
-                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
-                                  ),
-                                  Text(
-                                    'Real-time Firestore Synchronized',
-                                    style: TextStyle(fontSize: 11, color: accentGreen, fontWeight: FontWeight.w600),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Table
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Table(
-                                  border: TableBorder.all(
-                                    color: AntigravityTheme.border(context),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  columnWidths: const {
-                                    0: FlexColumnWidth(1.2),
-                                    1: FlexColumnWidth(1.8),
-                                    2: FlexColumnWidth(1.4),
-                                    3: FlexColumnWidth(1.4),
-                                    4: FlexColumnWidth(1.8),
-                                  },
-                                  children: [
-                                    TableRow(
-                                      decoration: BoxDecoration(
-                                        color: isDark ? const Color(0xFF242424) : const Color(0xFFF1F5F2),
-                                      ),
-                                      children: [
-                                        _buildTableCell('ID', isHeader: true),
-                                        _buildTableCell('ASSIGNED RIDER', isHeader: true),
-                                        _buildTableCell('STATUS', isHeader: true),
-                                        _buildTableCell('RECORDED WEIGHT', isHeader: true),
-                                        _buildTableCell('REF CODE', isHeader: true),
-                                      ],
-                                    ),
-                                    if (state.riderTasks.isEmpty) ...[
-                                      TableRow(
-                                        children: [
-                                          _buildTableCell('#1001'),
-                                          _buildTableCell('TRIC-18 (Field Active)'),
-                                          _buildTableCell('In Progress', statusColor: Colors.orange),
-                                          _buildTableCell('45 kg'),
-                                          _buildTableCell('REF-ARUA-7821'),
-                                        ],
-                                      ),
-                                      TableRow(
-                                        children: [
-                                          _buildTableCell('#1002'),
-                                          _buildTableCell('TRIC-09 (Field Active)'),
-                                          _buildTableCell('Collected', statusColor: Colors.green),
-                                          _buildTableCell('60 kg'),
-                                          _buildTableCell('REF-ARUA-7822'),
-                                        ],
-                                      ),
-                                      TableRow(
-                                        children: [
-                                          _buildTableCell('#1003'),
-                                          _buildTableCell('TRIC-12 (Field Active)'),
-                                          _buildTableCell('Settled', statusColor: Colors.blue),
-                                          _buildTableCell('35 kg'),
-                                          _buildTableCell('REF-ARUA-7823'),
-                                        ],
-                                      ),
-                                    ] else ...[
-                                      for (final task in state.riderTasks)
-                                        TableRow(
-                                          children: [
-                                            _buildTableCell('#${task['id']}'),
-                                            _buildTableCell(task['assignedRider'] ?? 'TRIC-18'),
-                                            _buildTableCell(task['status'] ?? 'Active', statusColor: Colors.green),
-                                            _buildTableCell('${task['weight'] ?? 30} kg'),
-                                            _buildTableCell(task['verificationCode'] ?? 'REF-UG-881'),
-                                          ],
-                                        ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                          'Live',
+                          style: TextStyle(fontSize: 11, color: accentGreen, fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: SizedBox(
+                        width: 760,
+                        child: Table(
+                          border: TableBorder.all(
+                            color: AntigravityTheme.border(context),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          columnWidths: const {
+                            0: FlexColumnWidth(1.2),
+                            1: FlexColumnWidth(1.8),
+                            2: FlexColumnWidth(1.4),
+                            3: FlexColumnWidth(1.4),
+                            4: FlexColumnWidth(1.8),
+                          },
+                          children: [
+                            TableRow(
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF242424) : const Color(0xFFF1F5F2),
+                              ),
+                              children: [
+                                _buildTableCell('ID', isHeader: true),
+                                _buildTableCell('ASSIGNED RIDER', isHeader: true),
+                                _buildTableCell('STATUS', isHeader: true),
+                                _buildTableCell('RECORDED WEIGHT', isHeader: true),
+                                _buildTableCell('REF CODE', isHeader: true),
+                              ],
+                            ),
+                            if (state.riderTasks.isEmpty) ...[
+                              TableRow(
+                                children: [
+                                  _buildTableCell('#1001'),
+                                  _buildTableCell('TRIC-18 (Field Active)'),
+                                  _buildTableCell('In Progress', statusColor: Colors.orange),
+                                  _buildTableCell('45 kg'),
+                                  _buildTableCell('REF-ARUA-7821'),
+                                ],
+                              ),
+                              TableRow(
+                                children: [
+                                  _buildTableCell('#1002'),
+                                  _buildTableCell('TRIC-09 (Field Active)'),
+                                  _buildTableCell('Collected', statusColor: Colors.green),
+                                  _buildTableCell('60 kg'),
+                                  _buildTableCell('REF-ARUA-7822'),
+                                ],
+                              ),
+                              TableRow(
+                                children: [
+                                  _buildTableCell('#1003'),
+                                  _buildTableCell('TRIC-12 (Field Active)'),
+                                  _buildTableCell('Settled', statusColor: Colors.blue),
+                                  _buildTableCell('35 kg'),
+                                  _buildTableCell('REF-ARUA-7823'),
+                                ],
+                              ),
+                            ] else ...[
+                              for (final task in state.riderTasks)
+                                TableRow(
+                                  children: [
+                                    _buildTableCell('#${task['id']}'),
+                                    _buildTableCell(task['assignedRider'] ?? 'TRIC-18'),
+                                    _buildTableCell(task['status'] ?? 'Active', statusColor: Colors.green),
+                                    _buildTableCell('${task['weight'] ?? 30} kg'),
+                                    _buildTableCell(task['verificationCode'] ?? 'REF-UG-881'),
+                                  ],
+                                ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    final state = EcoRouteState.instance;
+    final isDark = AntigravityTheme.isDark(context);
+    final surfaceColor = AntigravityTheme.surface(context);
+    final cardColor = AntigravityTheme.card(context);
+    final textColor = AntigravityTheme.textPrimary(context);
+    final subtextColor = AntigravityTheme.textSecondary(context);
+    final accentGreen = AntigravityTheme.ecoAccent(context);
+
+    return Scaffold(
+      backgroundColor: surfaceColor,
+      appBar: AppBar(
+        backgroundColor: surfaceColor,
+        title: const Text('Command HQ'),
+        actions: [
+          IconButton(
+            tooltip: 'Toggle Theme',
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode, color: textColor),
+            onPressed: () => state.toggleTheme(),
+          ),
+        ],
+      ),
+      drawer: Drawer(
+        child: _buildSidebar(),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => showEcoRouteProfileSheet(context),
+                    icon: const Icon(Icons.tune, size: 16),
+                    label: const Text('Municipal Settings'),
+                    style: FilledButton.styleFrom(backgroundColor: accentGreen),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'OVERVIEW METRICS',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: subtextColor,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 12),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final itemWidth = constraints.maxWidth;
+                  return Wrap(
+                    runSpacing: 16,
+                    children: [
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildMetricCard(
+                          title: 'Total Volume',
+                          value: '${state.totalTonnes > 0 ? state.totalTonnes.toStringAsFixed(1) : '4.2'} Tons',
+                          subtitle: 'Municipal waste diverted',
+                          icon: Icons.scale,
+                          color: accentGreen,
+                        ),
+                      ),
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildMetricCard(
+                          title: 'Fleet Online',
+                          value: '${state.activeRidersCount > 0 ? state.activeRidersCount : 14}/18',
+                          subtitle: 'Tricycles in service',
+                          icon: Icons.electric_moped,
+                          color: const Color(0xFF1976D2),
+                        ),
+                      ),
+                      SizedBox(
+                        width: itemWidth,
+                        child: _buildMetricCard(
+                          title: 'Unreconciled SMS',
+                          value: '0',
+                          subtitle: 'Telecom stream cleared',
+                          icon: Icons.sms_outlined,
+                          color: const Color(0xFFF57C00),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AntigravityTheme.border(context)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'LOGISTICS & MONITORING CENTRAL LEDGER GRID FRAME',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
+                    ),
+                    const SizedBox(height: 16),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: SizedBox(
+                        width: 760,
+                        child: Table(
+                          border: TableBorder.all(
+                            color: AntigravityTheme.border(context),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          columnWidths: const {
+                            0: FlexColumnWidth(1.2),
+                            1: FlexColumnWidth(1.8),
+                            2: FlexColumnWidth(1.4),
+                            3: FlexColumnWidth(1.4),
+                            4: FlexColumnWidth(1.8),
+                          },
+                          children: [
+                            TableRow(
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF242424) : const Color(0xFFF1F5F2),
+                              ),
+                              children: [
+                                _buildTableCell('ID', isHeader: true),
+                                _buildTableCell('ASSIGNED RIDER', isHeader: true),
+                                _buildTableCell('STATUS', isHeader: true),
+                                _buildTableCell('RECORDED WEIGHT', isHeader: true),
+                                _buildTableCell('REF CODE', isHeader: true),
+                              ],
+                            ),
+                            if (state.riderTasks.isEmpty) ...[
+                              TableRow(
+                                children: [
+                                  _buildTableCell('#1001'),
+                                  _buildTableCell('TRIC-18 (Field Active)'),
+                                  _buildTableCell('In Progress', statusColor: Colors.orange),
+                                  _buildTableCell('45 kg'),
+                                  _buildTableCell('REF-ARUA-7821'),
+                                ],
+                              ),
+                              TableRow(
+                                children: [
+                                  _buildTableCell('#1002'),
+                                  _buildTableCell('TRIC-09 (Field Active)'),
+                                  _buildTableCell('Collected', statusColor: Colors.green),
+                                  _buildTableCell('60 kg'),
+                                  _buildTableCell('REF-ARUA-7822'),
+                                ],
+                              ),
+                              TableRow(
+                                children: [
+                                  _buildTableCell('#1003'),
+                                  _buildTableCell('TRIC-12 (Field Active)'),
+                                  _buildTableCell('Settled', statusColor: Colors.blue),
+                                  _buildTableCell('35 kg'),
+                                  _buildTableCell('REF-ARUA-7823'),
+                                ],
+                              ),
+                            ] else ...[
+                              for (final task in state.riderTasks)
+                                TableRow(
+                                  children: [
+                                    _buildTableCell('#${task['id']}'),
+                                    _buildTableCell(task['assignedRider'] ?? 'TRIC-18'),
+                                    _buildTableCell(task['status'] ?? 'Active', statusColor: Colors.green),
+                                    _buildTableCell('${task['weight'] ?? 30} kg'),
+                                    _buildTableCell(task['verificationCode'] ?? 'REF-UG-881'),
+                                  ],
+                                ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidebar({double width = 280}) {
+    final state = EcoRouteState.instance;
+    final isDark = AntigravityTheme.isDark(context);
+    final accentGreen = AntigravityTheme.ecoAccent(context);
+
+    return Container(
+      width: width,
+      color: isDark ? const Color(0xFF161616) : const Color(0xFF0D2618),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.eco, color: Color(0xFF4CAF50), size: 24),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Antigravity',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Command HQ • Arua',
+                      style: TextStyle(color: Colors.white60, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          _buildAdminNavItem(0, 'Fleet Summary', Icons.directions_bike),
+          _buildAdminNavItem(1, 'System Ledgers', Icons.receipt_long),
+          _buildAdminNavItem(2, 'Zone Management', Icons.map_outlined),
+          _buildAdminNavItem(3, 'Access Control', Icons.security),
+          _buildAdminNavItem(4, 'Global Config', Icons.settings_outlined),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: accentGreen,
+                  radius: 16,
+                  child: Text(
+                    state.userName.isNotEmpty ? state.userName[0].toUpperCase() : 'A',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        state.userName.isNotEmpty ? state.userName : 'Administrator',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        state.roleDisplayName,
+                        style: const TextStyle(color: Color(0xFF81C784), fontSize: 10),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -333,39 +822,54 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
     final textColor = AntigravityTheme.textPrimary(context);
     final subtextColor = AntigravityTheme.textSecondary(context);
 
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AntigravityTheme.border(context)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 28),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AntigravityTheme.border(context)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: TextStyle(fontSize: 12, color: subtextColor, fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 4),
-                  Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textColor)),
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: TextStyle(fontSize: 11, color: subtextColor)),
-                ],
-              ),
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: subtextColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(fontSize: 11, color: subtextColor),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
