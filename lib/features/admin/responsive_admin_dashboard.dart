@@ -493,56 +493,194 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Cash Reconciliation & MoMo Settlement Desk', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor)),
-                    FilledButton.icon(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Depot Cash Reconciliation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            content: SizedBox(
-                              width: 400,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Total in Fleet Pouches: UGX ' + state.totalCashInPouches.toString(),
-                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
+                    Expanded(
+                      child: Text('Cash Reconciliation & MoMo Settlement Desk', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor)),
+                    ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        FilledButton.icon(
+                          onPressed: () => state.exportCollectionAuditCsv(context),
+                          icon: const Icon(Icons.download, size: 16),
+                          label: const Text('Export Audit CSV'),
+                          style: FilledButton.styleFrom(backgroundColor: const Color(0xFF1B5E20)),
+                        ),
+                        FilledButton.icon(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Depot Cash Reconciliation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                content: SizedBox(
+                                  width: 400,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Total in Fleet Pouches: UGX ' + state.totalCashInPouches.toString(),
+                                        style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
+                                      ),
+                                      const SizedBox(height: 14),
+                                      ListTile(
+                                        contentPadding: EdgeInsets.zero,
+                                        title: const Text('Tricycle Unit TRIC-04 (Ediofe Depot)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                        subtitle: Text('Cash in Pouch: UGX ' + state.riderCashInPouch.toString(), style: const TextStyle(fontSize: 12)),
+                                        trailing: FilledButton(
+                                          onPressed: state.riderCashInPouch > 0
+                                              ? () {
+                                                  Navigator.pop(ctx);
+                                                  state.reconcileRiderCashPouch(tricycleId: 'TRIC-04', context: context);
+                                                }
+                                              : null,
+                                          style: FilledButton.styleFrom(backgroundColor: accentGreen),
+                                          child: const Text('Check In'),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 14),
-                                  ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: const Text('Tricycle Unit TRIC-04 (Ediofe Depot)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                                    subtitle: Text('Cash in Pouch: UGX ' + state.riderCashInPouch.toString(), style: const TextStyle(fontSize: 12)),
-                                    trailing: FilledButton(
-                                      onPressed: state.riderCashInPouch > 0
-                                          ? () {
-                                              Navigator.pop(ctx);
-                                              state.reconcileRiderCashPouch(tricycleId: 'TRIC-04', context: context);
-                                            }
-                                          : null,
-                                      style: FilledButton.styleFrom(backgroundColor: accentGreen),
-                                      child: const Text('Check In'),
-                                    ),
-                                  ),
+                                ),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
                                 ],
                               ),
-                            ),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
-                            ],
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.check, size: 16),
-                      label: const Text('Reconcile Pouches'),
-                      style: FilledButton.styleFrom(backgroundColor: accentGreen),
+                            );
+                          },
+                          icon: const Icon(Icons.check, size: 16),
+                          label: const Text('Reconcile Pouches'),
+                          style: FilledButton.styleFrom(backgroundColor: accentGreen),
+                        ),
+                      ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text('Active Settlement Desk Status: 100% in compliance with Arua Municipal revenue authority standards.', style: TextStyle(fontSize: 12, color: subtextColor)),
+                Text('Active Settlement Desk Status: 100% in compliance with Arua commercial waste logistics standards.', style: TextStyle(fontSize: 12, color: subtextColor)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Pending Driver MoMo Payouts Desk
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AntigravityTheme.border(context)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.request_quote, color: accentGreen, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Driver MoMo Payout Authorizations (' + state.pendingPayoutRequests.where((p) => p['status'] == 'Pending Approval').length.toString() + ')',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
+                        ),
+                      ],
+                    ),
+                    if (state.pendingPayoutRequests.where((p) => p['status'] == 'Pending Approval').isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF57C00).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text('Action Required', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFF57C00))),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (state.pendingPayoutRequests.where((p) => p['status'] == 'Pending Approval').isEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: accentGreen.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle_outline, color: accentGreen, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'All commercial driver earnings are reconciled and paid out. Zero pending authorization requests.',
+                            style: TextStyle(fontSize: 12, color: textColor, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  ...state.pendingPayoutRequests.where((p) => p['status'] == 'Pending Approval').map((payout) {
+                    final pid = payout['id']?.toString() ?? 'PO-REQ';
+                    final rider = payout['riderName']?.toString() ?? 'Fleet Driver';
+                    final tri = payout['tricycleId']?.toString() ?? 'TRIC-04';
+                    final phone = payout['phone']?.toString() ?? '+256 700 000 000';
+                    final amount = payout['amount']?.toString() ?? '0';
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF242424) : const Color(0xFFF9FBF9),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AntigravityTheme.border(context)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                rider + ' • ' + tri,
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'MoMo: ' + phone + ' • ' + pid,
+                                style: TextStyle(fontSize: 11, color: subtextColor),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'UGX ' + amount,
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: accentGreen),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              OutlinedButton(
+                                onPressed: () => state.rejectPayoutRequest(pid, 'Rejected by manager', context),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.redAccent,
+                                  side: const BorderSide(color: Colors.redAccent),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                ),
+                                child: const Text('Reject', style: TextStyle(fontSize: 11)),
+                              ),
+                              const SizedBox(width: 8),
+                              FilledButton(
+                                onPressed: () => state.approvePayoutRequest(pid, '', context),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: accentGreen,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                                child: const Text('Authorize MoMo', style: TextStyle(fontSize: 11)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
               ],
             ),
           ),

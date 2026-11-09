@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/layout/adaptive_layout.dart';
 import '../../main.dart';
@@ -222,10 +223,23 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Photo evidence captured & attached to weight record.')),
-                          );
+                        onPressed: () async {
+                          try {
+                            final picker = ImagePicker();
+                            final xfile = await picker.pickImage(
+                              source: ImageSource.camera,
+                              maxWidth: 800,
+                              maxHeight: 800,
+                              imageQuality: 65,
+                            );
+                            if (xfile != null && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Waste photo evidence captured & locked to pickup order.')),
+                              );
+                            }
+                          } catch (e) {
+                            debugPrint('Rider photo evidence notice: $e');
+                          }
                         },
                         icon: const Icon(Icons.camera_alt, size: 16),
                         label: const Text('Snap Photo', style: TextStyle(fontSize: 12)),

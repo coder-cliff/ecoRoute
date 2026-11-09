@@ -4,6 +4,9 @@ import '../../core/services/location_service.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/layout/adaptive_layout.dart';
+import '../../domain/entities/pickup_request.dart';
+import '../../domain/enums/waste_type.dart';
+import '../payment/digital_receipt_dialog.dart';
 import '../../main.dart';
 
 /// Responsive Resident / User Dashboard
@@ -706,14 +709,20 @@ class _ResponsiveResidentDashboardState
                           'UGX ${req['fee'] ?? 5000}',
                           style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: accentGreen),
                         ),
-                        TextButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Receipt #${req['id'] ?? 'ORD'} verified on municipal ledger.')),
-                            );
-                          },
-                          icon: const Icon(Icons.receipt, size: 14),
-                          label: const Text('Digital Receipt', style: TextStyle(fontSize: 12)),
+                        Row(
+                          children: [
+                            TextButton.icon(
+                              onPressed: () => _showDigitalReceipt(context, req),
+                              icon: const Icon(Icons.receipt, size: 14),
+                              label: const Text('Digital Receipt', style: TextStyle(fontSize: 12)),
+                            ),
+                            const SizedBox(width: 4),
+                            TextButton.icon(
+                              onPressed: () => _showRatingDialog(context, req),
+                              icon: const Icon(Icons.star_outline, size: 14, color: Colors.amber),
+                              label: const Text('Rate', style: TextStyle(fontSize: 12, color: Colors.amber)),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -1480,6 +1489,7 @@ class _ResponsiveResidentDashboardState
                           Expanded(flex: 2, child: Text('DATE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: subtextColor))),
                           Expanded(flex: 2, child: Text('STATUS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: subtextColor))),
                           Expanded(flex: 2, child: Text('FEE (UGX)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: subtextColor))),
+                          Expanded(flex: 2, child: Text('RECEIPT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: subtextColor))),
                         ],
                       ),
                       const Divider(height: 24),
@@ -1504,6 +1514,14 @@ class _ResponsiveResidentDashboardState
                                 ),
                               ),
                               Expanded(flex: 2, child: Text('${req['fee'] ?? 5000}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor))),
+                              Expanded(
+                                flex: 2,
+                                child: TextButton.icon(
+                                  onPressed: () => _showDigitalReceipt(context, req),
+                                  icon: const Icon(Icons.receipt, size: 14),
+                                  label: const Text('Receipt', style: TextStyle(fontSize: 11)),
+                                ),
+                              ),
                             ],
                           ),
                         );
@@ -2084,6 +2102,103 @@ class _ResponsiveResidentDashboardState
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _showDigitalReceipt(BuildContext context, Map<String, dynamic> req) {
+    final state = EcoRouteState.instance;
+    final pickupReq = PickupRequest(
+      id: req['id']?.toString() ?? 'ECO-REC',
+      wasteType: WasteType.household,
+      description: req['wasteType']?.toString() ?? 'Commercial Waste',
+      submittedAt: DateTime.now(),
+      sackCount: (req['sacks'] as num?)?.toInt() ?? 1,
+      priceUgx: (req['fee'] as num?)?.toInt() ?? 5000,
+      address: req['address']?.toString() ?? 'Arua Central, West Nile',
+      residentName: req['client']?.toString() ?? (state.userName.isNotEmpty ? state.userName : 'Client'),
+      residentPhone: req['phone']?.toString() ?? (state.userPhone.isNotEmpty ? state.userPhone : '+256 700 000 000'),
+      paymentMethod: req['paymentMethod']?.toString() ?? 'MoMo',
+      isCommercial: req['isCommercial'] == true,
+      businessName: req['businessName']?.toString(),
+    );
+    showDialog(
+      context: context,
+      builder: (_) => DigitalReceiptDialog(request: pickupReq),
+    );
+  }
+
+  void _showRatingDialog(BuildContext context, Map<String, dynamic> req) {
+    int selectedStars = 5;
+    final availableTags = ['Punctual Arrival', 'Polite Fleet Driver', 'Accurate Weight', 'Tidy Handover'];
+    final selectedTags = <String>{'Punctual Arrival', 'Polite Fleet Driver'};
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDState) => AlertDialog(
+          title: Row(
+            children: const [
+              Icon(Icons.star, color: Colors.amber),
+              SizedBox(width: 8),
+              Text('Rate Collection Service', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('How was your pickup for Order ' + (req['id']?.toString() ?? 'REF') + '?', style: const TextStyle(fontSize: 13)),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  final starIndex = index + 1;
+                  return IconButton(
+                    icon: Icon(
+                      starIndex <= selectedStars ? Icons.star : Icons.star_border,
+                      color: Colors.amber,
+                      size: 32,
+                    ),
+                    onPressed: () => setDState(() => selectedStars = starIndex),
+                  );
+                }),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: availableTags.map((tag) {
+                  final isSel = selectedTags.contains(tag);
+                  return FilterChip(
+                    label: Text(tag, style: TextStyle(fontSize: 11, color: isSel ? Colors.white : null)),
+                    selected: isSel,
+                    selectedColor: const Color(0xFF2E7D32),
+                    onSelected: (val) {
+                      setDState(() {
+                        if (val) {
+                          selectedTags.add(tag);
+                        } else {
+                          selectedTags.remove(tag);
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                EcoRouteState.instance.submitRiderRating(selectedStars, selectedTags.toList(), context);
+              },
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
+              child: const Text('Submit Rating'),
+            ),
+          ],
+        ),
       ),
     );
   }
