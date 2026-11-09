@@ -38,6 +38,10 @@ tasks.matching { it.name.contains("Strip") && it.name.contains("DebugSymbols") }
     enabled = false
 }
 
+tasks.matching { it.name.contains("AarMetadata") }.configureEach {
+    enabled = false
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
