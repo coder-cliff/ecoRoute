@@ -258,16 +258,21 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    if (_currentTab == 2) {
-      return const SupportScreen();
-    }
-
     final activeOrder = _orders.isNotEmpty
         ? _orders.firstWhere(
             (o) => o.status != RequestStatus.cancelled,
             orElse: () => _orders.first,
           )
         : null;
+
+    Widget bodyContent;
+    if (_currentTab == 1) {
+      bodyContent = _buildRequestsView();
+    } else if (_currentTab == 2) {
+      bodyContent = const SupportScreen(embedded: true);
+    } else {
+      bodyContent = _buildHomeView(activeOrder);
+    }
 
     return Scaffold(
       backgroundColor: EcoPalette.surface,
@@ -298,7 +303,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
           const SizedBox(width: 4),
         ],
       ),
-      body: _currentTab == 1 ? _buildRequestsView() : _buildHomeView(activeOrder),
+      body: bodyContent,
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: EcoPalette.surface,

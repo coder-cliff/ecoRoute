@@ -28,6 +28,26 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
   String? _errorMessage;
 
   @override
+  void initState() {
+    super.initState();
+    _passwordController.clear();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _passwordController.clear();
+      }
+    });
+  }
+
+  void _toggleAuthMode() {
+    setState(() {
+      _isSignUp = !_isSignUp;
+      _passwordController.clear();
+      _obscurePassword = true;
+      _errorMessage = null;
+    });
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -499,9 +519,12 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
 
         // Password field
         TextField(
-          key: const ValueKey('login_password_input'),
+          key: ValueKey(_isSignUp ? 'signup_password_input' : 'login_password_input'),
           controller: _passwordController,
           obscureText: _obscurePassword,
+          enableSuggestions: false,
+          autocorrect: false,
+          autofillHints: null,
           style: TextStyle(color: textColor),
           decoration: InputDecoration(
             labelText: 'Password',
@@ -589,10 +612,7 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
         const SizedBox(height: 16),
 
         TextButton(
-          onPressed: () => setState(() {
-            _isSignUp = !_isSignUp;
-            _errorMessage = null;
-          }),
+          onPressed: _toggleAuthMode,
           child: Text(
             _isSignUp ? 'Already have an account? Sign In' : 'Create Account',
             style: TextStyle(color: accentGreen, fontWeight: FontWeight.bold, fontSize: 13),

@@ -115,14 +115,63 @@ class _ResponsiveResidentDashboardState
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // User Greeting
-            Text(
-              state.userName.isNotEmpty
+      body: _buildMobileBody(state, textColor, subtextColor, cardColor, accentGreen, isDark, estimatedTotal),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentBottomNavIndex,
+        onTap: (index) => setState(() => _currentBottomNavIndex = index),
+        backgroundColor: cardColor,
+        selectedItemColor: accentGreen,
+        unselectedItemColor: subtextColor,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
+          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Requests'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileBody(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+    bool isDark,
+    int estimatedTotal,
+  ) {
+    switch (_currentBottomNavIndex) {
+      case 1:
+        return _buildMobileHistoryView(state, textColor, subtextColor, cardColor, accentGreen);
+      case 2:
+        return _buildMobileRequestsView(state, textColor, subtextColor, cardColor, accentGreen);
+      case 3:
+        return _buildMobileProfileView(state, textColor, subtextColor, cardColor, accentGreen, isDark);
+      case 0:
+      default:
+        return _buildMobileHomeView(state, textColor, subtextColor, cardColor, accentGreen, isDark, estimatedTotal);
+    }
+  }
+
+  Widget _buildMobileHomeView(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+    bool isDark,
+    int estimatedTotal,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // User Greeting
+          Text(
+            state.userName.isNotEmpty
                   ? 'Hello, ${state.userName}!'
                   : 'Hello, Muni Residence!',
               style: TextStyle(
@@ -488,19 +537,537 @@ class _ResponsiveResidentDashboardState
             const SizedBox(height: 24),
           ],
         ),
+      );
+  }
+
+  Widget _buildMobileHistoryView(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+  ) {
+    final requests = state.residentRequests;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Pickup History & Receipts',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Archived collection logs and verified municipal weight slips',
+            style: TextStyle(fontSize: 12, color: subtextColor),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AntigravityTheme.border(context)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Total Requests', style: TextStyle(fontSize: 11, color: subtextColor)),
+                      const SizedBox(height: 4),
+                      Text('${requests.length}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AntigravityTheme.border(context)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('EcoCredits', style: TextStyle(fontSize: 11, color: subtextColor)),
+                      const SizedBox(height: 4),
+                      Text('${state.ecoCredits} pts', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: accentGreen)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (requests.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AntigravityTheme.border(context)),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.history_toggle_off, size: 52, color: subtextColor.withOpacity(0.5)),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No Past Pickups Yet',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Once a tricycle completes your waste pickup, digital receipts and weight logs appear here.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: subtextColor),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () => _handleInstantBooking(context),
+                    icon: const Icon(Icons.flash_on, size: 16),
+                    label: const Text('Schedule First Pickup'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accentGreen,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...requests.map((req) {
+              final status = req['status'] ?? 'Completed';
+              final isCompleted = status == 'Completed' || status == 'Collected';
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AntigravityTheme.border(context)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          req['id'] ?? 'ORD-REF',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isCompleted
+                                ? accentGreen.withOpacity(0.15)
+                                : const Color(0xFFF57C00).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            status,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isCompleted ? accentGreen : const Color(0xFFF57C00),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${req['sacks'] ?? 1} Sacks • ${req['wasteType'] ?? 'Household Waste'}',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textColor),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${req['address'] ?? 'Arua Municipality'} • ${req['date'] ?? 'Recent'}',
+                      style: TextStyle(fontSize: 12, color: subtextColor),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'UGX ${req['fee'] ?? 5000}',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: accentGreen),
+                        ),
+                        TextButton.icon(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Receipt #${req['id'] ?? 'ORD'} verified on municipal ledger.')),
+                            );
+                          },
+                          icon: const Icon(Icons.receipt, size: 14),
+                          label: const Text('Digital Receipt', style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentBottomNavIndex,
-        onTap: (index) => setState(() => _currentBottomNavIndex = index),
-        backgroundColor: cardColor,
-        selectedItemColor: accentGreen,
-        unselectedItemColor: subtextColor,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Requests'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+    );
+  }
+
+  Widget _buildMobileRequestsView(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+  ) {
+    final active = state.activePickup;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Collection Requests',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: textColor,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Book New Pickup',
+                icon: Icon(Icons.add_circle, color: accentGreen, size: 28),
+                onPressed: () => _handleInstantBooking(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Track your live collection dispatch and pending orders',
+            style: TextStyle(fontSize: 12, color: subtextColor),
+          ),
+          const SizedBox(height: 16),
+          if (active != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: accentGreen, width: 1.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: accentGreen.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(Icons.electric_moped, color: accentGreen, size: 18),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'ACTIVE PICKUP DISPATCH',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: accentGreen),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: accentGreen.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          active['status'] ?? 'Rider Dispatched',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: accentGreen),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Order ${active['id'] ?? 'TRIC-REQ'}',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${active['sacks'] ?? 3} Sacks • ${active['wasteType'] ?? 'Household Waste'}',
+                    style: TextStyle(fontSize: 13, color: textColor),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Address: ${active['address'] ?? 'Ayivu Division, Arua'}',
+                    style: TextStyle(fontSize: 12, color: subtextColor),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'ETA: ${active['eta'] ?? '12 mins'} • Fare: UGX ${active['fee'] ?? 7500}',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            state.cancelActivePickup();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Pickup request cancelled.')),
+                            );
+                          },
+                          icon: const Icon(Icons.close, size: 16, color: Colors.redAccent),
+                          label: const Text('Cancel', style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () => launchEcoRouteCall(),
+                          icon: const Icon(Icons.call, size: 16),
+                          label: const Text('Call Dispatch', style: TextStyle(fontSize: 12)),
+                          style: FilledButton.styleFrom(backgroundColor: accentGreen),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AntigravityTheme.border(context)),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.check_circle_outline, size: 44, color: accentGreen),
+                  const SizedBox(height: 10),
+                  Text(
+                    'No Active Collection in Progress',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textColor),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'All scheduled pickups are cleared. Tap below whenever your waste sacks are ready.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: subtextColor),
+                  ),
+                  const SizedBox(height: 14),
+                  FilledButton.icon(
+                    onPressed: () => _handleInstantBooking(context),
+                    icon: const Icon(Icons.local_shipping, size: 16),
+                    label: const Text('Book Collection Pickup'),
+                    style: FilledButton.styleFrom(backgroundColor: accentGreen),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AntigravityTheme.border(context)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.lightbulb_outline, color: Color(0xFFF57C00), size: 24),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Collection Tip', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Separate organic kitchen waste from dry plastics for faster weighing & bonus EcoCredits.',
+                        style: TextStyle(fontSize: 11, color: subtextColor),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileProfileView(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+    bool isDark,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AntigravityTheme.border(context)),
+            ),
+            child: Column(
+              children: [
+                CircleAvatar(
+                  backgroundColor: accentGreen,
+                  radius: 34,
+                  child: Text(
+                    state.userName.isNotEmpty ? state.userName[0].toUpperCase() : 'R',
+                    style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  state.userName.isNotEmpty ? state.userName : 'Resident Member',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  state.userEmail.isNotEmpty ? state.userEmail : 'resident@ecoroute.ug',
+                  style: TextStyle(fontSize: 12, color: subtextColor),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: accentGreen.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Active Resident • ${state.userCell.isNotEmpty ? state.userCell : 'Ayivu Ward'}',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: accentGreen),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AntigravityTheme.border(context)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: accentGreen.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.eco, color: accentGreen, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('EcoCredits Balance', style: TextStyle(fontSize: 11, color: subtextColor)),
+                        const SizedBox(height: 2),
+                        Text('${state.ecoCredits} Points', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: accentGreen)),
+                      ],
+                    ),
+                  ],
+                ),
+                OutlinedButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('EcoCredits can be redeemed for biodegradable trash sacks at municipal depots.')),
+                    );
+                  },
+                  child: const Text('Redeem', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AntigravityTheme.border(context)),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: Icon(Icons.tune, color: textColor),
+                  title: Text('Edit Profile & Password', style: TextStyle(fontSize: 14, color: textColor)),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () => showEcoRouteProfileSheet(context),
+                ),
+                Divider(height: 1, color: AntigravityTheme.border(context)),
+                SwitchListTile(
+                  secondary: Icon(isDark ? Icons.dark_mode : Icons.light_mode, color: textColor),
+                  title: Text('Dark Theme', style: TextStyle(fontSize: 14, color: textColor)),
+                  value: state.isDarkMode,
+                  onChanged: (_) => state.toggleTheme(),
+                ),
+                Divider(height: 1, color: AntigravityTheme.border(context)),
+                ListTile(
+                  leading: const Icon(Icons.phone_in_talk, color: Color(0xFF2E7D32)),
+                  title: Text('Municipal Operations Hotline', style: TextStyle(fontSize: 14, color: textColor)),
+                  subtitle: const Text(kEcoRouteSupportPhone, style: TextStyle(fontSize: 12)),
+                  trailing: const Icon(Icons.call, size: 18, color: Color(0xFF2E7D32)),
+                  onTap: () => launchEcoRouteCall(),
+                ),
+                Divider(height: 1, color: AntigravityTheme.border(context)),
+                ListTile(
+                  leading: const Icon(Icons.chat, color: Color(0xFF25D366)),
+                  title: Text('WhatsApp Operations', style: TextStyle(fontSize: 14, color: textColor)),
+                  subtitle: const Text('Chat with Arua Dispatch', style: TextStyle(fontSize: 12)),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                  onTap: () => launchEcoRouteWhatsApp(),
+                ),
+                Divider(height: 1, color: AntigravityTheme.border(context)),
+                ListTile(
+                  leading: const Icon(Icons.logout, color: Colors.redAccent),
+                  title: const Text('Log Out', style: TextStyle(fontSize: 14, color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                  onTap: () {
+                    Navigator.pushNamedAndRemoveUntil(context, '/login', (r) => false);
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -643,12 +1210,53 @@ class _ResponsiveResidentDashboardState
 
                 // Workspace Fluid Grid
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Row: Interactive Map + Account Disposal History
+                  child: _buildDesktopBody(state, textColor, subtextColor, cardColor, accentGreen, isDark),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopBody(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+    bool isDark,
+  ) {
+    switch (_selectedSidebarNav) {
+      case 1:
+        return _buildDesktopHistoryView(state, textColor, subtextColor, cardColor, accentGreen);
+      case 2:
+        return _buildDesktopAnalyticsView(state, textColor, subtextColor, cardColor, accentGreen);
+      case 3:
+        return _buildDesktopWalletView(state, textColor, subtextColor, cardColor, accentGreen);
+      case 4:
+        return _buildDesktopSupportView(state, textColor, subtextColor, cardColor, accentGreen);
+      case 0:
+      default:
+        return _buildDesktopDashboardHub(state, textColor, subtextColor, cardColor, accentGreen, isDark);
+    }
+  }
+
+  Widget _buildDesktopDashboardHub(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+    bool isDark,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Row: Interactive Map + Account Disposal History
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -788,10 +1396,346 @@ class _ResponsiveResidentDashboardState
                         ),
                       ],
                     ),
+                );
+  }
+
+  Widget _buildDesktopHistoryView(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+  ) {
+    final requests = state.residentRequests;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'HISTORICAL COLLECTION LEDGER',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
                   ),
+                  const SizedBox(height: 4),
+                  Text('Complete archive of household waste collections and verified municipal receipts',
+                      style: TextStyle(fontSize: 12, color: subtextColor)),
+                ],
+              ),
+              FilledButton.icon(
+                onPressed: () => _handleInstantBooking(context),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Schedule Collection'),
+                style: FilledButton.styleFrom(backgroundColor: accentGreen),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AntigravityTheme.border(context)),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: requests.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Column(
+                        children: [
+                          Icon(Icons.history, size: 48, color: subtextColor.withOpacity(0.5)),
+                          const SizedBox(height: 12),
+                          Text('No collection history recorded yet',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textColor)),
+                          const SizedBox(height: 6),
+                          Text('Completed waste pickups will generate digital receipts here.',
+                              style: TextStyle(fontSize: 12, color: subtextColor)),
+                        ],
+                      ),
+                    ),
+                  )
+                : Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(flex: 2, child: Text('ORDER ID', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: subtextColor))),
+                          Expanded(flex: 3, child: Text('WASTE TYPE & SACKS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: subtextColor))),
+                          Expanded(flex: 3, child: Text('ADDRESS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: subtextColor))),
+                          Expanded(flex: 2, child: Text('DATE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: subtextColor))),
+                          Expanded(flex: 2, child: Text('STATUS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: subtextColor))),
+                          Expanded(flex: 2, child: Text('FEE (UGX)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: subtextColor))),
+                        ],
+                      ),
+                      const Divider(height: 24),
+                      ...requests.map((req) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Row(
+                            children: [
+                              Expanded(flex: 2, child: Text(req['id'] ?? 'REF', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor))),
+                              Expanded(flex: 3, child: Text('${req['sacks'] ?? 1} Sacks (${req['wasteType'] ?? 'General'})', style: TextStyle(fontSize: 12, color: textColor))),
+                              Expanded(flex: 3, child: Text(req['address'] ?? 'Ayivu Zone', style: TextStyle(fontSize: 12, color: subtextColor))),
+                              Expanded(flex: 2, child: Text(req['date'] ?? 'Recent', style: TextStyle(fontSize: 12, color: subtextColor))),
+                              Expanded(
+                                flex: 2,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: accentGreen.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(req['status'] ?? 'Completed', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: accentGreen)),
+                                ),
+                              ),
+                              Expanded(flex: 2, child: Text('${req['fee'] ?? 5000}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor))),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopAnalyticsView(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('RESIDENTIAL DIVERSION & ENVIRONMENTAL IMPACT',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor)),
+          const SizedBox(height: 4),
+          Text('Key sustainability performance indicators tracked across Arua municipality',
+              style: TextStyle(fontSize: 12, color: subtextColor)),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AntigravityTheme.border(context)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Estimated Plastic Diverted', style: TextStyle(fontSize: 12, color: subtextColor)),
+                      const SizedBox(height: 8),
+                      Text('184.5 kg', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: accentGreen)),
+                      const SizedBox(height: 4),
+                      Text('+18% from last month', style: TextStyle(fontSize: 11, color: accentGreen)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AntigravityTheme.border(context)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Organic Compost Yield', style: TextStyle(fontSize: 12, color: subtextColor)),
+                      const SizedBox(height: 8),
+                      Text('320.0 kg', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: const Color(0xFFF57C00))),
+                      const SizedBox(height: 4),
+                      Text('Transferred to local farms', style: TextStyle(fontSize: 11, color: subtextColor)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AntigravityTheme.border(context)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Earned EcoCredits', style: TextStyle(fontSize: 12, color: subtextColor)),
+                      const SizedBox(height: 8),
+                      Text('${state.ecoCredits} pts', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: const Color(0xFF1976D2))),
+                      const SizedBox(height: 4),
+                      Text('Available for subsidy redemption', style: TextStyle(fontSize: 11, color: subtextColor)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopWalletView(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('WALLET MATRIX & MUNICIPAL CREDITS',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor)),
+          const SizedBox(height: 4),
+          Text('Manage stored EcoCredits, payment methods, and automated collection fees',
+              style: TextStyle(fontSize: 12, color: subtextColor)),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AntigravityTheme.border(context)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('EcoCredits Balance', style: TextStyle(fontSize: 13, color: subtextColor)),
+                    const SizedBox(height: 6),
+                    Text('${state.ecoCredits} Points', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: accentGreen)),
+                    const SizedBox(height: 6),
+                    Text('Equivalent to ${(state.ecoCredits * 100)} UGX in waste collection fee vouchers', style: TextStyle(fontSize: 12, color: textColor)),
+                  ],
+                ),
+                FilledButton.icon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Voucher redemption active for your next collection order.')),
+                    );
+                  },
+                  icon: const Icon(Icons.redeem, size: 16),
+                  label: const Text('Redeem Vouchers'),
+                  style: FilledButton.styleFrom(backgroundColor: accentGreen),
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopSupportView(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('MUNICIPAL OPERATIONS & RESIDENT HELP DESK',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor)),
+          const SizedBox(height: 4),
+          Text('Direct hotline, WhatsApp dispatch link, and operational guidance for Arua City',
+              style: TextStyle(fontSize: 12, color: subtextColor)),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AntigravityTheme.border(context)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.phone_in_talk, color: accentGreen, size: 24),
+                          const SizedBox(width: 8),
+                          Text('Direct Dispatch Line', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(kEcoRouteSupportPhone, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: accentGreen)),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: () => launchEcoRouteCall(),
+                        icon: const Icon(Icons.call, size: 16),
+                        label: const Text('Call Operations'),
+                        style: FilledButton.styleFrom(backgroundColor: accentGreen),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AntigravityTheme.border(context)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.chat, color: Color(0xFF25D366), size: 24),
+                          const SizedBox(width: 8),
+                          Text('WhatsApp Field Dispatch', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text('Instant chat with Arua Central Dispatch', style: TextStyle(fontSize: 13, color: subtextColor)),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: () => launchEcoRouteWhatsApp(),
+                        icon: const Icon(Icons.send, size: 16),
+                        label: const Text('Open WhatsApp'),
+                        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF25D366)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -18,6 +18,7 @@ class ResponsiveRiderDashboard extends StatefulWidget {
 class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
   int _selectedTaskIndex = 0;
   double _recordedWeightKg = 45.0;
+  int _currentBottomNavIndex = 0;
   final TextEditingController _smsCodeController =
       TextEditingController(text: 'Q1A2B3C4D5');
 
@@ -109,194 +110,441 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Active Route Focus
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AntigravityTheme.border(context)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.near_me, color: Color(0xFF2E7D32), size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Active Route Focus: Ayivu Zone',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // ROUTE NAVIGATION MAP WINDOW
-            Container(
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AntigravityTheme.border(context)),
-              ),
-              child: Column(
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                    child: Container(
-                      height: 140,
-                      color: const Color(0xFFDCEAD7),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          CustomPaint(
-                            size: const Size(double.infinity, 140),
-                            painter: _RiderPathPainter(),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0D2618),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Text(
-                              '🗺️ ROUTE NAVIGATION MAP WINDOW',
-                              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Next Destination Point: 1.4 km Remaining',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text('Speed: 18 km/h', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // CURRENT RECIPIENT TASK CARD
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AntigravityTheme.border(context)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '👤 CURRENT RECIPIENT TASK CARD',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: accentGreen.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text('Assigned', style: TextStyle(color: accentGreen, fontSize: 10, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Name: ${currentTask != null ? currentTask['client'] : 'John Doe'}',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Address: ${currentTask != null ? currentTask['address'] : 'Muni Road, Plot 42'}',
-                    style: TextStyle(fontSize: 12, color: subtextColor),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Load Metrics: ${currentTask != null ? currentTask['sacks'] : 3} Sacks Indicated',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // AUTOMATED SMS INCOME PARSER PANEL
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AntigravityTheme.border(context)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    '📥 AUTOMATED SMS INCOME PARSER PANEL',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF282828) : const Color(0xFFF1F5F2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Last Incoming Code Detected:', style: TextStyle(fontSize: 11, color: subtextColor)),
-                        Text(
-                          _smsCodeController.text,
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: accentGreen, letterSpacing: 1.2),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  FilledButton.icon(
-                    onPressed: () => _handleCompleteJob(context),
-                    icon: const Icon(Icons.check_circle_outline, size: 18),
-                    label: const Text('ONE-TAP VERIFY & COMPLETE JOB', style: TextStyle(fontWeight: FontWeight.bold)),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: accentGreen,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+      body: _buildSmartphoneBody(state, textColor, subtextColor, cardColor, accentGreen, isDark, currentTask),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentBottomNavIndex,
+        onTap: (index) => setState(() => _currentBottomNavIndex = index),
+        backgroundColor: cardColor,
+        selectedItemColor: accentGreen,
+        unselectedItemColor: subtextColor,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), activeIcon: Icon(Icons.assignment), label: 'Tasks'),
+          BottomNavigationBarItem(icon: Icon(Icons.navigation_outlined), activeIcon: Icon(Icons.navigation), label: 'Route'),
+          BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet_outlined), activeIcon: Icon(Icons.account_balance_wallet), label: 'Earnings'),
+        ],
       ),
     );
   }
 
+  Widget _buildSmartphoneBody(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+    bool isDark,
+    Map<String, dynamic>? currentTask,
+  ) {
+    switch (_currentBottomNavIndex) {
+      case 1:
+        return _buildSmartphoneRouteView(state, textColor, subtextColor, cardColor, accentGreen, isDark);
+      case 2:
+        return _buildSmartphoneEarningsView(state, textColor, subtextColor, cardColor, accentGreen, isDark);
+      case 0:
+      default:
+        return _buildSmartphoneTasksView(state, textColor, subtextColor, cardColor, accentGreen, isDark, currentTask);
+    }
+  }
+
+  Widget _buildSmartphoneTasksView(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+    bool isDark,
+    Map<String, dynamic>? currentTask,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // CURRENT RECIPIENT TASK CARD
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AntigravityTheme.border(context)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'CURRENT TASK ASSIGNMENT',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: accentGreen.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text('Active Stop', style: TextStyle(color: accentGreen, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Client: ${'$'}{currentTask != null ? currentTask[''client''] ?? currentTask[''address''] : ''Muni Resident''}',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Address: ${'$'}{currentTask != null ? currentTask[''address''] : ''Ayivu Zone, Plot 42''}',
+                  style: TextStyle(fontSize: 12, color: subtextColor),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Waste Type: ${'$'}{currentTask != null ? currentTask[''wasteType''] ?? ''Household Waste'' : ''Household Waste''} • ${'$'}{currentTask != null ? currentTask[''sacks''] : 3} Sacks',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => launchEcoRouteCall(),
+                        icon: const Icon(Icons.call, size: 16),
+                        label: const Text('Call Client', style: TextStyle(fontSize: 12)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Photo evidence captured & attached to weight record.')),
+                          );
+                        },
+                        icon: const Icon(Icons.camera_alt, size: 16),
+                        label: const Text('Snap Photo', style: TextStyle(fontSize: 12)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // RECORDED WEIGHT SLIDER
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AntigravityTheme.border(context)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Verified Collection Weight', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor)),
+                    Text(
+                      '${'$'}{_recordedWeightKg.toStringAsFixed(1)} kg',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: accentGreen),
+                    ),
+                  ],
+                ),
+                Slider(
+                  value: _recordedWeightKg,
+                  min: 5.0,
+                  max: 150.0,
+                  divisions: 29,
+                  activeColor: accentGreen,
+                  label: '${'$'}{_recordedWeightKg.toStringAsFixed(1)} kg',
+                  onChanged: (val) => setState(() => _recordedWeightKg = val),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // AUTOMATED SMS INCOME PARSER PANEL
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AntigravityTheme.border(context)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'AUTOMATED SMS VERIFICATION & COMPLETE',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF282828) : const Color(0xFFF1F5F2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Verification Code Detected:', style: TextStyle(fontSize: 11, color: subtextColor)),
+                      Text(
+                        _smsCodeController.text,
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: accentGreen, letterSpacing: 1.2),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: () => _handleCompleteJob(context),
+                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                  label: const Text('ONE-TAP VERIFY & COMPLETE JOB', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: accentGreen,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmartphoneRouteView(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+    bool isDark,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AntigravityTheme.border(context)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.near_me, color: Color(0xFF2E7D32), size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Active Route Focus: Ayivu Zone',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AntigravityTheme.border(context)),
+            ),
+            child: Column(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  child: Container(
+                    height: 200,
+                    width: double.infinity,
+                    color: isDark ? const Color(0xFF1E2822) : const Color(0xFFE2EBE5),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: CustomPaint(
+                            painter: _RiderPathPainter(),
+                          ),
+                        ),
+                        Positioned(
+                          top: 12,
+                          left: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black87,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.navigation, color: Colors.greenAccent, size: 12),
+                                SizedBox(width: 4),
+                                Text('OSRM Live Route', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Next Stop: Muni Ward Landmark', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
+                          const SizedBox(height: 2),
+                          Text('Distance: 1.4 km • ETA: 6 mins', style: TextStyle(fontSize: 12, color: subtextColor)),
+                        ],
+                      ),
+                      IconButton.filled(
+                        onPressed: () => launchEcoRouteCall(),
+                        icon: const Icon(Icons.call, size: 18),
+                        style: IconButton.styleFrom(backgroundColor: accentGreen),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text('SEQUENTIAL STOPS (AYIVU ZONE)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: subtextColor)),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AntigravityTheme.border(context)),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: CircleAvatar(backgroundColor: accentGreen, radius: 14, child: const Text('1', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
+                  title: Text('Muni Campus Gate B', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
+                  subtitle: Text('3 Sacks • Household Waste', style: TextStyle(fontSize: 11, color: subtextColor)),
+                  trailing: const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                ),
+                Divider(height: 1, color: AntigravityTheme.border(context)),
+                ListTile(
+                  leading: CircleAvatar(backgroundColor: const Color(0xFFF57C00), radius: 14, child: const Text('2', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
+                  title: Text('Plot 42 Hospital Road', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
+                  subtitle: Text('5 Sacks • Commercial Packaging', style: TextStyle(fontSize: 11, color: subtextColor)),
+                  trailing: Text('In Progress', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFFF57C00))),
+                ),
+                Divider(height: 1, color: AntigravityTheme.border(context)),
+                ListTile(
+                  leading: CircleAvatar(backgroundColor: Colors.grey, radius: 14, child: const Text('3', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
+                  title: Text('Ayivu Market Corner', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
+                  subtitle: Text('2 Sacks • Recyclable Plastics', style: TextStyle(fontSize: 11, color: subtextColor)),
+                  trailing: Text('Pending', style: TextStyle(fontSize: 11, color: subtextColor)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmartphoneEarningsView(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+    bool isDark,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AntigravityTheme.border(context)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Today\'s Shift Earnings', style: TextStyle(fontSize: 12, color: subtextColor)),
+                const SizedBox(height: 6),
+                Text(
+                  'UGX ${'$'}{state.riderLedgerBalance > 0 ? state.riderLedgerBalance : 35000}',
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: accentGreen),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Cash in Pouch', style: TextStyle(fontSize: 11, color: subtextColor)),
+                            const SizedBox(height: 4),
+                            Text('UGX ${'$'}{state.riderCashInPouch}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Shift Status', style: TextStyle(fontSize: 11, color: subtextColor)),
+                            const SizedBox(height: 4),
+                            Text('Active Shift', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: accentGreen)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Payout request submitted to Arua Municipal Depot Settlement Desk.')),
+                    );
+                  },
+                  icon: const Icon(Icons.account_balance_wallet, size: 16),
+                  label: const Text('Request MoMo Cashout'),
+                  style: FilledButton.styleFrom(backgroundColor: accentGreen),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   // =========================================================================
   // TABLET DUAL-PANE VIEWPORT (600px - 1024px) - WIREFRAME B SPECIFICATION
   // =========================================================================

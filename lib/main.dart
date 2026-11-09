@@ -1077,10 +1077,21 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isSignUp = false;
   final _fullNameController = TextEditingController();
   final _usernameController = TextEditingController();
-  final _phoneController = TextEditingController(text: '+256 394 880 352');
+  final _phoneController = TextEditingController();
   final _identifierController = TextEditingController(); // email, username, or phone
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordController.clear();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _passwordController.clear();
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -1451,9 +1462,12 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 14),
               TextField(
-                key: const ValueKey('login_password_input'),
+                key: ValueKey(_isSignUp ? 'signup_password_input' : 'login_password_input'),
                 controller: _passwordController,
                 obscureText: true,
+                enableSuggestions: false,
+                autocorrect: false,
+                autofillHints: null,
                 style: const TextStyle(color: Color(0xFF0D2618)),
                 decoration: InputDecoration(
                   labelText: 'Password',
@@ -1493,7 +1507,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
               const SizedBox(height: 16),
               TextButton(
-                onPressed: () => setState(() => _isSignUp = !_isSignUp),
+                onPressed: () => setState(() { _isSignUp = !_isSignUp; _passwordController.clear(); }),
                 child: Text(
                   _isSignUp
                       ? 'Already have an account? Sign In'

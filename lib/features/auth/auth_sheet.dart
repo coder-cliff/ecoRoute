@@ -45,6 +45,8 @@ class _AuthSheetState extends State<AuthSheet> {
   @override
   void initState() {
     super.initState();
+    _password.clear();
+    _confirmPassword.clear();
     _createAccount = widget.initialCreateAccount;
     if (widget.initialRole == AppRole.rider ||
         (widget.initialInviteCode != null && widget.initialInviteCode!.isNotEmpty)) {
@@ -107,6 +109,8 @@ class _AuthSheetState extends State<AuthSheet> {
 
   void _toggleAccountMode() {
     _formKey.currentState?.reset();
+    _password.clear();
+    _confirmPassword.clear();
     setState(() {
       _createAccount = !_createAccount;
       _errorMessage = null;
@@ -498,9 +502,12 @@ class _AuthSheetState extends State<AuthSheet> {
 
                     // Password
                     TextFormField(
-                      key: const ValueKey('auth_password'),
+                      key: ValueKey(_createAccount ? 'signup_auth_password' : 'login_auth_password'),
                       controller: _password,
                       obscureText: _obscurePassword,
+                      enableSuggestions: false,
+                      autocorrect: false,
+                      autofillHints: null,
                       decoration: InputDecoration(
                         labelText: 'Password',
                         hintText: 'Minimum 8 characters',

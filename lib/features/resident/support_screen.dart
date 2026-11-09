@@ -6,7 +6,9 @@ import '../auth/splash_screen.dart';
 
 /// 05_RESIDENT_SUPPORT: Support Center with FAQ search, help cards, & dispatch dialer
 class SupportScreen extends StatefulWidget {
-  const SupportScreen({super.key});
+  final bool embedded;
+
+  const SupportScreen({super.key, this.embedded = false});
 
   @override
   State<SupportScreen> createState() => _SupportScreenState();
@@ -129,39 +131,11 @@ class _SupportScreenState extends State<SupportScreen> {
                 f['answer']!.toLowerCase().contains(q);
           }).toList();
 
-    return Scaffold(
-      backgroundColor: EcoPalette.surface,
-      appBar: AppBar(
-        backgroundColor: EcoPalette.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: const Row(
-          children: [
-            EcoRouteLeafLogo(size: 26, color: EcoPalette.primaryDark),
-            SizedBox(width: 8),
-            Text(
-              'EcoRoute',
-              style: TextStyle(
-                fontFamily: 'Satoshi',
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: EcoPalette.primaryDark,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.account_circle_outlined, color: EcoPalette.primaryDark),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    final bodyContent = SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             // Screen Title
             const Text(
               'Support Center',
@@ -381,7 +355,41 @@ class _SupportScreenState extends State<SupportScreen> {
             const SizedBox(height: 24),
           ],
         ),
+      );
+
+    if (widget.embedded) {
+      return bodyContent;
+    }
+
+    return Scaffold(
+      backgroundColor: EcoPalette.surface,
+      appBar: AppBar(
+        backgroundColor: EcoPalette.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Row(
+          children: [
+            EcoRouteLeafLogo(size: 26, color: EcoPalette.primaryDark),
+            SizedBox(width: 8),
+            Text(
+              'EcoRoute',
+              style: TextStyle(
+                fontFamily: 'Satoshi',
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: EcoPalette.primaryDark,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.account_circle_outlined, color: EcoPalette.primaryDark),
+            onPressed: () {},
+          ),
+        ],
       ),
+      body: bodyContent,
     );
   }
 

@@ -35,6 +35,17 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
 
   @override
+  void initState() {
+    super.initState();
+    _passwordController.clear();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _passwordController.clear();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -155,6 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _openSignUpModal() {
+    _passwordController.clear();
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -318,6 +330,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         key: const ValueKey('login_password_input'),
                         controller: _passwordController,
                         obscureText: _obscurePassword,
+                        enableSuggestions: false,
+                        autocorrect: false,
+                        autofillHints: null,
                         style: const TextStyle(
                           fontFamily: 'Satoshi',
                           fontSize: 15,
