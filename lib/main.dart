@@ -291,6 +291,29 @@ class EcoRouteState extends ChangeNotifier {
     }
   }
 
+  Future<void> logout(BuildContext context) async {
+    userName = '';
+    userUsername = '';
+    userEmail = '';
+    userPhone = '';
+    userCell = '';
+    userPhotoBase64 = null;
+    activePickup = null;
+    currentRole = 'resident';
+    try {
+      await _prefs?.remove(_kStorageKey);
+      if (Firebase.apps.isNotEmpty) {
+        await FirebaseAuth.instance.signOut();
+      }
+    } catch (e) {
+      debugPrint('Logout notice: $e');
+    }
+    notifyListeners();
+    if (context.mounted) {
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    }
+  }
+
   void setAuthenticatedUser({
     required String role,
     required String name,
@@ -375,17 +398,25 @@ class EcoRouteState extends ChangeNotifier {
     required bool isInstant,
     required String paymentMethod,
     String pickupNotes = '',
+    String? photoBase64,
+    double? latitude,
+    double? longitude,
+    bool isCommercial = false,
+    String? businessName,
+    String? tinNumber,
   }) {
     final rng = Random();
     final newId = '${rng.nextInt(90000) + 100000}';
     final code = '${rng.nextInt(9000) + 1000}';
-    final price = '${sacks * 2500} UGX';
+    final unitRate = isCommercial ? 3500 : baseSackPriceUgx;
+    final totalAmount = sacks * unitRate;
+    final price = '$totalAmount UGX';
     final serial = 'ECO-ARUA-$newId';
     final nowTime = 'Today, ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}';
 
     final order = {
       'id': newId,
-      'client': userName,
+      'client': (isCommercial && businessName != null && businessName.isNotEmpty) ? businessName : userName,
       'phone': userPhone,
       'sacks': sacks,
       'wasteType': wasteType,
@@ -396,11 +427,16 @@ class EcoRouteState extends ChangeNotifier {
       'step': 0, // 0: Requested, 1: Dispatched, 2: Verifying, 3: Settled
       'verificationCode': code,
       'assignedRiderId': null,
-      'assignedRiderName': 'Pending Admin Dispatch',
+      'assignedRiderName': 'Pending Fleet Dispatch',
       'createdAt': nowTime,
       'isInstant': isInstant,
       'paymentMethod': paymentMethod,
-      'photoEvidence': null,
+      'photoEvidence': photoBase64,
+      'latitude': latitude,
+      'longitude': longitude,
+      'isCommercial': isCommercial,
+      'businessName': businessName,
+      'tinNumber': tinNumber,
       'riderRating': null,
       'receiptSerial': serial,
       'distance': '1.2 km',
@@ -423,7 +459,13 @@ class EcoRouteState extends ChangeNotifier {
       'sacks': sacks,
       'wasteType': wasteType,
       'paymentMethod': paymentMethod,
-      'assignedRiderName': 'Pending Admin Dispatch',
+      'photoEvidence': photoBase64,
+      'latitude': latitude,
+      'longitude': longitude,
+      'isCommercial': isCommercial,
+      'businessName': businessName,
+      'tinNumber': tinNumber,
+      'assignedRiderName': 'Pending Fleet Dispatch',
       'verificationCode': code,
     });
 
@@ -1038,9 +1080,20 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
     _controller.forward();
 
-    Timer(const Duration(milliseconds: 2200), () {
+    Timer(const Duration(milliseconds: 1800), () {
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
+        final state = EcoRouteState.instance;
+        if (state.userName.isNotEmpty || (Firebase.apps.isNotEmpty && FirebaseAuth.instance.currentUser != null)) {
+          if (state.currentRole == 'admin' || state.currentRole == 'manager' || state.currentRole == 'supervisor') {
+            Navigator.pushReplacementNamed(context, '/admin');
+          } else if (state.currentRole == 'rider') {
+            Navigator.pushReplacementNamed(context, '/rider');
+          } else {
+            Navigator.pushReplacementNamed(context, '/resident');
+          }
+        } else {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
       }
     });
   }

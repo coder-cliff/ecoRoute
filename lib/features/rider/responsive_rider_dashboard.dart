@@ -108,6 +108,11 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
             icon: Icon(Icons.account_circle_outlined, color: textColor),
             onPressed: () => showEcoRouteProfileSheet(context),
           ),
+          IconButton(
+            tooltip: 'Sign Out',
+            icon: const Icon(Icons.logout, color: Colors.redAccent),
+            onPressed: () => state.logout(context),
+          ),
         ],
       ),
       body: _buildSmartphoneBody(state, textColor, subtextColor, cardColor, accentGreen, isDark, currentTask),
@@ -530,8 +535,51 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
                 const SizedBox(height: 16),
                 FilledButton.icon(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Payout request submitted to Arua Municipal Depot Settlement Desk.')),
+                    final balance = state.riderLedgerBalance > 0 ? state.riderLedgerBalance : 35000;
+                    final amountCtrl = TextEditingController(text: '$balance');
+                    final phoneCtrl = TextEditingController(text: state.userPhone.isNotEmpty ? state.userPhone : '+256772111222');
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Request MoMo Cashout', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('Available Commission Balance: UGX $balance', style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF2E7D32))),
+                            const SizedBox(height: 14),
+                            TextField(
+                              controller: amountCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Payout Amount (UGX)',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            TextField(
+                              controller: phoneCtrl,
+                              keyboardType: TextInputType.phone,
+                              decoration: const InputDecoration(
+                                labelText: 'Mobile Money Number (MTN / Airtel)',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                          FilledButton(
+                            onPressed: () {
+                              final amt = int.tryParse(amountCtrl.text.trim()) ?? 0;
+                              final phone = phoneCtrl.text.trim();
+                              Navigator.pop(ctx);
+                              state.riderRequestPayout(amt, phone, context);
+                            },
+                            style: FilledButton.styleFrom(backgroundColor: accentGreen),
+                            child: const Text('Submit Cashout'),
+                          ),
+                        ],
+                      ),
                     );
                   },
                   icon: const Icon(Icons.account_balance_wallet, size: 16),
@@ -581,6 +629,11 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
             tooltip: 'My Profile',
             icon: Icon(Icons.account_circle_outlined, color: textColor),
             onPressed: () => showEcoRouteProfileSheet(context),
+          ),
+          IconButton(
+            tooltip: 'Sign Out',
+            icon: const Icon(Icons.logout, color: Colors.redAccent),
+            onPressed: () => state.logout(context),
           ),
         ],
       ),
@@ -807,10 +860,61 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
   }
 
   void _handleCompleteJob(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Job reconciled & marked complete. Digital receipt synchronized to HQ.'),
-        backgroundColor: Color(0xFF2E7D32),
+    final state = EcoRouteState.instance;
+    if (state.riderTasks.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No active collection jobs assigned to this unit.')),
+      );
+      return;
+    }
+    final activeTask = state.riderTasks[_selectedTaskIndex.clamp(0, state.riderTasks.length - 1)];
+    final codeCtrl = TextEditingController(text: _smsCodeController.text.isNotEmpty ? _smsCodeController.text : '');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: const [
+            Icon(Icons.verified_user, color: Color(0xFF2E7D32)),
+            SizedBox(width: 8),
+            Text('Verify Handover', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Client: \', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('Location: \', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text('Volume: \ Sacks (\)', style: const TextStyle(fontSize: 12)),
+            const SizedBox(height: 14),
+            const Text('Enter 4-Digit Resident PIN or "PASS":', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: codeCtrl,
+              keyboardType: TextInputType.text,
+              maxLength: 6,
+              decoration: const InputDecoration(
+                hintText: 'e.g. 4829',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.pin),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              final enteredCode = codeCtrl.text.trim();
+              if (enteredCode.isEmpty) return;
+              Navigator.pop(ctx);
+              state.riderVerifyAndSettle(inputCode: enteredCode, context: context);
+            },
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
+            child: const Text('Verify & Settle'),
+          ),
+        ],
       ),
     );
   }

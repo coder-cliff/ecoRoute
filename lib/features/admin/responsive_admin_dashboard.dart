@@ -1,3 +1,4 @@
+import '../../core/services/rider_invite_service.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/layout/adaptive_layout.dart';
@@ -495,8 +496,43 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                     Text('Cash Reconciliation & MoMo Settlement Desk', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor)),
                     FilledButton.icon(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('All pending rider cash pouches marked reconciled with central depot.')),
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Depot Cash Reconciliation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            content: SizedBox(
+                              width: 400,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Total in Fleet Pouches: UGX \',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    title: const Text('Tricycle Unit TRIC-04 (Ediofe Depot)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                    subtitle: Text('Cash in Pouch: UGX \', style: const TextStyle(fontSize: 12)),
+                                    trailing: FilledButton(
+                                      onPressed: state.riderCashInPouch > 0
+                                          ? () {
+                                              Navigator.pop(ctx);
+                                              state.reconcileRiderCashPouch(tricycleId: 'TRIC-04', context: context);
+                                            }
+                                          : null,
+                                      style: FilledButton.styleFrom(backgroundColor: accentGreen),
+                                      child: const Text('Check In'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+                            ],
+                          ),
                         );
                       },
                       icon: const Icon(Icons.check, size: 16),
@@ -509,6 +545,14 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                 Text('Active Settlement Desk Status: 100% in compliance with Arua Municipal revenue authority standards.', style: TextStyle(fontSize: 12, color: subtextColor)),
               ],
             ),
+          ),
+          const SizedBox(height: 12),
+          ListTile(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            tileColor: Colors.redAccent.withOpacity(0.12),
+            leading: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
+            title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+            onTap: () => state.logout(context),
           ),
         ],
       ),
@@ -614,8 +658,81 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                     Text('Municipal Operations Authority', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor)),
                     FilledButton.icon(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Rider invite code generated: ARUA-ECO-9941')),
+                        final nameCtrl = TextEditingController();
+                        final phoneCtrl = TextEditingController(text: '+256 7');
+                        final emailCtrl = TextEditingController();
+                        String triId = 'TRIC-04';
+
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Invite Commercial Fleet Rider', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            content: SizedBox(
+                              width: 380,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TextField(
+                                    controller: nameCtrl,
+                                    decoration: const InputDecoration(labelText: 'Rider Full Name', border: OutlineInputBorder()),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  TextField(
+                                    controller: phoneCtrl,
+                                    decoration: const InputDecoration(labelText: 'Phone Number', border: OutlineInputBorder()),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  TextField(
+                                    controller: emailCtrl,
+                                    decoration: const InputDecoration(labelText: 'Email Address (for dispatch portal)', border: OutlineInputBorder()),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  DropdownButtonFormField<String>(
+                                    value: triId,
+                                    decoration: const InputDecoration(labelText: 'Assigned Tricycle', border: OutlineInputBorder()),
+                                    items: const [
+                                      DropdownMenuItem(value: 'TRIC-04', child: Text('TRIC-04 (Ediofe Depot)')),
+                                      DropdownMenuItem(value: 'TRIC-09', child: Text('TRIC-09 (Onduparaka / Trading Center)')),
+                                      DropdownMenuItem(value: 'TRIC-12', child: Text('TRIC-12 (Arua Hill / Commercial)')),
+                                      DropdownMenuItem(value: 'TRIC-18', child: Text('TRIC-18 (Central Market / Ayivu)')),
+                                    ],
+                                    onChanged: (val) => triId = val ?? 'TRIC-04',
+                                  ),
+                                ],
+                              ),
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                              FilledButton(
+                                onPressed: () async {
+                                  final name = nameCtrl.text.trim();
+                                  final phone = phoneCtrl.text.trim();
+                                  final email = emailCtrl.text.trim();
+                                  if (name.isEmpty) return;
+                                  Navigator.pop(ctx);
+                                  final code = state.inviteRider(
+                                    name: name,
+                                    phone: phone,
+                                    tricycleId: triId,
+                                    email: email.isNotEmpty ? email : null,
+                                  );
+                                  if (email.isNotEmpty) {
+                                    await RiderInviteService.sendRiderInviteEmail(
+                                      riderEmail: email,
+                                      riderName: name,
+                                      inviteCode: code,
+                                      tricycleId: triId,
+                                    );
+                                  }
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Rider $name authorized! Code: $code assigned to $triId.')),
+                                  );
+                                },
+                                style: FilledButton.styleFrom(backgroundColor: accentGreen),
+                                child: const Text('Dispatch Authorization'),
+                              ),
+                            ],
+                          ),
                         );
                       },
                       icon: const Icon(Icons.person_add, size: 16),
@@ -628,6 +745,14 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                 Text('Admin Roster: Super Admin, Operations Manager, Route Supervisor (3 officers active).', style: TextStyle(fontSize: 12, color: subtextColor)),
               ],
             ),
+          ),
+          const SizedBox(height: 12),
+          ListTile(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            tileColor: Colors.redAccent.withOpacity(0.12),
+            leading: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
+            title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+            onTap: () => state.logout(context),
           ),
         ],
       ),
@@ -672,6 +797,14 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                 Text('Support Hotline: $kEcoRouteSupportPhone', style: TextStyle(fontSize: 13, color: accentGreen, fontWeight: FontWeight.bold)),
               ],
             ),
+          ),
+          const SizedBox(height: 12),
+          ListTile(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            tileColor: Colors.redAccent.withOpacity(0.12),
+            leading: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
+            title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+            onTap: () => state.logout(context),
           ),
         ],
       ),
@@ -769,6 +902,14 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
               ],
             ),
           ),
+          const SizedBox(height: 12),
+          ListTile(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            tileColor: Colors.redAccent.withOpacity(0.12),
+            leading: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
+            title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+            onTap: () => state.logout(context),
+          ),
         ],
       ),
     );
@@ -831,6 +972,14 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 12),
+          ListTile(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            tileColor: Colors.redAccent.withOpacity(0.12),
+            leading: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
+            title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+            onTap: () => state.logout(context),
           ),
         ],
       ),

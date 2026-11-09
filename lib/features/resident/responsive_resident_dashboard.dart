@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
+import '../../core/services/location_service.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/layout/adaptive_layout.dart';
@@ -1061,7 +1064,7 @@ class _ResponsiveResidentDashboardState
                   leading: const Icon(Icons.logout, color: Colors.redAccent),
                   title: const Text('Log Out', style: TextStyle(fontSize: 14, color: Colors.redAccent, fontWeight: FontWeight.bold)),
                   onTap: () {
-                    Navigator.pushNamedAndRemoveUntil(context, '/login', (r) => false);
+                    state.logout(context);
                   },
                 ),
               ],
@@ -1194,11 +1197,17 @@ class _ResponsiveResidentDashboardState
                             icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode, color: textColor),
                             onPressed: () => state.toggleTheme(),
                           ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            tooltip: 'Sign Out',
+                            icon: const Icon(Icons.logout, color: Colors.redAccent),
+                            onPressed: () => state.logout(context),
+                          ),
                           const SizedBox(width: 12),
                           FilledButton.icon(
                             onPressed: () => _handleInstantBooking(context),
                             icon: const Icon(Icons.flash_on, size: 16),
-                            label: const Text('TRIPPED PICKUP DRAWER BUTTON'),
+                            label: const Text('Book Commercial Pickup'),
                             style: FilledButton.styleFrom(backgroundColor: accentGreen),
                           ),
                         ],
@@ -1790,52 +1799,291 @@ class _ResponsiveResidentDashboardState
   }
 
   void _handleInstantBooking(BuildContext context) {
-    final total = _sackCount * _pricePerSackUgx;
+    String currentWasteType = _selectedWasteType;
+    int currentSacks = _sackCount;
+    bool isCommercial = false;
+    String businessName = '';
+    String? photoBase64;
+    double? lockedLat;
+    double? lockedLng;
+    String locationLabel = 'Arua Central & Nearby Districts';
+    String paymentMethod = 'MoMo';
+    bool isCapturing = false;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: AntigravityTheme.card(context),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Confirm Instant Pickup Order',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final isDark = AntigravityTheme.isDark(ctx);
+          final textColor = AntigravityTheme.textPrimary(ctx);
+          final subtextColor = AntigravityTheme.textSecondary(ctx);
+          final accentGreen = AntigravityTheme.ecoAccent(ctx);
+
+          int rate = isCommercial ? 3500 : (currentWasteType == 'Bulky / Construction' ? 5000 : 2500);
+          int total = currentSacks * rate;
+
+          return Padding(
+            padding: EdgeInsets.only(
+              top: 24,
+              left: 24,
+              right: 24,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
             ),
-            const SizedBox(height: 12),
-            Text('Waste Type: $_selectedWasteType'),
-            Text('Sacks: $_sackCount'),
-            Text('Estimated Price: UGX $total'),
-            Text('Location: Muni University Area (Verified Accuracy <5m)'),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                EcoRouteState.instance.bookPickup(
-                  sacks: _sackCount,
-                  wasteType: _selectedWasteType,
-                  address: 'Muni University Area, Arua',
-                  isInstant: true,
-                  paymentMethod: 'MoMo',
-                );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Instant collection scheduled & dispatched!'),
-                    backgroundColor: Color(0xFF2E7D32),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.local_shipping, color: accentGreen),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Commercial Waste Collection',
+                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: textColor),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
                   ),
-                );
-              },
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
-              child: const Text('Confirm & Dispatch Tricycle'),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Rapid pickup across Arua City, Trading Centers & West Nile districts',
+                    style: TextStyle(fontSize: 12, color: subtextColor),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Waste Type Selection
+                  Text('SELECT WASTE TYPE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: subtextColor)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      'Household Waste',
+                      'Trading Center Waste',
+                      'Commercial Packaging',
+                      'Recyclable Plastics',
+                      'Organic Compost',
+                      'Bulky / Construction',
+                    ].map((type) {
+                      final selected = currentWasteType == type;
+                      return ChoiceChip(
+                        label: Text(type, style: TextStyle(fontSize: 12, color: selected ? Colors.white : textColor)),
+                        selected: selected,
+                        selectedColor: accentGreen,
+                        onSelected: (val) {
+                          if (val) setModalState(() => currentWasteType = type);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Sack Count
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Volume: $currentSacks Sack\', style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
+                      Text('$total UGX', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: accentGreen)),
+                    ],
+                  ),
+                  Slider(
+                    value: currentSacks.toDouble(),
+                    min: 1,
+                    max: 20,
+                    divisions: 19,
+                    activeColor: accentGreen,
+                    label: '$currentSacks Sacks',
+                    onChanged: (val) => setModalState(() => currentSacks = val.round()),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Commercial Enterprise Toggle
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Commercial Business / Enterprise', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
+                    subtitle: Text('Enable B2B wholesale invoice with TIN details', style: TextStyle(fontSize: 11, color: subtextColor)),
+                    value: isCommercial,
+                    activeColor: accentGreen,
+                    onChanged: (val) => setModalState(() => isCommercial = val),
+                  ),
+                  if (isCommercial) ...[
+                    const SizedBox(height: 8),
+                    TextField(
+                      decoration: const InputDecoration(
+                        labelText: 'Business / Shop / Hotel Name',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      onChanged: (val) => businessName = val,
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+
+                  // Low-Memory Camera & GPS Capture
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF222222) : const Color(0xFFF3F7F4),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AntigravityTheme.border(ctx)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.camera_alt, color: accentGreen, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                photoBase64 != null ? 'Waste Photo & GPS Coordinates Locked' : 'Waste Photo & GPS Verification',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor),
+                              ),
+                            ),
+                            if (photoBase64 != null)
+                              const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          locationLabel,
+                          style: TextStyle(fontSize: 11, color: subtextColor),
+                        ),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: isCapturing
+                              ? null
+                              : () async {
+                                  setModalState(() => isCapturing = true);
+                                  try {
+                                    final picker = ImagePicker();
+                                    // Memory-optimized: 800x800 downscaling, 65% quality to keep RAM < 5MB
+                                    final xfile = await picker.pickImage(
+                                      source: ImageSource.camera,
+                                      maxWidth: 800,
+                                      maxHeight: 800,
+                                      imageQuality: 65,
+                                    );
+                                    if (xfile != null) {
+                                      final bytes = await xfile.readAsBytes();
+                                      photoBase64 = base64Encode(bytes);
+                                    }
+                                  } catch (e) {
+                                    debugPrint('Camera capture fallback notice: $e');
+                                  }
+
+                                  try {
+                                    const locService = LocationService();
+                                    final loc = await locService.getCurrentUserLocation();
+                                    if (loc.latitude != null && loc.longitude != null) {
+                                      lockedLat = loc.latitude;
+                                      lockedLng = loc.longitude;
+                                      locationLabel = 'GPS Coordinates: \, \ (West Nile)';
+                                    }
+                                  } catch (e) {
+                                    debugPrint('Location service fallback notice: $e');
+                                  }
+
+                                  setModalState(() => isCapturing = false);
+                                },
+                          icon: isCapturing
+                              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Icon(Icons.add_a_photo, size: 16),
+                          label: Text(
+                            photoBase64 != null ? 'Retake Photo & Relock GPS' : 'Snap Photo & Lock GPS',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Payment Method
+                  Row(
+                    children: [
+                      Expanded(
+                        child: RadioListTile<String>(
+                          title: const Text('MTN/Airtel MoMo', style: TextStyle(fontSize: 12)),
+                          value: 'MoMo',
+                          groupValue: paymentMethod,
+                          activeColor: accentGreen,
+                          contentPadding: EdgeInsets.zero,
+                          onChanged: (val) => setModalState(() => paymentMethod = val!),
+                        ),
+                      ),
+                      Expanded(
+                        child: RadioListTile<String>(
+                          title: const Text('Cash on Pickup', style: TextStyle(fontSize: 12)),
+                          value: 'Cash',
+                          groupValue: paymentMethod,
+                          activeColor: accentGreen,
+                          contentPadding: EdgeInsets.zero,
+                          onChanged: (val) => setModalState(() => paymentMethod = val!),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  FilledButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      final address = locationLabel.contains('GPS')
+                          ? 'Commercial Pickup, $locationLabel'
+                          : 'Arua Central & Nearby Trading Center';
+
+                      EcoRouteState.instance.bookPickup(
+                        sacks: currentSacks,
+                        wasteType: currentWasteType,
+                        address: address,
+                        isInstant: true,
+                        paymentMethod: paymentMethod,
+                        photoBase64: photoBase64,
+                        latitude: lockedLat,
+                        longitude: lockedLng,
+                        isCommercial: isCommercial,
+                        businessName: businessName.isNotEmpty ? businessName : null,
+                      );
+
+                      final active = EcoRouteState.instance.activePickup;
+                      final pin = active?['verificationCode'] ?? '----';
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Collection dispatched! Handover PIN: $pin. Show this PIN to your driver.'),
+                          backgroundColor: const Color(0xFF2E7D32),
+                          duration: const Duration(seconds: 6),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.electric_moped, size: 18),
+                    label: Text('Confirm & Dispatch Tricycle ($total UGX)'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: accentGreen,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

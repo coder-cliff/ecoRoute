@@ -108,9 +108,9 @@ class _WasteCameraScannerState extends State<WasteCameraScanner> {
     try {
       final XFile? file = await _picker.pickImage(
         source: source,
-        maxWidth: 1920,
-        maxHeight: 1080,
-        imageQuality: 85,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 65,
       );
 
       if (file == null) {
