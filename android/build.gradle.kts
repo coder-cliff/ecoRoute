@@ -1,6 +1,7 @@
 allprojects {
     repositories {
         google()
+        maven("https://cache-redirector.jetbrains.com/maven-central")
         mavenCentral()
     }
 }

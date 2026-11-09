@@ -35,7 +35,18 @@ jobs:
         run: flutter pub get
 
       - name: Build Android Release APK
-        run: flutter build apk --release --android-skip-build-dependency-validation
+        run: |
+          for i in 1 2 3; do
+            echo "Attempt $i: Building Android APK..."
+            flutter build apk --release --android-skip-build-dependency-validation && break || {
+              if [ $i -eq 3 ]; then
+                echo "Android build failed after 3 attempts."
+                exit 1
+              fi
+              echo "Retrying after 15 seconds..."
+              sleep 15
+            }
+          done
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
