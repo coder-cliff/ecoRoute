@@ -7,6 +7,7 @@ plugins {
 android {
     namespace = "com.ecoroute.ecoroute"
     compileSdk = flutter.compileSdkVersion
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -55,6 +56,7 @@ tasks.matching { it.name.contains("AarMetadata") }.configureEach {
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+        freeCompilerArgs.add("-Xskip-metadata-version-check")
     }
 }
 
