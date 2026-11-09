@@ -191,17 +191,17 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Client: ${'$'}{currentTask != null ? currentTask[''client''] ?? currentTask[''address''] : ''Muni Resident''}',
+                  'Client: ${currentTask != null ? currentTask['client'] ?? currentTask['address'] : 'Muni Resident'}',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Address: ${'$'}{currentTask != null ? currentTask[''address''] : ''Ayivu Zone, Plot 42''}',
+                  'Address: ${currentTask != null ? currentTask['address'] : 'Ayivu Zone, Plot 42'}',
                   style: TextStyle(fontSize: 12, color: subtextColor),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Waste Type: ${'$'}{currentTask != null ? currentTask[''wasteType''] ?? ''Household Waste'' : ''Household Waste''} • ${'$'}{currentTask != null ? currentTask[''sacks''] : 3} Sacks',
+                  'Waste Type: ${currentTask != null ? currentTask['wasteType'] ?? 'Household Waste' : 'Household Waste'} • ${currentTask != null ? currentTask['sacks'] : 3} Sacks',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor),
                 ),
                 const SizedBox(height: 12),
@@ -249,7 +249,7 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
                   children: [
                     Text('Verified Collection Weight', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor)),
                     Text(
-                      '${'$'}{_recordedWeightKg.toStringAsFixed(1)} kg',
+                      '${_recordedWeightKg.toStringAsFixed(1)} kg',
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: accentGreen),
                     ),
                   ],
@@ -260,7 +260,7 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
                   max: 150.0,
                   divisions: 29,
                   activeColor: accentGreen,
-                  label: '${'$'}{_recordedWeightKg.toStringAsFixed(1)} kg',
+                  label: '${_recordedWeightKg.toStringAsFixed(1)} kg',
                   onChanged: (val) => setState(() => _recordedWeightKg = val),
                 ),
               ],
@@ -484,7 +484,7 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
                 Text('Today\'s Shift Earnings', style: TextStyle(fontSize: 12, color: subtextColor)),
                 const SizedBox(height: 6),
                 Text(
-                  'UGX ${'$'}{state.riderLedgerBalance > 0 ? state.riderLedgerBalance : 35000}',
+                  'UGX ${state.riderLedgerBalance > 0 ? state.riderLedgerBalance : 35000}',
                   style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: accentGreen),
                 ),
                 const SizedBox(height: 14),
@@ -502,7 +502,7 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
                           children: [
                             Text('Cash in Pouch', style: TextStyle(fontSize: 11, color: subtextColor)),
                             const SizedBox(height: 4),
-                            Text('UGX ${'$'}{state.riderCashInPouch}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor)),
+                            Text('UGX ${state.riderCashInPouch}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor)),
                           ],
                         ),
                       ),

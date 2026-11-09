@@ -436,6 +436,39 @@ class EcoRouteState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void cancelActivePickup([String? pickupId]) {
+    final targetId = pickupId ?? activePickup?['id'];
+    if (targetId == null) return;
+
+    if (activePickup != null && activePickup!['id'] == targetId) {
+      activePickup!['status'] = 'Cancelled';
+      activePickup = null;
+    }
+
+    for (final req in residentRequests) {
+      if (req['pickupId'] == targetId || req['id'] == 'Pickup #$targetId') {
+        req['status'] = 'Cancelled';
+        req['color'] = 0xFFD32F2F;
+      }
+    }
+
+    riderTasks.removeWhere((t) => t['id'] == targetId);
+
+    if (Firebase.apps.isNotEmpty) {
+      try {
+        FirebaseFirestore.instance.collection('pickupRequests').doc(targetId).update({
+          'status': 'Cancelled',
+          'cancelledAt': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        debugPrint('Firestore cancel pickup notice: $e');
+      }
+    }
+
+    _saveState();
+    notifyListeners();
+  }
+
   void riderVerifyAndSettle({required String inputCode, required BuildContext context}) {
     if (riderTasks.isEmpty) return;
     final activeTask = riderTasks[selectedRiderTaskIndex];

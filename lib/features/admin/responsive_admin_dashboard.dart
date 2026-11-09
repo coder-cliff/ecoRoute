@@ -327,11 +327,11 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                                       ],
                                     ),
                                   ),
-                               ],
-                             ),
-                           ),
-                         ],
-                        ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     );
   }
@@ -460,7 +460,7 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
               Expanded(
                 child: _buildMetricCard(
                   title: 'Depot Reconciled Cash',
-                  value: 'UGX ${'$'}{state.totalDepotReconciledCash}',
+                  value: 'UGX ${state.totalDepotReconciledCash}',
                   subtitle: 'Physical cash verified at depot desk',
                   icon: Icons.payments,
                   color: accentGreen,
@@ -470,7 +470,7 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
               Expanded(
                 child: _buildMetricCard(
                   title: 'Tricycle Pouches',
-                  value: 'UGX ${'$'}{state.totalCashInPouches}',
+                  value: 'UGX ${state.totalCashInPouches}',
                   subtitle: 'In field with active riders',
                   icon: Icons.account_balance_wallet,
                   color: const Color(0xFFF57C00),
@@ -558,7 +558,7 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                   children: [
                     Text(z['name']!, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textColor)),
                     const SizedBox(height: 4),
-                    Text('Fleet: ${'$'}{z[''tricycles'']}', style: TextStyle(fontSize: 12, color: subtextColor)),
+                    Text('Fleet: ${z['tricycles']}', style: TextStyle(fontSize: 12, color: subtextColor)),
                     const SizedBox(height: 4),
                     Text(z['sacks']!, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: accentGreen)),
                   ],
@@ -663,13 +663,13 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Standard Municipal Tariff: UGX ${'$'}{state.baseSackPriceUgx} / Standard Sack', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
+                Text('Standard Municipal Tariff: UGX ${state.baseSackPriceUgx} / Standard Sack', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
                 const SizedBox(height: 8),
-                Text('Bulky / Commercial Surcharge: UGX ${'$'}{state.bulkyWasteSurchargeUgx} / Sack', style: TextStyle(fontSize: 13, color: textColor)),
+                Text('Bulky / Commercial Surcharge: UGX ${state.bulkyWasteSurchargeUgx} / Sack', style: TextStyle(fontSize: 13, color: textColor)),
                 const SizedBox(height: 8),
-                Text('Rider Revenue Share: ${'$'}{state.riderCommissionPercent}%', style: TextStyle(fontSize: 13, color: textColor)),
+                Text('Rider Revenue Share: ${state.riderCommissionPercent}%', style: TextStyle(fontSize: 13, color: textColor)),
                 const SizedBox(height: 8),
-                Text('Support Hotline: ${'$'}kEcoRouteSupportPhone', style: TextStyle(fontSize: 13, color: accentGreen, fontWeight: FontWeight.bold)),
+                Text('Support Hotline: $kEcoRouteSupportPhone', style: TextStyle(fontSize: 13, color: accentGreen, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
