@@ -507,14 +507,14 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Total in Fleet Pouches: UGX \',
+                                    'Total in Fleet Pouches: UGX ' + state.totalCashInPouches.toString(),
                                     style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
                                   ),
                                   const SizedBox(height: 14),
                                   ListTile(
                                     contentPadding: EdgeInsets.zero,
                                     title: const Text('Tricycle Unit TRIC-04 (Ediofe Depot)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                                    subtitle: Text('Cash in Pouch: UGX \', style: const TextStyle(fontSize: 12)),
+                                    subtitle: Text('Cash in Pouch: UGX ' + state.riderCashInPouch.toString(), style: const TextStyle(fontSize: 12)),
                                     trailing: FilledButton(
                                       onPressed: state.riderCashInPouch > 0
                                           ? () {
@@ -552,7 +552,7 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
             tileColor: Colors.redAccent.withOpacity(0.12),
             leading: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
             title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13)),
-            onTap: () => state.logout(context),
+            onTap: () => EcoRouteState.instance.logout(context),
           ),
         ],
       ),
@@ -752,7 +752,7 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
             tileColor: Colors.redAccent.withOpacity(0.12),
             leading: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
             title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13)),
-            onTap: () => state.logout(context),
+            onTap: () => EcoRouteState.instance.logout(context),
           ),
         ],
       ),
@@ -804,7 +804,7 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
             tileColor: Colors.redAccent.withOpacity(0.12),
             leading: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
             title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13)),
-            onTap: () => state.logout(context),
+            onTap: () => EcoRouteState.instance.logout(context),
           ),
         ],
       ),
@@ -908,7 +908,7 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
             tileColor: Colors.redAccent.withOpacity(0.12),
             leading: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
             title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13)),
-            onTap: () => state.logout(context),
+            onTap: () => EcoRouteState.instance.logout(context),
           ),
         ],
       ),
@@ -979,7 +979,7 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
             tileColor: Colors.redAccent.withOpacity(0.12),
             leading: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
             title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13)),
-            onTap: () => state.logout(context),
+            onTap: () => EcoRouteState.instance.logout(context),
           ),
         ],
       ),

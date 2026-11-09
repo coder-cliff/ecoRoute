@@ -884,9 +884,9 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Client: \', style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text('Location: \', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            Text('Volume: \ Sacks (\)', style: const TextStyle(fontSize: 12)),
+            Text('Client: ' + (activeTask['client']?.toString() ?? 'Customer'), style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('Location: ' + (activeTask['address']?.toString() ?? 'Arua Central / Trading Center'), style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text('Volume: ' + (activeTask['sacks']?.toString() ?? '1') + ' Sacks (' + (activeTask['wasteType']?.toString() ?? 'Solid Waste') + ')', style: const TextStyle(fontSize: 12)),
             const SizedBox(height: 14),
             const Text('Enter 4-Digit Resident PIN or "PASS":', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),

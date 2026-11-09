@@ -1896,7 +1896,7 @@ class _ResponsiveResidentDashboardState
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Volume: $currentSacks Sack\', style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
+                      Text('Volume: $currentSacks Sacks', style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
                       Text('$total UGX', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: accentGreen)),
                     ],
                   ),
@@ -1992,7 +1992,7 @@ class _ResponsiveResidentDashboardState
                                     if (loc.latitude != null && loc.longitude != null) {
                                       lockedLat = loc.latitude;
                                       lockedLng = loc.longitude;
-                                      locationLabel = 'GPS Coordinates: \, \ (West Nile)';
+                                      locationLabel = 'GPS Coordinates: ' + lockedLat.toString() + ', ' + lockedLng.toString() + ' (West Nile)';
                                     }
                                   } catch (e) {
                                     debugPrint('Location service fallback notice: $e');
