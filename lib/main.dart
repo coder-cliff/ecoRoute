@@ -64,6 +64,7 @@ class EcoRouteState extends ChangeNotifier {
 
   static const String _kStorageKey = 'ecoroute_app_state_v4';
   SharedPreferences? _prefs;
+  SharedPreferences? get prefs => _prefs;
 
   // Active Role and Profile (Strictly Authentic - No Hardcoded Demo Accounts)
   String currentRole = 'resident'; // 'resident', 'rider', 'admin'

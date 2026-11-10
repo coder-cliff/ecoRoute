@@ -15,6 +15,7 @@ import '../auth/splash_screen.dart';
 import '../common/widgets/eco_carto_map.dart';
 import '../request/order_page.dart';
 import 'support_screen.dart';
+import 'widgets/eco_gemini_assistant_sheet.dart';
 
 /// 03_RESIDENT_HOME & 04_RESIDENT_TRACKING: Resident Dashboard with live CartoDB map
 class ResidentDashboard extends StatefulWidget {
@@ -296,6 +297,11 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Ask EcoBot AI',
+            icon: const Icon(Icons.auto_awesome, color: EcoPalette.primaryDark),
+            onPressed: () => showEcoGeminiAssistantSheet(context),
+          ),
           IconButton(
             icon: const Icon(Icons.account_circle_outlined, color: EcoPalette.primaryDark),
             onPressed: _showAccountMenu,

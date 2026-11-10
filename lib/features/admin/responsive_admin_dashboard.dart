@@ -1,8 +1,12 @@
 import '../../core/services/rider_invite_service.dart';
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../core/layout/adaptive_layout.dart';
+import '../../core/services/gemini_eco_service.dart';
 import '../../main.dart';
+import '../common/widgets/eco_carto_map.dart';
+import '../resident/widgets/eco_gemini_assistant_sheet.dart';
 
 /// Responsive Admin Analytics Command Matrix Dashboard
 /// Conforms strictly to Architectural Wireframe C
@@ -16,6 +20,57 @@ class ResponsiveAdminDashboard extends StatefulWidget {
 
 class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
   int _selectedSidebarIndex = 0;
+
+  Future<void> _showAiDispatchBriefing(BuildContext context, EcoRouteState state) async {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.auto_awesome, color: EcoPalette.primaryForest, size: 22),
+            SizedBox(width: 8),
+            Text('Gemini AI Dispatch Briefing', style: TextStyle(fontSize: 16)),
+          ],
+        ),
+        content: FutureBuilder<String>(
+          future: GeminiEcoService(preferences: state.prefs).generateDispatchSummary(state.riderTasks),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(height: 20),
+                  CircularProgressIndicator(color: EcoPalette.primaryForest),
+                  SizedBox(height: 16),
+                  Text('Analyzing municipal route density & pending tasks...', style: TextStyle(fontSize: 12)),
+                  SizedBox(height: 20),
+                ],
+              );
+            }
+            final summary = snapshot.data ?? 'No summary available.';
+            return SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Municipal Operations Advisory • Arua City', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  const SizedBox(height: 12),
+                  Text(summary, style: const TextStyle(fontSize: 13, height: 1.4)),
+                ],
+              ),
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Dismiss'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -166,15 +221,77 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // GOOGLE GEMINI AI OPERATIONS INTELLIGENCE BANNER
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: accentGreen.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: accentGreen.withOpacity(0.25)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: accentGreen,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
                           Text(
-                            'OVERVIEW METRICS',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: subtextColor,
-                              letterSpacing: 0.5,
-                            ),
+                            'Gemini Operations Intelligence',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
                           ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: accentGreen.withOpacity(0.18),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text('Zero-Cost', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Route density analysis & bottleneck recommendations for Arua City.',
+                        style: TextStyle(fontSize: 11, color: subtextColor),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: accentGreen,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  onPressed: () => _showAiDispatchBriefing(context, state),
+                  icon: const Icon(Icons.analytics, size: 15),
+                  label: const Text('Briefing', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'OVERVIEW METRICS',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: subtextColor,
+              letterSpacing: 0.5,
+            ),
+          ),
                           const SizedBox(height: 12),
                           LayoutBuilder(
                             builder: (context, constraints) {
@@ -719,11 +836,44 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'MUNICIPAL COLLECTION ZONES & DISPATCH POOL',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: subtextColor, letterSpacing: 0.5),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'MUNICIPAL COLLECTION ZONES & DISPATCH POOL',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: subtextColor, letterSpacing: 0.5),
+              ),
+              TextButton.icon(
+                onPressed: () => showEcoGeminiAssistantSheet(context),
+                icon: const Icon(Icons.auto_awesome, size: 16),
+                label: const Text('Gemini Assistant', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
+
+          // Real Interactive OpenStreetMap Fleet Zone Overview
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              height: 240,
+              child: EcoCartoMap(
+                center: const LatLng(3.0303, 30.9073),
+                zoom: 14.0,
+                showLandmarks: true,
+                showControls: true,
+                onLocationSelected: (pos) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Zone inspection coordinate: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           ...zones.map((z) => Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),

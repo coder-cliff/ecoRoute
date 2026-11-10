@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../core/layout/adaptive_layout.dart';
+import '../../core/services/osrm_routing_service.dart';
 import '../../main.dart';
+import '../common/widgets/eco_carto_map.dart';
 
 /// Responsive Rider Field Operations Dashboard
 /// Conforms to Architectural Wireframe B:
@@ -388,8 +391,12 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
                     child: Stack(
                       children: [
                         Positioned.fill(
-                          child: CustomPaint(
-                            painter: _RiderPathPainter(),
+                          child: EcoCartoMap(
+                            center: const LatLng(3.0275, 30.8995),
+                            zoom: 14.5,
+                            routePoints: OsrmRoutingService.fallbackAruaToEdiofeRoute,
+                            showControls: true,
+                            showLandmarks: true,
                           ),
                         ),
                         Positioned(
@@ -723,9 +730,12 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          child: CustomPaint(
-                            size: const Size(double.infinity, 220),
-                            painter: _RiderPathPainter(),
+                          child: const EcoCartoMap(
+                            center: LatLng(3.0275, 30.8995),
+                            zoom: 14.5,
+                            routePoints: OsrmRoutingService.fallbackAruaToEdiofeRoute,
+                            showControls: true,
+                            showLandmarks: true,
                           ),
                         ),
                         Container(
@@ -932,37 +942,4 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
       ),
     );
   }
-}
-
-/// Painter for Rider Route Map
-class _RiderPathPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final roadPaint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 8
-      ..style = PaintingStyle.stroke;
-    final routePaint = Paint()
-      ..color = const Color(0xFF2E7D32)
-      ..strokeWidth = 4
-      ..style = PaintingStyle.stroke;
-
-    // Roads
-    canvas.drawLine(Offset(0, size.height * 0.3), Offset(size.width, size.height * 0.7), roadPaint);
-    canvas.drawLine(Offset(size.width * 0.2, 0), Offset(size.width * 0.8, size.height), roadPaint);
-
-    // Active route overlay
-    final path = Path();
-    path.moveTo(size.width * 0.15, size.height * 0.35);
-    path.lineTo(size.width * 0.45, size.height * 0.5);
-    path.lineTo(size.width * 0.7, size.height * 0.6);
-    canvas.drawPath(path, routePaint);
-
-    // Destination Pin
-    final pinPaint = Paint()..color = const Color(0xFFD32F2F);
-    canvas.drawCircle(Offset(size.width * 0.7, size.height * 0.6), 6, pinPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/eco_palette.dart';
 import '../auth/splash_screen.dart';
+import 'widgets/eco_gemini_assistant_sheet.dart';
 
 /// 05_RESIDENT_SUPPORT: Support Center with FAQ search, help cards, & dispatch dialer
 class SupportScreen extends StatefulWidget {
@@ -210,6 +211,13 @@ class _SupportScreenState extends State<SupportScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            _buildQuickHelpCard(
+              title: 'Ask EcoBot AI',
+              subtitle: 'Instant waste sorting & municipal guide (Powered by Google Gemini)',
+              icon: Icons.auto_awesome,
+              onTap: () => showEcoGeminiAssistantSheet(context),
             ),
             const SizedBox(height: 12),
             _buildQuickHelpCard(

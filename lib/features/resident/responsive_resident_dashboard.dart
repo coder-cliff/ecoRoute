@@ -6,8 +6,11 @@ import 'package:flutter/material.dart';
 import '../../core/layout/adaptive_layout.dart';
 import '../../domain/entities/pickup_request.dart';
 import '../../domain/enums/waste_type.dart';
+import 'package:latlong2/latlong.dart';
+import '../common/widgets/eco_carto_map.dart';
 import '../payment/digital_receipt_dialog.dart';
 import '../../main.dart';
+import 'widgets/eco_gemini_assistant_sheet.dart';
 
 /// Responsive Resident / User Dashboard
 /// Strictly adheres to Architectural Wireframe A & Image 1 Mobile layout + Desktop matrix
@@ -234,6 +237,53 @@ class _ResponsiveResidentDashboardState
             ),
             const SizedBox(height: 16),
 
+            // GOOGLE GEMINI ZERO-COST AI ASSISTANT BANNER
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: accentGreen.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: accentGreen.withOpacity(0.25)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: accentGreen,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Smart Waste Sorting with Gemini AI',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
+                        ),
+                        Text(
+                          'Unsure if your item is recyclable? Ask EcoBot.',
+                          style: TextStyle(fontSize: 11, color: subtextColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  FilledButton.tonal(
+                    style: FilledButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      backgroundColor: accentGreen.withOpacity(0.18),
+                    ),
+                    onPressed: () => showEcoGeminiAssistantSheet(context),
+                    child: Text('Ask AI', style: TextStyle(color: accentGreen, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // WASTE DETAILS CARD
             Container(
               padding: const EdgeInsets.all(16),
@@ -366,32 +416,24 @@ class _ResponsiveResidentDashboardState
               child: Column(
                 children: [
                   // Map Preview Canvas
+                  // Live OpenStreetMap Engine
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                    child: Container(
-                      height: 130,
-                      color: const Color(0xFFE2EBE2),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          CustomPaint(
-                            size: const Size(double.infinity, 130),
-                            painter: _MiniMapPainter(),
-                          ),
-                          // Precision Radius Circle
-                          Container(
-                            width: 68,
-                            height: 68,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: accentGreen.withOpacity(0.2),
-                              border: Border.all(color: accentGreen, width: 1.5),
+                    child: SizedBox(
+                      height: 160,
+                      child: EcoCartoMap(
+                        center: const LatLng(3.0303, 30.9073),
+                        zoom: 14.5,
+                        showLandmarks: true,
+                        showControls: true,
+                        onLocationSelected: (pos) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Pickup pin updated: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}'),
+                              duration: const Duration(seconds: 2),
                             ),
-                            child: const Center(
-                              child: Icon(Icons.location_on, color: Color(0xFF1B5E20), size: 28),
-                            ),
-                          ),
-                        ],
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -1213,6 +1255,16 @@ class _ResponsiveResidentDashboardState
                             onPressed: () => state.logout(context),
                           ),
                           const SizedBox(width: 12),
+                          OutlinedButton.icon(
+                            onPressed: () => showEcoGeminiAssistantSheet(context),
+                            icon: const Icon(Icons.auto_awesome, size: 16),
+                            label: const Text('Ask EcoBot AI'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: accentGreen,
+                              side: BorderSide(color: accentGreen),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           FilledButton.icon(
                             onPressed: () => _handleInstantBooking(context),
                             icon: const Icon(Icons.flash_on, size: 16),
@@ -1314,9 +1366,12 @@ class _ResponsiveResidentDashboardState
                                     Expanded(
                                       child: ClipRRect(
                                         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-                                        child: CustomPaint(
-                                          size: const Size(double.infinity, double.infinity),
-                                          painter: _DesktopMapPainter(),
+                                        child: const EcoCartoMap(
+                                          center: LatLng(3.0303, 30.9073),
+                                          zoom: 14.5,
+                                          height: null,
+                                          showLandmarks: true,
+                                          showControls: true,
                                         ),
                                       ),
                                     ),
@@ -2202,60 +2257,4 @@ class _ResponsiveResidentDashboardState
       ),
     );
   }
-}
-
-/// Mini Map Painter for OpenStreetMap port
-class _MiniMapPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final roadPaint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 6
-      ..style = PaintingStyle.stroke;
-    final greenZonePaint = Paint()..color = const Color(0xFFC8E6C9);
-
-    // Green zone patches
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(size.width * 0.1, 10, size.width * 0.35, 60), const Radius.circular(8)),
-      greenZonePaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(size.width * 0.55, 40, size.width * 0.4, 70), const Radius.circular(8)),
-      greenZonePaint,
-    );
-
-    // Roads
-    canvas.drawLine(Offset(0, size.height * 0.5), Offset(size.width, size.height * 0.45), roadPaint);
-    canvas.drawLine(Offset(size.width * 0.4, 0), Offset(size.width * 0.6, size.height), roadPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Desktop Detailed Spatial Interactive Map Painter
-class _DesktopMapPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bgPaint = Paint()..color = const Color(0xFFE8F0E8);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
-
-    final roadPaint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 10
-      ..style = PaintingStyle.stroke;
-
-    // Major Arua Corridors
-    canvas.drawLine(Offset(0, size.height * 0.4), Offset(size.width, size.height * 0.55), roadPaint);
-    canvas.drawLine(Offset(size.width * 0.3, 0), Offset(size.width * 0.35, size.height), roadPaint);
-    canvas.drawLine(Offset(size.width * 0.7, 0), Offset(size.width * 0.65, size.height), roadPaint);
-
-    // Fleet & Depot Pins
-    final pinPaint = Paint()..color = const Color(0xFF2E7D32);
-    canvas.drawCircle(Offset(size.width * 0.32, size.height * 0.42), 8, pinPaint);
-    canvas.drawCircle(Offset(size.width * 0.68, size.height * 0.52), 8, pinPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

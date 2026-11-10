@@ -1,10 +1,12 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/services/location_service.dart';
 import '../../../domain/enums/zone.dart';
+import '../../common/widgets/eco_carto_map.dart';
 
 class AruaLandmark {
   const AruaLandmark({
@@ -177,18 +179,14 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
       ),
       child: Stack(
         children: [
-          // Interactive Map Canvas with Google Maps Styling
-          GestureDetector(
-            onDoubleTap: () => setState(() {
-              _zoomScale = _zoomScale == 1.0 ? 1.35 : 1.0;
-            }),
-            child: AnimatedScale(
-              scale: _zoomScale,
-              duration: const Duration(milliseconds: 250),
-              child: CustomPaint(
-                size: Size.infinite,
-                painter: _AruaGoogleMapsPainter(mapType: _mapType),
-              ),
+          // Real Interactive OpenStreetMap Engine
+          Positioned.fill(
+            child: EcoCartoMap(
+              center: LatLng(lat, lng),
+              zoom: 14.2,
+              showLandmarks: true,
+              showControls: true,
+              onLocationSelected: (pos) => _launchGoogleMaps(lat: pos.latitude, lng: pos.longitude),
             ),
           ),
 
@@ -623,141 +621,4 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
       ),
     );
   }
-}
-
-class _AruaGoogleMapsPainter extends CustomPainter {
-  const _AruaGoogleMapsPainter({required this.mapType});
-
-  final GoogleMapType mapType;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final isSatellite = mapType == GoogleMapType.satellite;
-
-    // Background Canvas
-    final bgPaint = Paint()
-      ..color = isSatellite ? const Color(0xFF1C2C20) : const Color(0xFFF2F4F7);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
-
-    // Green Vegetation / Parks (Google Maps Style)
-    final parkPaint = Paint()
-      ..color = isSatellite ? const Color(0xFF16251A) : const Color(0xFFD4EBD8);
-
-    final golfCourse = Rect.fromLTWH(
-      size.width * 0.65,
-      size.height * 0.28,
-      size.width * 0.28,
-      size.height * 0.22,
-    );
-    canvas.drawRRect(RRect.fromRectAndRadius(golfCourse, const Radius.circular(16)), parkPaint);
-
-    final muniGreen = Rect.fromLTWH(
-      size.width * 0.50,
-      size.height * 0.70,
-      size.width * 0.42,
-      size.height * 0.25,
-    );
-    canvas.drawRRect(RRect.fromRectAndRadius(muniGreen, const Radius.circular(16)), parkPaint);
-
-    // 12 km Municipal Perimeter Circle
-    final perimeterPaint = Paint()
-      ..color = isSatellite
-          ? const Color(0x40FFFFFF)
-          : const Color(0x402E7D32)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
-    final center = Offset(size.width * 0.5, size.height * 0.5);
-    final radius = math.min(size.width, size.height) * 0.44;
-    canvas.drawCircle(center, radius, perimeterPaint);
-
-    // Subtle Cardinal Division Lines
-    final dashPaint = Paint()
-      ..color = isSatellite ? const Color(0x25FFFFFF) : const Color(0x202E7D32)
-      ..strokeWidth = 1.0;
-    canvas.drawLine(Offset(size.width * 0.5, 0), Offset(size.width * 0.5, size.height), dashPaint);
-    canvas.drawLine(Offset(0, size.height * 0.5), Offset(size.width, size.height * 0.5), dashPaint);
-
-    // River Oli (Waterway Green)
-    final riverPaint = Paint()
-      ..color = isSatellite ? const Color(0xFF143020) : const Color(0xFFC8E6C9)
-      ..strokeWidth = 18
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final waterPath = Path()
-      ..moveTo(size.width * 0.88, -10)
-      ..quadraticBezierTo(
-        size.width * 0.68,
-        size.height * 0.32,
-        size.width * 0.94,
-        size.height + 10,
-      );
-    canvas.drawPath(waterPath, riverPaint);
-
-    // Road Network Layers:
-    // Highway Outer Casing
-    final highwayBorder = Paint()
-      ..color = isSatellite ? const Color(0x60000000) : const Color(0xFFF1C775)
-      ..strokeWidth = 14
-      ..style = PaintingStyle.stroke;
-
-    // Highway Fill (Google Maps Yellow)
-    final highwayFill = Paint()
-      ..color = isSatellite ? const Color(0xFFE0E0E0) : const Color(0xFFFFE082)
-      ..strokeWidth = 10
-      ..style = PaintingStyle.stroke;
-
-    // Local Streets (Google White)
-    final localStreet = Paint()
-      ..color = isSatellite ? const Color(0x60FFFFFF) : const Color(0xFFFFFFFF)
-      ..strokeWidth = 6
-      ..style = PaintingStyle.stroke;
-
-    final localStreetBorder = Paint()
-      ..color = isSatellite ? const Color(0x30000000) : const Color(0xFFD0D7DE)
-      ..strokeWidth = 8
-      ..style = PaintingStyle.stroke;
-
-    // Main Arterials
-    final mainArterial = Path()
-      ..moveTo(-20, size.height * 0.68)
-      ..quadraticBezierTo(
-        size.width * 0.35,
-        size.height * 0.50,
-        size.width + 20,
-        size.height * 0.60,
-      );
-
-    final crossArterial = Path()
-      ..moveTo(size.width * 0.25, -10)
-      ..quadraticBezierTo(
-        size.width * 0.50,
-        size.height * 0.42,
-        size.width * 0.72,
-        size.height + 10,
-      );
-
-    final ediofeRoad = Path()
-      ..moveTo(-10, size.height * 0.30)
-      ..quadraticBezierTo(
-        size.width * 0.45,
-        size.height * 0.20,
-        size.width + 10,
-        size.height * 0.32,
-      );
-
-    // Draw borders then fills
-    canvas.drawPath(mainArterial, highwayBorder);
-    canvas.drawPath(crossArterial, highwayBorder);
-    canvas.drawPath(mainArterial, highwayFill);
-    canvas.drawPath(crossArterial, highwayFill);
-
-    canvas.drawPath(ediofeRoad, localStreetBorder);
-    canvas.drawPath(ediofeRoad, localStreet);
-  }
-
-  @override
-  bool shouldRepaint(covariant _AruaGoogleMapsPainter oldDelegate) =>
-      oldDelegate.mapType != mapType;
 }
