@@ -298,9 +298,9 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Ask EcoBot AI',
-            icon: const Icon(Icons.auto_awesome, color: EcoPalette.primaryDark),
-            onPressed: () => showEcoGeminiAssistantSheet(context),
+            tooltip: 'ecoRoute Bot',
+            icon: const Icon(Icons.smart_toy_outlined, color: EcoPalette.primaryDark),
+            onPressed: () => showEcoRouteBotChatSheet(context),
           ),
           IconButton(
             icon: const Icon(Icons.account_circle_outlined, color: EcoPalette.primaryDark),

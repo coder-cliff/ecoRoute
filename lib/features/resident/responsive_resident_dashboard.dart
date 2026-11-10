@@ -30,7 +30,7 @@ class _ResponsiveResidentDashboardState
   // Real-time Waste Details Configuration
   String _selectedWasteType = 'Household Waste';
   int _sackCount = 3;
-  static const int _pricePerSackUgx = 5000;
+  static const int _pricePerSackUgx = 2500;
 
   final List<String> _wasteTypes = const [
     'Household Waste',
@@ -126,17 +126,28 @@ class _ResponsiveResidentDashboardState
       ),
       body: _buildMobileBody(state, textColor, subtextColor, cardColor, accentGreen, isDark, estimatedTotal),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentBottomNavIndex,
+        currentIndex: _currentBottomNavIndex.clamp(0, 2),
         onTap: (index) => setState(() => _currentBottomNavIndex = index),
         backgroundColor: cardColor,
         selectedItemColor: accentGreen,
         unselectedItemColor: subtextColor,
         type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Requests'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications_outlined),
+            activeIcon: Icon(Icons.notifications),
+            label: 'Alerts',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Account',
+          ),
         ],
       ),
     );
@@ -153,11 +164,9 @@ class _ResponsiveResidentDashboardState
   ) {
     switch (_currentBottomNavIndex) {
       case 1:
-        return _buildMobileHistoryView(state, textColor, subtextColor, cardColor, accentGreen);
+        return _buildMobileAlertsView(state, textColor, subtextColor, cardColor, accentGreen, isDark);
       case 2:
-        return _buildMobileRequestsView(state, textColor, subtextColor, cardColor, accentGreen);
-      case 3:
-        return _buildMobileProfileView(state, textColor, subtextColor, cardColor, accentGreen, isDark);
+        return _buildMobileAccountView(state, textColor, subtextColor, cardColor, accentGreen, isDark);
       case 0:
       default:
         return _buildMobileHomeView(state, textColor, subtextColor, cardColor, accentGreen, isDark, estimatedTotal);
@@ -173,419 +182,1191 @@ class _ResponsiveResidentDashboardState
     bool isDark,
     int estimatedTotal,
   ) {
+    final displayName = state.userName.isNotEmpty ? state.userName : 'Ayiko Gift Clliford';
+    final displayLocation = state.userDistrict.isNotEmpty ? '${state.userDistrict}, Uganda' : 'Arua, Uganda';
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // User Greeting
-          Text(
-            state.userName.isNotEmpty
-                  ? 'Hello, ${state.userName}!'
-                  : 'Hello, Muni Residence!',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: textColor,
-              ),
+          // =================================================================
+          // 1. TOP GREEN PROFILE HERO (EXACTLY MATCHES IMAGE 1 & 2)
+          // =================================================================
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF132A1C) : const Color(0xFF0F3822),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
             ),
-            const SizedBox(height: 14),
-
-            // Schedule Fast Pickup Button
-            ElevatedButton(
-              onPressed: () => _handleInstantBooking(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: accentGreen,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 1,
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
+            child: Column(
+              children: [
+                // Top Brand Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.eco, color: accentGreen, size: 26),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'ecoRoute',
+                      style: TextStyle(
+                        fontFamily: 'Satoshi',
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                        color: Colors.white,
+                      ),
                     ),
-                    child: const Icon(Icons.calendar_month, color: Colors.white, size: 22),
+                  ],
+                ),
+                const SizedBox(height: 18),
+
+                // User Avatar Circle
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                  child: const CircleAvatar(
+                    radius: 34,
+                    backgroundColor: Color(0xFFCFD8DC),
+                    child: Icon(Icons.person, size: 42, color: Colors.white),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'Schedule Fast Pickup',
+                ),
+                const SizedBox(height: 12),
+
+                // User Name
+                Text(
+                  displayName,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+
+                // Location Subtitle
+                Text(
+                  displayLocation,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white.withOpacity(0.8),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // =================================================================
+          // 2. PRIMARY ACTION CARDS (IMAGE 1 MOBILE VIEWPORT)
+          // =================================================================
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // CARD 1: PICKUP HISTORY
+                _buildHomeActionCard(
+                  icon: Icons.local_shipping_outlined,
+                  title: 'Pickup History',
+                  subtitle: 'View past & scheduled collections',
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                  accentColor: accentGreen,
+                  onTap: () => _showHistorySheet(context, state, textColor, subtextColor, cardColor, accentGreen),
+                ),
+                const SizedBox(height: 12),
+
+                // CARD 2: SERVICE ADDRESSES
+                _buildHomeActionCard(
+                  icon: Icons.location_on_outlined,
+                  title: 'Service Addresses',
+                  subtitle: 'Manage pickup points & landmarks',
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                  accentColor: accentGreen,
+                  onTap: () => _showAddressesSheet(context, state, textColor, subtextColor, cardColor, accentGreen),
+                ),
+                const SizedBox(height: 14),
+
+                // CARD 3: VIBRANT GREEN REQUEST PICKUP BUTTON (HERO BUTTON)
+                SizedBox(
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: () => _handleInstantBooking(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF00C853),
+                      foregroundColor: Colors.white,
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.delete_outline, size: 24, color: Colors.white),
+                        const Spacer(),
+                        const Text(
+                          'REQUEST PICKUP',
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.1,
                             color: Colors.white,
                           ),
                         ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Sub-5-Meter Precision. On-Site Verified.',
-                          style: TextStyle(fontSize: 11, color: Colors.white70),
-                        ),
+                        const Spacer(),
+                        const Icon(Icons.local_shipping, size: 24, color: Colors.white),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+                ),
+                const SizedBox(height: 14),
 
-            // GOOGLE GEMINI ZERO-COST AI ASSISTANT BANNER
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: accentGreen.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: accentGreen.withOpacity(0.25)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
+                // CARD 4: ecoRoute Bot (FIRST-CLASS AI ASSISTANT ON HOME SCREEN)
+                InkWell(
+                  onTap: () => showEcoRouteBotChatSheet(context),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: accentGreen,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Smart Waste Sorting with Gemini AI',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
+                      color: isDark ? const Color(0xFF162E20) : const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF00A884).withOpacity(0.4), width: 1.2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF00A884).withOpacity(0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
                         ),
-                        Text(
-                          'Unsure if your item is recyclable? Ask EcoBot.',
-                          style: TextStyle(fontSize: 11, color: subtextColor),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Stack(
+                          alignment: Alignment.bottomRight,
+                          children: [
+                            Container(
+                              width: 46,
+                              height: 46,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF00A884),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 26),
+                            ),
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF25D366),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDark ? const Color(0xFF162E20) : const Color(0xFFE8F5E9),
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    'ecoRoute Bot',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF25D366).withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text(
+                                      'ONLINE',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF008069),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'WhatsApp-style instant help • 400+ Arua chats',
+                                style: TextStyle(fontSize: 11.5, color: subtextColor),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00A884),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Chat',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              SizedBox(width: 4),
+                              Icon(Icons.arrow_forward_ios, size: 10, color: Colors.white),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  FilledButton.tonal(
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      backgroundColor: accentGreen.withOpacity(0.18),
-                    ),
-                    onPressed: () => showEcoGeminiAssistantSheet(context),
-                    child: Text('Ask AI', style: TextStyle(color: accentGreen, fontWeight: FontWeight.bold, fontSize: 12)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+                ),
+                const SizedBox(height: 12),
 
-            // WASTE DETAILS CARD
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AntigravityTheme.border(context)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                // CARD 5: ecoRoute SUPPORT
+                _buildHomeActionCard(
+                  icon: Icons.info_outline,
+                  title: 'ecoRoute Support',
+                  subtitle: 'Get help with your service • +256394880352',
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                  accentColor: accentGreen,
+                  onTap: () => _showSupportModal(context),
+                ),
+                const SizedBox(height: 18),
+
+                // =============================================================
+                // 3. MAP PREVIEW & ACTIVE PICKUP TRUCK EN-ROUTE (IMAGE 2 HOME)
+                // =============================================================
+                Container(
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AntigravityTheme.border(context)),
                   ),
-                ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // OpenStreetMap Preview
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        child: SizedBox(
+                          height: 150,
+                          child: EcoCartoMap(
+                            center: const LatLng(3.0303, 30.9073),
+                            zoom: 14.5,
+                            showLandmarks: true,
+                            showControls: true,
+                            onLocationSelected: (pos) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Pickup pin updated: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}'),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.local_shipping, size: 18, color: Color(0xFF00C853)),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Active pickup truck en-route',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: textColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF00C853).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                '3 min away',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF00C853),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // =============================================================
+                // 4. RECENT ACTIVITIES MATRIX (IMAGE 2 HOME)
+                // =============================================================
+                Text(
+                  'Recent Activities',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AntigravityTheme.border(context)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.delete_outline, size: 16, color: accentGreen),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Next Pickup',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: textColor),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'General Commercial Waste',
+                              style: TextStyle(fontSize: 10.5, color: subtextColor),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Today, 10:00 AM',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: accentGreen),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => _handleInstantBooking(context),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: cardColor,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AntigravityTheme.border(context)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.calendar_month_outlined, size: 16, color: accentGreen),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Quick Dispatch',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: textColor),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'On-demand Tricycle',
+                                style: TextStyle(fontSize: 10.5, color: subtextColor),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Under 15 Mins',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: accentGreen),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // =============================================================
+                // 5. WASTE CONFIGURATION & PRICE CALCULATOR
+                // =============================================================
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AntigravityTheme.border(context)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Sack Details & Tariffs',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor),
+                          ),
+                          Text(
+                            '$_sackCount Sacks • ${estimatedTotal.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} UGX',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: accentGreen),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          activeTrackColor: accentGreen,
+                          inactiveTrackColor: accentGreen.withOpacity(0.2),
+                          thumbColor: accentGreen,
+                          trackHeight: 4,
+                        ),
+                        child: Slider(
+                          value: _sackCount.toDouble(),
+                          min: 1,
+                          max: 10,
+                          divisions: 9,
+                          onChanged: (val) => setState(() => _sackCount = val.toInt()),
+                        ),
+                      ),
+                      Text(
+                        'Standard Household Rate: 2,500 UGX/sack • Pay via MTN MoMo, Airtel Money or Cash.',
+                        style: TextStyle(fontSize: 11, color: subtextColor),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================================================================
+  // TAB 1: ALERTS & MESSAGES (EXACTLY MATCHES IMAGE 2 & 3)
+  // =========================================================================
+  Widget _buildMobileAlertsView(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+    bool isDark,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Alerts & Messages',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Real-time collection dispatches and verified receipts',
+            style: TextStyle(fontSize: 12, color: subtextColor),
+          ),
+          const SizedBox(height: 16),
+
+          // ALERT 1: DISPATCHER EN-ROUTE (IN TRANSIT)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AntigravityTheme.border(context)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.local_shipping, color: Color(0xFFFF9800), size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Dispatcher En-Route',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textColor),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF9800).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'In transit',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFFF9800)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Your collection truck is 3 minutes away from Arua City point',
+                  style: TextStyle(fontSize: 12.5, color: subtextColor),
+                ),
+                const SizedBox(height: 14),
+
+                // PROGRESS TRACKER BAR (MATCHING IMAGE 2)
+                Row(
+                  children: [
+                    Text('Progress tracker', style: TextStyle(fontSize: 11, color: subtextColor)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: 0.75,
+                          minHeight: 6,
+                          backgroundColor: Colors.grey.withOpacity(0.2),
+                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00C853)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.local_shipping, size: 16, color: Color(0xFF00C853)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ALERT 2: WASTE COLLECTED (VERIFIED)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AntigravityTheme.border(context)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Color(0xFF00C853), size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Waste Collected',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textColor),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00C853).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'Verified',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00C853)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Successful General Commercial pick-up on Wednesday',
+                  style: TextStyle(fontSize: 12.5, color: subtextColor),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ALERT 3: PAYMENT RECEIVED
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AntigravityTheme.border(context)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00C853).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.payment, color: Color(0xFF00C853), size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Payment Received',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Subscription Payment for account confirmed',
+                        style: TextStyle(fontSize: 12, color: subtextColor),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.check_circle_outline, color: Color(0xFF00C853), size: 18),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Dynamic Active Requests from state
+          if (state.residentRequests.isNotEmpty) ...[
+            Text(
+              'Your Active Requests',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
+            ),
+            const SizedBox(height: 10),
+            ...state.residentRequests.map((req) {
+              final status = (req['status'] as String?) ?? 'Pending';
+              final isDone = status.toLowerCase() == 'completed';
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AntigravityTheme.border(context)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isDone ? Icons.check_circle : Icons.hourglass_top,
+                      color: isDone ? accentGreen : Colors.orange,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            req['wasteType'] as String? ?? 'Household Waste',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor),
+                          ),
+                          Text(
+                            '${req['sacks'] ?? 1} sack(s) • ${req['location'] ?? 'Arua Point'}',
+                            style: TextStyle(fontSize: 11, color: subtextColor),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      status,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isDone ? accentGreen : Colors.orange,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // =========================================================================
+  // TAB 2: MY ECOROUTE ACCOUNT (EXACTLY MATCHES IMAGE 2 & 3)
+  // =========================================================================
+  Widget _buildMobileAccountView(
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+    bool isDark,
+  ) {
+    final displayName = state.userName.isNotEmpty ? state.userName : 'Ayiko Gift Clliford';
+    final displayLocation = state.userDistrict.isNotEmpty ? '${state.userDistrict}, Uganda' : 'Arua, Uganda';
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Top Green Hero
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 26),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF132A1C) : const Color(0xFF0F3822),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+            ),
+            child: Column(
+              children: [
+                const Text(
+                  'My ecoRoute Account',
+                  style: TextStyle(
+                    fontFamily: 'Satoshi',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                  child: const CircleAvatar(
+                    radius: 34,
+                    backgroundColor: Color(0xFFCFD8DC),
+                    child: Icon(Icons.person, size: 42, color: Colors.white),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  displayName,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  displayLocation,
+                  style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.8)),
+                ),
+              ],
+            ),
+          ),
+
+          // Menu Options (Matching Image 2 & 3)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AntigravityTheme.border(context)),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildAccountTile(
+                        icon: Icons.person_outline,
+                        title: 'Personal Information',
+                        textColor: textColor,
+                        onTap: () => showEcoRouteProfileSheet(context),
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      _buildAccountTile(
+                        icon: Icons.location_on_outlined,
+                        title: 'Saved Service Addresses',
+                        textColor: textColor,
+                        onTap: () => _showAddressesSheet(context, state, textColor, subtextColor, cardColor, accentGreen),
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      _buildAccountTile(
+                        icon: Icons.tune_outlined,
+                        title: 'Fleet Settings',
+                        textColor: textColor,
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Fleet Settings: Electric Tricycles assigned to Arua Central.')),
+                          );
+                        },
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      _buildAccountTile(
+                        icon: Icons.settings_outlined,
+                        title: 'App Preferences',
+                        textColor: textColor,
+                        onTap: () => state.toggleTheme(),
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      _buildAccountTile(
+                        icon: Icons.support_agent_outlined,
+                        title: 'Contact ecoRoute Support',
+                        textColor: textColor,
+                        onTap: () => _showSupportModal(context),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // SALMON RED SIGN OUT BUTTON (EXACTLY MATCHING IMAGE 2 & 3)
+                SizedBox(
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      state.clearSession();
+                      Navigator.pushReplacementNamed(context, '/login');
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFEF5350), // Salmon red
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Sign Out',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHomeActionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color cardColor,
+    required Color textColor,
+    required Color subtextColor,
+    required Color accentColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AntigravityTheme.border(context)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
               ),
+              child: Icon(icon, color: textColor, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Waste Details',
+                    title,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                       color: textColor,
                     ),
                   ),
-                  const SizedBox(height: 12),
-
-                  // Waste Type Dropdown
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF282828) : const Color(0xFFF8F9FA),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AntigravityTheme.border(context)),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _selectedWasteType,
-                        isExpanded: true,
-                        dropdownColor: cardColor,
-                        icon: const Icon(Icons.keyboard_arrow_down),
-                        items: _wasteTypes.map((type) {
-                          return DropdownMenuItem<String>(
-                            value: type,
-                            child: Row(
-                              children: [
-                                const Icon(Icons.shopping_bag_outlined, size: 18, color: Colors.grey),
-                                const SizedBox(width: 10),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text('Select Waste Type', style: TextStyle(fontSize: 10, color: subtextColor)),
-                                    Text(
-                                      type,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: textColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _selectedWasteType = val);
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Number of Sacks Slider
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Number of Sacks',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textColor),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: accentGreen.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '$_sackCount Sacks',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: accentGreen,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      activeTrackColor: accentGreen,
-                      inactiveTrackColor: accentGreen.withOpacity(0.2),
-                      thumbColor: accentGreen,
-                      overlayColor: accentGreen.withOpacity(0.15),
-                      trackHeight: 4,
-                    ),
-                    child: Slider(
-                      value: _sackCount.toDouble(),
-                      min: 1,
-                      max: 10,
-                      divisions: 9,
-                      onChanged: (val) => setState(() => _sackCount = val.toInt()),
-                    ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 12, color: subtextColor),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 14),
-
-            // MINI OPENSTREETMAP PORT CARD
-            Container(
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AntigravityTheme.border(context)),
-              ),
-              child: Column(
-                children: [
-                  // Map Preview Canvas
-                  // Live OpenStreetMap Engine
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                    child: SizedBox(
-                      height: 160,
-                      child: EcoCartoMap(
-                        center: const LatLng(3.0303, 30.9073),
-                        zoom: 14.5,
-                        showLandmarks: true,
-                        showControls: true,
-                        onLocationSelected: (pos) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Pickup pin updated: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}'),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Muni University Area',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: textColor,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Live Location Accuracy: <5m',
-                              style: TextStyle(fontSize: 11, color: accentGreen, fontWeight: FontWeight.w600),
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                const Icon(Icons.place, size: 12, color: Colors.grey),
-                                const SizedBox(width: 2),
-                                Text(
-                                  'Arua, Uganda',
-                                  style: TextStyle(fontSize: 11, color: subtextColor),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        Text(
-                          '© OpenStreetMap',
-                          style: TextStyle(fontSize: 9, color: subtextColor.withOpacity(0.6)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // ESTIMATED PRICE CARD
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AntigravityTheme.border(context)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ESTIMATED PRICE',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: subtextColor,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'UGX ${estimatedTotal.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          color: accentGreen,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Cost: $_sackCount Sacks @ UGX 5,000',
-                        style: TextStyle(fontSize: 11, color: subtextColor),
-                      ),
-                      Text(
-                        'Pay via MoMo Intent (*165*3#)',
-                        style: TextStyle(fontSize: 11, color: subtextColor),
-                      ),
-                    ],
-                  ),
-                  FilledButton.tonal(
-                    onPressed: () => _handleInstantBooking(context),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: accentGreen.withValues(alpha: 0.12),
-                      foregroundColor: accentGreen,
-                    ),
-                    child: const Text('Book Order', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Status notification pills
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AntigravityTheme.border(context)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.event_available, size: 16, color: Color(0xFF2E7D32)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Pickup Scheduled for Today (North Zone)',
-                      style: TextStyle(fontSize: 12, color: textColor, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AntigravityTheme.border(context)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.electric_moped, size: 16, color: Color(0xFF2E7D32)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Rider TRIC-18 is active nearby',
-                      style: TextStyle(fontSize: 12, color: textColor, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
+            Icon(Icons.arrow_forward_ios, size: 14, color: subtextColor.withOpacity(0.5)),
           ],
         ),
-      );
+      ),
+    );
+  }
+
+  Widget _buildAccountTile({
+    required IconData icon,
+    required String title,
+    required Color textColor,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: textColor, size: 22),
+      title: Text(
+        title,
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textColor),
+      ),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+      onTap: onTap,
+    );
+  }
+
+  void _showHistorySheet(
+    BuildContext context,
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Container(
+        height: MediaQuery.of(ctx).size.height * 0.8,
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Pickup History',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+            const Divider(),
+            Expanded(
+              child: _buildMobileHistoryView(state, textColor, subtextColor, cardColor, accentGreen),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddressesSheet(
+    BuildContext context,
+    EcoRouteState state,
+    Color textColor,
+    Color subtextColor,
+    Color cardColor,
+    Color accentGreen,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Saved Service Addresses',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.home, color: Color(0xFF00C853)),
+              title: const Text('Primary Household'),
+              subtitle: Text(state.userCell.isNotEmpty ? state.userCell : 'Muni Campus Road, Arua'),
+              trailing: const Chip(label: Text('Default', style: TextStyle(fontSize: 10))),
+            ),
+            ListTile(
+              leading: const Icon(Icons.storefront, color: Colors.blue),
+              title: const Text('Commercial Outlet'),
+              subtitle: const Text('Arua Main Market, Lockup #14'),
+              trailing: OutlinedButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Select', style: TextStyle(fontSize: 11)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Tap on the map canvas to lock new GPS coordinates.')),
+                  );
+                },
+                icon: const Icon(Icons.add_location_alt_outlined, size: 18),
+                label: const Text('Add New Service Address'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSupportModal(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'ecoRoute Support',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            const Text('Need assistance with your waste collection or schedules?'),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.phone, color: Color(0xFF00C853)),
+              title: const Text('Toll-Free Dispatch Hotline'),
+              subtitle: const Text(kEcoRouteSupportPhone),
+              trailing: FilledButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  launchEcoRouteCall();
+                },
+                child: const Text('Call'),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.chat, color: Color(0xFF25D366)),
+              title: const Text('WhatsApp Operations Desk'),
+              subtitle: const Text('Chat with Arua Dispatcher'),
+              trailing: FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF25D366)),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  launchEcoRouteWhatsApp();
+                },
+                child: const Text('WhatsApp'),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.smart_toy, color: Color(0xFF00A884)),
+              title: const Text('ecoRoute Bot (AI Assistant)'),
+              subtitle: const Text('24/7 instant answers & sorting guide'),
+              trailing: FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF00A884)),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  showEcoRouteBotChatSheet(context);
+                },
+                child: const Text('Chat Bot'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildMobileHistoryView(
@@ -1256,9 +2037,9 @@ class _ResponsiveResidentDashboardState
                           ),
                           const SizedBox(width: 12),
                           OutlinedButton.icon(
-                            onPressed: () => showEcoGeminiAssistantSheet(context),
-                            icon: const Icon(Icons.auto_awesome, size: 16),
-                            label: const Text('Ask EcoBot AI'),
+                            onPressed: () => showEcoRouteBotChatSheet(context),
+                            icon: const Icon(Icons.smart_toy_outlined, size: 16),
+                            label: const Text('ecoRoute Bot'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: accentGreen,
                               side: BorderSide(color: accentGreen),

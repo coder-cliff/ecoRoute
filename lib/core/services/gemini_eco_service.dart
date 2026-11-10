@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/rules/price_calculator.dart';
+import 'ecoroute_bot_conversations.dart';
 
 /// Structured response from the EcoRoute Gemini AI Assistant
 class WasteClassificationResult {
@@ -78,13 +79,16 @@ class GeminiEcoService {
     return _offlineFallback(cleanQuery);
   }
 
-  /// Ask general EcoRoute / Arua City municipal waste questions
+  /// Ask ecoRoute Bot general waste collection or casual WhatsApp questions
   Future<String> askEcoAssistant({
     required String question,
     List<Map<String, String>> chatHistory = const [],
+    String? userName,
   }) async {
     final cleanQ = question.trim();
-    if (cleanQ.isEmpty) return 'Please ask a question about waste collection, sorting, or municipal schedules in Arua City.';
+    if (cleanQ.isEmpty) {
+      return EcoRouteBotConversations.findWhatsAppReply('hello', userName: userName);
+    }
 
     final apiKey = getApiKey();
     if (apiKey != null && apiKey.isNotEmpty) {
@@ -94,11 +98,11 @@ class GeminiEcoService {
           return answer;
         }
       } catch (e) {
-        debugPrint('Gemini chat online notice (using smart fallback): $e');
+        debugPrint('Gemini chat online notice (using smart WhatsApp fallback): $e');
       }
     }
 
-    return _offlineChatFallback(cleanQ);
+    return EcoRouteBotConversations.findWhatsAppReply(cleanQ, userName: userName);
   }
 
   /// Generate intelligent dispatch and route summary for municipal supervisors
@@ -217,15 +221,17 @@ Respond STRICTLY with valid JSON matching this schema:
   ) async {
     final contents = <Map<String, dynamic>>[];
 
-    // System context
+    // System context - WhatsApp conversational persona
     contents.add({
       'role': 'user',
       'parts': [
         {
-          'text': 'You are EcoBot, the friendly AI waste management assistant for EcoRoute in Arua City, Uganda. '
-                  'EcoRoute provides zero-emission, on-demand municipal waste collection via electric/pedal tricycles. '
-                  'Standard residential fee is 1,500 UGX per sack. Commercial fee is 2,000 - 3,000 UGX. '
-                  'Emergency hotline is +256394880352. Provide concise, helpful advice.'
+          'text': 'You are ecoRoute Bot, a friendly, local WhatsApp assistant for ecoRoute in Arua City, Uganda. '
+                  'Reply exactly like a warm, helpful human chatting on WhatsApp: short 1 to 3 sentences, natural emojis, and zero robotic disclaimers. '
+                  'Never say "As an AI..." or "According to municipal regulations...". '
+                  'Standard residential fee is 2,500 UGX per sack. Commercial fee is 3,000 UGX. '
+                  'Emergency dispatch hotline & WhatsApp: +256394880352. '
+                  'Be conversational, friendly, and local to Arua.'
         }
       ]
     });
@@ -233,7 +239,7 @@ Respond STRICTLY with valid JSON matching this schema:
       'role': 'model',
       'parts': [
         {
-          'text': 'Understood. I am EcoBot, ready to assist Arua City residents and businesses with waste sorting, tariffs, and collection schedules.'
+          'text': 'Hey! ecoRoute Bot here 😊 Ready to chat WhatsApp-style and help with your compound or shop waste in Arua!'
         }
       ]
     });
@@ -346,39 +352,6 @@ Respond STRICTLY with valid JSON matching this schema:
   }
 
   String _offlineChatFallback(String q) {
-    final l = q.toLowerCase();
-
-    if (l.contains('fee') || l.contains('price') || l.contains('cost') || l.contains('rate')) {
-      return 'EcoRoute standard residential collection is 1,500 UGX per sack. '
-             'Commercial rates in Arua City start at 3,000 UGX for small shops, with volume discounts down to 1,800 UGX per sack for bulk orders (30+ sacks).';
-    }
-
-    if (l.contains('schedule') || l.contains('when') || l.contains('day') || l.contains('zone')) {
-      return 'Arua City collection schedules by division:\n'
-             '• North Division (Central Market & Hospital): Daily mornings (6:00 AM - 11:00 AM)\n'
-             '• West Division (River Oli & Ediofe): Tuesdays & Saturdays\n'
-             '• East Division (Arua Hill & Golf Course): Fridays\n'
-             '• South Division (Muni University): Thursdays\n'
-             'You can also request an on-demand rapid pickup anytime from your Resident Dashboard!';
-    }
-
-    if (l.contains('hotline') || l.contains('call') || l.contains('contact') || l.contains('support') || l.contains('phone')) {
-      return 'You can contact EcoRoute Operations directly:\n'
-             '• Hotline: +256394880352 (Toll-free dispatcher)\n'
-             '• WhatsApp: +256394880352\n'
-             '• Email: ecoroute.waste@gmail.com';
-    }
-
-    if (l.contains('sort') || l.contains('separate') || l.contains('recycle')) {
-      return 'EcoRoute recommends 3-way sorting:\n'
-             '1. Green Sack: Organic peels, food remains, and yard trimmings.\n'
-             '2. Yellow Sack: Clean plastic bottles, tins, and aluminum cans.\n'
-             '3. General Sack: Mixed dry domestic waste.\n'
-             'Sorting waste earns you 50 EcoPoints per verified sack, redeemable for municipal credits!';
-    }
-
-    return 'I am EcoBot, your zero-cost AI waste guide for Arua City. '
-           'You can ask me about collection schedules, fees (1,500 UGX/sack), how to sort specific waste items, or how to reach dispatch (+256394880352). '
-           'To enable full generative reasoning, you can also paste a free Google AI Studio Gemini API key in Municipal Settings!';
+    return EcoRouteBotConversations.findWhatsAppReply(q);
   }
 }

@@ -214,10 +214,10 @@ class _SupportScreenState extends State<SupportScreen> {
             ),
             const SizedBox(height: 12),
             _buildQuickHelpCard(
-              title: 'Ask EcoBot AI',
-              subtitle: 'Instant waste sorting & municipal guide (Powered by Google Gemini)',
-              icon: Icons.auto_awesome,
-              onTap: () => showEcoGeminiAssistantSheet(context),
+              title: 'ecoRoute Bot (WhatsApp Chat)',
+              subtitle: '24/7 instant waste sorting & 400+ local Arua chats',
+              icon: Icons.smart_toy_outlined,
+              onTap: () => showEcoRouteBotChatSheet(context),
             ),
             const SizedBox(height: 12),
             _buildQuickHelpCard(
