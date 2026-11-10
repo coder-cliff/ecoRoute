@@ -1556,15 +1556,22 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: true,
                 enableSuggestions: false,
                 autocorrect: false,
-                autofillHints: null,
+                autofillHints: _isSignUp ? const [AutofillHints.newPassword] : const [],
                 style: const TextStyle(color: Color(0xFF0D2618)),
                 decoration: InputDecoration(
-                  labelText: 'Password',
+                  labelText: _isSignUp ? 'Choose Password' : 'Password',
+                  hintText: _isSignUp ? 'At least 6 characters' : 'Enter your password',
                   labelStyle: const TextStyle(color: Color(0xFF0D2618)),
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF0D2618)),
+                  suffixIcon: _passwordController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () => setState(() => _passwordController.clear()),
+                        )
+                      : null,
                 ),
               ),
               if (!_isSignUp) ...[

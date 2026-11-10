@@ -31,11 +31,11 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
   void initState() {
     super.initState();
     _passwordController.clear();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _passwordController.clear();
-      }
-    });
+    _passwordController.addListener(_onPasswordChanged);
+  }
+
+  void _onPasswordChanged() {
+    if (mounted) setState(() {});
   }
 
   void _toggleAuthMode() {
@@ -49,6 +49,7 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
 
   @override
   void dispose() {
+    _passwordController.removeListener(_onPasswordChanged);
     _emailController.dispose();
     _passwordController.dispose();
     _fullNameController.dispose();
@@ -552,15 +553,16 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
 
         // Password field
         TextField(
-          key: ValueKey(_isSignUp ? 'signup_password_input' : 'login_password_input'),
+          key: ValueKey(_isSignUp ? 'signup_password_field' : 'login_password_field'),
           controller: _passwordController,
           obscureText: _obscurePassword,
           enableSuggestions: false,
           autocorrect: false,
-          autofillHints: null,
+          autofillHints: _isSignUp ? const [AutofillHints.newPassword] : const [],
           style: TextStyle(color: textColor),
           decoration: InputDecoration(
-            labelText: 'Password',
+            labelText: _isSignUp ? 'Choose Password' : 'Password',
+            hintText: _isSignUp ? 'At least 6 characters' : 'Enter your password',
             labelStyle: TextStyle(color: subtextColor),
             filled: true,
             fillColor: fieldBg,
@@ -573,13 +575,29 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
               borderSide: BorderSide(color: accentGreen, width: 1.5),
             ),
             prefixIcon: Icon(Icons.lock_outline, color: subtextColor),
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                color: subtextColor,
-                size: 20,
-              ),
-              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_passwordController.text.isNotEmpty)
+                  IconButton(
+                    tooltip: 'Clear Password',
+                    icon: const Icon(Icons.clear, size: 18),
+                    color: subtextColor,
+                    onPressed: () {
+                      _passwordController.clear();
+                      setState(() {});
+                    },
+                  ),
+                IconButton(
+                  tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    color: subtextColor,
+                    size: 20,
+                  ),
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ],
             ),
           ),
         ),
