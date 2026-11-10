@@ -243,7 +243,8 @@ class _RiderEveningReconciliationModalState
                       children: [
                         const Text(
                           'Present this settlement QR to the Depot Desk Supervisor for instant verification.',
-                          style: TextStyle(fontSize: 11.5, textAlign: TextAlign.center),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 11.5),
                         ),
                         const SizedBox(height: 12),
                         Center(

@@ -73,7 +73,7 @@ class _RiderInviteAcceptanceScreenState
 
     try {
       final state = EcoRouteState.instance;
-      final auth = AuthService(preferences: state.prefs);
+      final auth = AuthService(state.prefs);
       final invite = auth.getRiderInvite(code.isNotEmpty ? code : email);
 
       if (invite != null) {
@@ -119,7 +119,7 @@ class _RiderInviteAcceptanceScreenState
       final code = _codeController.text.trim();
 
       // Mark invite accepted in AuthService
-      final auth = AuthService(preferences: state.prefs);
+      final auth = AuthService(state.prefs);
       await auth.acceptRiderInvite(email, code);
 
       // Persist in state
