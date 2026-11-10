@@ -182,7 +182,9 @@ class _ResponsiveResidentDashboardState
     bool isDark,
     int estimatedTotal,
   ) {
-    final displayName = state.userName.isNotEmpty ? state.userName : 'Ayiko Gift Clliford';
+    final displayName = state.userName.isNotEmpty
+        ? state.userName
+        : (state.userEmail.isNotEmpty ? state.userEmail.split('@').first : 'EcoRoute Resident');
     final displayLocation = state.userCell.isNotEmpty ? '${state.userCell}, Arua' : 'Arua, Uganda';
 
     return SingleChildScrollView(
@@ -570,14 +572,18 @@ class _ResponsiveResidentDashboardState
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'General Commercial Waste',
+                              state.residentRequests.isNotEmpty
+                                  ? (state.residentRequests.first['wasteType']?.toString() ?? 'General Waste')
+                                  : 'No Pickup Scheduled',
                               style: TextStyle(fontSize: 10.5, color: subtextColor),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Today, 10:00 AM',
+                              state.residentRequests.isNotEmpty
+                                  ? (state.residentRequests.first['status']?.toString() ?? 'Scheduled')
+                                  : 'Tap to Request',
                               style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: accentGreen),
                             ),
                           ],
@@ -722,182 +728,233 @@ class _ResponsiveResidentDashboardState
           ),
           const SizedBox(height: 16),
 
-          // ALERT 1: DISPATCHER EN-ROUTE (IN TRANSIT)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AntigravityTheme.border(context)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+          if (state.residentRequests.isEmpty && state.activePickup == null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AntigravityTheme.border(context)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: accentGreen.withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.notifications_none_outlined, size: 32, color: accentGreen),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No New Alerts',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: textColor),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Real-time collection dispatches, rider arrival updates, and digital receipts will appear here when you schedule a pickup.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12.5, color: subtextColor, height: 1.4),
+                  ),
+                  const SizedBox(height: 18),
+                  FilledButton.icon(
+                    onPressed: () => _handleInstantBooking(context),
+                    icon: const Icon(Icons.add_shopping_cart, size: 16),
+                    label: const Text('Schedule Collection'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: accentGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ] else ...[
+            // DYNAMIC ALERT 1: DISPATCHER EN-ROUTE
+            if (state.activePickup != null) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AntigravityTheme.border(context)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Icon(Icons.local_shipping, color: Color(0xFFFF9800), size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Dispatcher En-Route',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textColor),
+                        Row(
+                          children: [
+                            const Icon(Icons.local_shipping, color: Color(0xFFFF9800), size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Dispatcher En-Route',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textColor),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF9800).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            state.activePickup!['status']?.toString() ?? 'In transit',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFFF9800)),
+                          ),
                         ),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF9800).withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        'In transit',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFFF9800)),
-                      ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tricycle assigned for ${state.activePickup!['address'] ?? 'Arua collection point'} • ETA: ${state.activePickup!['eta'] ?? 'Under 15 Mins'}',
+                      style: TextStyle(fontSize: 12.5, color: subtextColor),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Your collection truck is 3 minutes away from Arua City point',
-                  style: TextStyle(fontSize: 12.5, color: subtextColor),
-                ),
-                const SizedBox(height: 14),
-
-                // PROGRESS TRACKER BAR (MATCHING IMAGE 2)
-                Row(
-                  children: [
-                    Text('Progress tracker', style: TextStyle(fontSize: 11, color: subtextColor)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
-                          value: 0.75,
-                          minHeight: 6,
-                          backgroundColor: Colors.grey.withOpacity(0.2),
-                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00C853)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.local_shipping, size: 16, color: Color(0xFF00C853)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // ALERT 2: WASTE COLLECTED (VERIFIED)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AntigravityTheme.border(context)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
+                    const SizedBox(height: 14),
                     Row(
                       children: [
-                        const Icon(Icons.check_circle, color: Color(0xFF00C853), size: 20),
+                        Text('Progress tracker', style: TextStyle(fontSize: 11, color: subtextColor)),
                         const SizedBox(width: 8),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: 0.70,
+                              minHeight: 6,
+                              backgroundColor: Colors.grey.withOpacity(0.2),
+                              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00C853)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.local_shipping, size: 16, color: Color(0xFF00C853)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // DYNAMIC ALERT 2: RECENT COMPLETED WASTE COLLECTION
+            if (state.residentRequests.any((r) => (r['status']?.toString().toLowerCase() ?? '') == 'completed' || (r['status']?.toString().toLowerCase() ?? '') == 'collected')) ...[
+              Builder(
+                builder: (ctx) {
+                  final comp = state.residentRequests.firstWhere(
+                    (r) => (r['status']?.toString().toLowerCase() ?? '') == 'completed' || (r['status']?.toString().toLowerCase() ?? '') == 'collected',
+                  );
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AntigravityTheme.border(context)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.check_circle, color: Color(0xFF00C853), size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Waste Collected',
+                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textColor),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF00C853).withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'Verified',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00C853)),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
                         Text(
-                          'Waste Collected',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textColor),
+                          'Successful ${comp['wasteType'] ?? 'Waste'} collection at ${comp['address'] ?? comp['location'] ?? 'Arua point'} • Ref ${comp['receiptSerial'] ?? comp['id'] ?? ''}',
+                          style: TextStyle(fontSize: 12.5, color: subtextColor),
                         ),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF00C853).withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        'Verified',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00C853)),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Successful General Commercial pick-up on Wednesday',
-                  style: TextStyle(fontSize: 12.5, color: subtextColor),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
+                  );
+                },
+              ),
+            ],
 
-          // ALERT 3: PAYMENT RECEIVED
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AntigravityTheme.border(context)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF00C853).withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.payment, color: Color(0xFF00C853), size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Payment Received',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Subscription Payment for account confirmed',
-                        style: TextStyle(fontSize: 12, color: subtextColor),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.check_circle_outline, color: Color(0xFF00C853), size: 18),
-              ],
-            ),
-          ),
+            // DYNAMIC ALERT 3: PAYMENT RECEIPT
+            if (state.residentRequests.any((r) => r['price'] != null)) ...[
+              Builder(
+                builder: (ctx) {
+                  final paid = state.residentRequests.firstWhere((r) => r['price'] != null);
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AntigravityTheme.border(context)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00C853).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.payment, color: Color(0xFF00C853), size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Payment Recorded',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'UGX ${paid['price']} settled via ${paid['paymentMethod'] ?? 'Mobile Money'} (${paid['id'] ?? 'Pickup'})',
+                                style: TextStyle(fontSize: 12, color: subtextColor),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.check_circle_outline, color: Color(0xFF00C853), size: 18),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ],
           const SizedBox(height: 20),
 
           // Dynamic Active Requests from state
@@ -970,7 +1027,9 @@ class _ResponsiveResidentDashboardState
     Color accentGreen,
     bool isDark,
   ) {
-    final displayName = state.userName.isNotEmpty ? state.userName : 'Ayiko Gift Clliford';
+    final displayName = state.userName.isNotEmpty
+        ? state.userName
+        : (state.userEmail.isNotEmpty ? state.userEmail.split('@').first : 'EcoRoute Resident');
     final displayLocation = state.userCell.isNotEmpty ? '${state.userCell}, Arua' : 'Arua, Uganda';
 
     return SingleChildScrollView(
@@ -1270,18 +1329,9 @@ class _ResponsiveResidentDashboardState
             const SizedBox(height: 12),
             ListTile(
               leading: const Icon(Icons.home, color: Color(0xFF00C853)),
-              title: const Text('Primary Household'),
-              subtitle: Text(state.userCell.isNotEmpty ? state.userCell : 'Muni Campus Road, Arua'),
+              title: const Text('Primary Collection Address'),
+              subtitle: Text(state.userCell.isNotEmpty ? state.userCell : 'Registered Location (Arua)'),
               trailing: const Chip(label: Text('Default', style: TextStyle(fontSize: 10))),
-            ),
-            ListTile(
-              leading: const Icon(Icons.storefront, color: Colors.blue),
-              title: const Text('Commercial Outlet'),
-              subtitle: const Text('Arua Main Market, Lockup #14'),
-              trailing: OutlinedButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Select', style: TextStyle(fontSize: 11)),
-              ),
             ),
             const SizedBox(height: 10),
             SizedBox(

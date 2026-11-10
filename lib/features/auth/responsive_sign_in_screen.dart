@@ -2,8 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/layout/adaptive_layout.dart';
+import '../../core/services/auth_service.dart';
+import '../../domain/entities/app_user.dart';
 import '../../main.dart';
 
 /// Responsive Cross-Platform Sign-In Screen
@@ -146,9 +149,8 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
           return;
         }
       } else {
-        // Fallback for zero-cost / offline / demo environments
-        if (!mounted) return;
-        _fallbackOfflineLogin(email);
+        // Zero-Cost Local Authentication via AuthService (Authentic - No Demo Bypasses)
+        await _authenticateLocally(email, password);
         return;
       }
     } on FirebaseAuthException catch (e) {
@@ -157,47 +159,73 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
           e.code == 'api-key-not-valid' ||
           e.code == 'invalid-api-key' ||
           e.code == 'app-not-authorized') {
-        _fallbackOfflineLogin(email);
+        await _authenticateLocally(email, password);
         return;
       }
       setState(() => _errorMessage = e.message ?? 'Authentication error');
     } catch (_) {
       if (!mounted) return;
-      _fallbackOfflineLogin(email);
+      await _authenticateLocally(email, password);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _quickSignInRole(String role, String name, String email) {
-    EcoRouteState.instance.setAuthenticatedUser(
-      role: role,
-      name: name,
-      email: email,
-      phone: '+256700000000',
-    );
-    if (!mounted) return;
-    if (role == 'admin') {
-      Navigator.pushNamedAndRemoveUntil(context, '/admin', (r) => false);
-    } else if (role == 'rider') {
-      Navigator.pushNamedAndRemoveUntil(context, '/rider', (r) => false);
-    } else {
-      Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
-    }
-  }
+  Future<void> _authenticateLocally(String email, String password) async {
+    final prefs = EcoRouteState.instance.prefs ?? await SharedPreferences.getInstance();
+    final authService = AuthService(prefs);
 
-  void _fallbackOfflineLogin(String email) {
-    final lower = email.toLowerCase().trim();
-    String role = 'resident';
-    String name = email.contains('@') ? email.split('@').first : email;
-    if (lower.contains('admin') || lower.contains('manager') || lower.contains('supervisor')) {
-      role = 'admin';
-      name = 'Municipal Admin';
-    } else if (lower.contains('rider') || lower.contains('collector') || lower.contains('driver')) {
-      role = 'rider';
-      name = 'Field Rider';
+    if (_isSignUp) {
+      final name = _fullNameController.text.trim().isNotEmpty
+          ? _fullNameController.text.trim()
+          : email.split('@').first;
+      final phone = _phoneController.text.trim();
+
+      try {
+        final user = await authService.register(
+          fullName: name,
+          email: email,
+          phone: phone,
+          password: password,
+          role: AppRole.resident,
+        );
+        if (!mounted) return;
+        EcoRouteState.instance.setAuthenticatedUser(
+          role: user.role.name,
+          name: user.fullName,
+          email: user.email,
+          phone: user.phone,
+        );
+        Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _errorMessage = e.toString().replaceAll('StateError: ', ''));
+      }
+    } else {
+      final user = await authService.login(email: email, password: password);
+      if (!mounted) return;
+      if (user == null) {
+        setState(() => _errorMessage = 'Invalid email or password. Please verify your credentials or create an account.');
+        return;
+      }
+
+      EcoRouteState.instance.setAuthenticatedUser(
+        role: user.role.name,
+        name: user.fullName,
+        email: user.email,
+        phone: user.phone,
+      );
+
+      if (user.role == AppRole.admin ||
+          user.role == AppRole.routeSupervisor ||
+          user.role == AppRole.operationsManager) {
+        Navigator.pushNamedAndRemoveUntil(context, '/admin', (r) => false);
+      } else if (user.role == AppRole.rider) {
+        Navigator.pushNamedAndRemoveUntil(context, '/rider', (r) => false);
+      } else {
+        Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
+      }
     }
-    _quickSignInRole(role, name, email);
   }
 
   void _showForgotPasswordDialog() {
@@ -671,115 +699,34 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
         ),
 
         const SizedBox(height: 18),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: accentGreen.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: accentGreen.withOpacity(0.18)),
-          ),
-          child: Column(
-            children: [
-              Text(
-                'QUICK DEMO & FIELD ROLE ACCESS',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.8,
-                  color: subtextColor,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _roleChip(
-                    label: 'Resident',
-                    icon: Icons.person_outline,
-                    onTap: () => _quickSignInRole('resident', 'Muni Resident', 'resident@ecoroute.ug'),
-                    accentColor: accentGreen,
-                  ),
-                  _roleChip(
-                    label: 'Rider',
-                    icon: Icons.electric_rickshaw,
-                    onTap: () => _quickSignInRole('rider', 'Arua Rider #04', 'rider@ecoroute.ug'),
-                    accentColor: const Color(0xFFD97706),
-                  ),
-                  _roleChip(
-                    label: 'Admin',
-                    icon: Icons.admin_panel_settings_outlined,
-                    onTap: () => _quickSignInRole('admin', 'Municipal Admin', 'admin@ecoroute.ug'),
-                    accentColor: const Color(0xFF2563EB),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              InkWell(
-                onTap: () => Navigator.pushNamed(context, '/rider-onboard'),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E5E3A).withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF1E5E3A).withOpacity(0.35)),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.vpn_key_outlined, size: 14, color: Color(0xFF1E5E3A)),
-                      SizedBox(width: 6),
-                      Text(
-                        'Invited as a Field Rider? Redeem Code Here',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E5E3A),
-                        ),
-                      ),
-                    ],
+        InkWell(
+          onTap: () => Navigator.pushNamed(context, '/rider-onboard'),
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: accentGreen.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: accentGreen.withOpacity(0.25)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.vpn_key_outlined, size: 16, color: accentGreen),
+                const SizedBox(width: 8),
+                Text(
+                  'Invited as a Field Rider? Redeem Token Here',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: accentGreen,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _roleChip({
-    required String label,
-    required IconData icon,
-    required VoidCallback onTap,
-    required Color accentColor,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: accentColor.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: accentColor.withOpacity(0.35)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: accentColor),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: accentColor,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

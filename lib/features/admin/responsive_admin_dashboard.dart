@@ -406,29 +406,11 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                                         if (state.riderTasks.isEmpty) ...[
                                           TableRow(
                                             children: [
-                                              _buildTableCell('#1001'),
-                                              _buildTableCell('TRIC-18 (Field Active)'),
-                                              _buildTableCell('In Progress', statusColor: Colors.orange),
-                                              _buildTableCell('45 kg'),
-                                              _buildTableCell('REF-ARUA-7821'),
-                                            ],
-                                          ),
-                                          TableRow(
-                                            children: [
-                                              _buildTableCell('#1002'),
-                                              _buildTableCell('TRIC-09 (Field Active)'),
-                                              _buildTableCell('Collected', statusColor: Colors.green),
-                                              _buildTableCell('60 kg'),
-                                              _buildTableCell('REF-ARUA-7822'),
-                                            ],
-                                          ),
-                                          TableRow(
-                                            children: [
-                                              _buildTableCell('#1003'),
-                                              _buildTableCell('TRIC-12 (Field Active)'),
-                                              _buildTableCell('Settled', statusColor: Colors.blue),
-                                              _buildTableCell('35 kg'),
-                                              _buildTableCell('REF-ARUA-7823'),
+                                              _buildTableCell('—'),
+                                              _buildTableCell('No active dispatches in queue'),
+                                              _buildTableCell('Queue Empty', statusColor: Colors.grey),
+                                              _buildTableCell('0 kg'),
+                                              _buildTableCell('—'),
                                             ],
                                           ),
                                         ] else ...[

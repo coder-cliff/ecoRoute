@@ -258,80 +258,100 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AntigravityTheme.border(context)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'CURRENT TASK ASSIGNMENT',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor),
+            child: currentTask == null
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      children: [
+                        Icon(Icons.inbox_outlined, size: 32, color: subtextColor),
+                        const SizedBox(height: 8),
+                        Text(
+                          'No Active Tasks Assigned',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Your collection queue is currently empty. New requests from residents in your zone will appear here in real time.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 11.5, color: subtextColor),
+                        ),
+                      ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: accentGreen.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(6),
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'CURRENT TASK ASSIGNMENT',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: accentGreen.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text('Active Stop', style: TextStyle(color: accentGreen, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
                       ),
-                      child: Text('Active Stop', style: TextStyle(color: accentGreen, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Client: ${currentTask != null ? currentTask['client'] ?? currentTask['address'] : 'Muni Resident'}',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Address: ${currentTask != null ? currentTask['address'] : 'Ayivu Zone, Plot 42'}',
-                  style: TextStyle(fontSize: 12, color: subtextColor),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Waste Type: ${currentTask != null ? currentTask['wasteType'] ?? 'Household Waste' : 'Household Waste'} • ${currentTask != null ? currentTask['sacks'] : 3} Sacks',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => launchEcoRouteCall(),
-                        icon: const Icon(Icons.call, size: 16),
-                        label: const Text('Call Client', style: TextStyle(fontSize: 12)),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Client: ${currentTask['client'] ?? currentTask['address'] ?? 'Resident'}',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          try {
-                            final picker = ImagePicker();
-                            final xfile = await picker.pickImage(
-                              source: ImageSource.camera,
-                              maxWidth: 800,
-                              maxHeight: 800,
-                              imageQuality: 65,
-                            );
-                            if (xfile != null && context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Waste photo evidence captured & locked to pickup order.')),
-                              );
-                            }
-                          } catch (e) {
-                            debugPrint('Rider photo evidence notice: $e');
-                          }
-                        },
-                        icon: const Icon(Icons.camera_alt, size: 16),
-                        label: const Text('Snap Photo', style: TextStyle(fontSize: 12)),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Address: ${currentTask['address'] ?? 'Collection Point'}',
+                        style: TextStyle(fontSize: 12, color: subtextColor),
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Waste Type: ${currentTask['wasteType'] ?? 'Household Waste'} • ${currentTask['sacks'] ?? 1} Sacks',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => launchEcoRouteCall(),
+                              icon: const Icon(Icons.call, size: 16),
+                              label: const Text('Call Client', style: TextStyle(fontSize: 12)),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                try {
+                                  final picker = ImagePicker();
+                                  final xfile = await picker.pickImage(
+                                    source: ImageSource.camera,
+                                    maxWidth: 800,
+                                    maxHeight: 800,
+                                    imageQuality: 65,
+                                  );
+                                  if (xfile != null && context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Waste photo evidence captured & locked to pickup order.')),
+                                    );
+                                  }
+                                } catch (e) {
+                                  debugPrint('Rider photo evidence notice: $e');
+                                }
+                              },
+                              icon: const Icon(Icons.camera_alt, size: 16),
+                              label: const Text('Snap Photo', style: TextStyle(fontSize: 12)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
           ),
           const SizedBox(height: 14),
 
@@ -526,7 +546,7 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
             ),
           ),
           const SizedBox(height: 14),
-          Text('SEQUENTIAL STOPS (AYIVU ZONE)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: subtextColor)),
+          Text('SEQUENTIAL STOPS (${state.userCell.isNotEmpty ? state.userCell.toUpperCase() : "ASSIGNED ZONE"})', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: subtextColor)),
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
@@ -534,30 +554,40 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AntigravityTheme.border(context)),
             ),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: CircleAvatar(backgroundColor: accentGreen, radius: 14, child: const Text('1', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
-                  title: Text('Muni Campus Gate B', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
-                  subtitle: Text('3 Sacks • Household Waste', style: TextStyle(fontSize: 11, color: subtextColor)),
-                  trailing: const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                ),
-                Divider(height: 1, color: AntigravityTheme.border(context)),
-                ListTile(
-                  leading: CircleAvatar(backgroundColor: const Color(0xFFF57C00), radius: 14, child: const Text('2', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
-                  title: Text('Plot 42 Hospital Road', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
-                  subtitle: Text('5 Sacks • Commercial Packaging', style: TextStyle(fontSize: 11, color: subtextColor)),
-                  trailing: Text('In Progress', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFFF57C00))),
-                ),
-                Divider(height: 1, color: AntigravityTheme.border(context)),
-                ListTile(
-                  leading: CircleAvatar(backgroundColor: Colors.grey, radius: 14, child: const Text('3', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
-                  title: Text('Ayivu Market Corner', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
-                  subtitle: Text('2 Sacks • Recyclable Plastics', style: TextStyle(fontSize: 11, color: subtextColor)),
-                  trailing: Text('Pending', style: TextStyle(fontSize: 11, color: subtextColor)),
-                ),
-              ],
-            ),
+            child: state.riderTasks.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Center(
+                      child: Text(
+                        'No sequential stops in queue. New assignments will appear here.',
+                        style: TextStyle(fontSize: 12, color: subtextColor),
+                      ),
+                    ),
+                  )
+                : Column(
+                    children: [
+                      for (int i = 0; i < state.riderTasks.length; i++) ...[
+                        if (i > 0) Divider(height: 1, color: AntigravityTheme.border(context)),
+                        ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: i == 0 ? accentGreen : (i == 1 ? const Color(0xFFF57C00) : Colors.grey),
+                            radius: 14,
+                            child: Text('${i + 1}', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                          title: Text(state.riderTasks[i]['address'] ?? 'Collection Stop', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
+                          subtitle: Text('${state.riderTasks[i]['sacks'] ?? 1} Sacks • ${state.riderTasks[i]['wasteType'] ?? 'Waste'}', style: TextStyle(fontSize: 11, color: subtextColor)),
+                          trailing: Text(
+                            state.riderTasks[i]['status'] ?? (i == 0 ? 'Active' : 'Pending'),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: i == 0 ? accentGreen : (i == 1 ? const Color(0xFFF57C00) : subtextColor),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
           ),
         ],
       ),
