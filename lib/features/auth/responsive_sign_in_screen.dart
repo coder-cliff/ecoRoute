@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/layout/adaptive_layout.dart';
 import '../../core/services/auth_service.dart';
 import '../../domain/entities/app_user.dart';
+import '../../domain/enums/role.dart';
 import '../../main.dart';
 
 /// Responsive Cross-Platform Sign-In Screen
