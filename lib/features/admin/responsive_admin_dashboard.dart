@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../core/layout/adaptive_layout.dart';
 import '../../core/services/gemini_eco_service.dart';
+import '../../core/theme/eco_palette.dart';
 import '../../main.dart';
 import '../common/widgets/eco_carto_map.dart';
 import '../resident/widgets/eco_gemini_assistant_sheet.dart';

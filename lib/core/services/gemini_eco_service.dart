@@ -39,7 +39,7 @@ class GeminiEcoService {
   final http.Client _client;
   SharedPreferences? _prefs;
 
-  void attachPreferences(SharedPreferences prefs) {
+  void attachPreferences(SharedPreferences? prefs) {
     _prefs = prefs;
   }
 

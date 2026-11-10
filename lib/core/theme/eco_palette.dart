@@ -19,6 +19,9 @@ class EcoPalette {
   /// Standard dark green button color
   static const Color buttonDark = Color(0xFF1B3828);
 
+  /// Primary rich forest green for badges, chips, and AI accents
+  static const Color primaryForest = Color(0xFF1E5E3A);
+
   /// Light sage / mint borders
   static const Color cardBorder = Color(0xFFCFD8D2);
 

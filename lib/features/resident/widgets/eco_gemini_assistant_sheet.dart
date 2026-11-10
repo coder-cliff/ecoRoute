@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/layout/adaptive_layout.dart';
 import '../../../core/services/gemini_eco_service.dart';
 import '../../../core/theme/eco_palette.dart';
 import '../../../main.dart';
@@ -48,7 +49,10 @@ class _EcoGeminiAssistantSheetState extends State<EcoGeminiAssistantSheet> {
   @override
   void initState() {
     super.initState();
-    _geminiService.attachPreferences(EcoRouteState.instance.prefs);
+    final prefs = EcoRouteState.instance.prefs;
+    if (prefs != null) {
+      _geminiService.attachPreferences(prefs);
+    }
   }
 
   @override
@@ -404,7 +408,7 @@ class _EcoGeminiAssistantSheetState extends State<EcoGeminiAssistantSheet> {
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(
-                  style: IconButton.filledStyleFrom(
+                  style: IconButton.styleFrom(
                     backgroundColor: EcoPalette.primaryForest,
                   ),
                   icon: const Icon(Icons.send, size: 18, color: Colors.white),
