@@ -183,7 +183,7 @@ class _ResponsiveResidentDashboardState
     int estimatedTotal,
   ) {
     final displayName = state.userName.isNotEmpty ? state.userName : 'Ayiko Gift Clliford';
-    final displayLocation = state.userDistrict.isNotEmpty ? '${state.userDistrict}, Uganda' : 'Arua, Uganda';
+    final displayLocation = state.userCell.isNotEmpty ? '${state.userCell}, Arua' : 'Arua, Uganda';
 
     return SingleChildScrollView(
       padding: EdgeInsets.zero,
@@ -971,7 +971,7 @@ class _ResponsiveResidentDashboardState
     bool isDark,
   ) {
     final displayName = state.userName.isNotEmpty ? state.userName : 'Ayiko Gift Clliford';
-    final displayLocation = state.userDistrict.isNotEmpty ? '${state.userDistrict}, Uganda' : 'Arua, Uganda';
+    final displayLocation = state.userCell.isNotEmpty ? '${state.userCell}, Arua' : 'Arua, Uganda';
 
     return SingleChildScrollView(
       padding: EdgeInsets.zero,
@@ -1085,10 +1085,7 @@ class _ResponsiveResidentDashboardState
                 SizedBox(
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: () {
-                      state.clearSession();
-                      Navigator.pushReplacementNamed(context, '/login');
-                    },
+                    onPressed: () => state.logout(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFEF5350), // Salmon red
                       foregroundColor: Colors.white,
