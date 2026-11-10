@@ -21,6 +21,7 @@ import 'core/layout/adaptive_layout.dart';
 import 'features/auth/responsive_sign_in_screen.dart';
 import 'features/resident/responsive_resident_dashboard.dart';
 import 'features/rider/responsive_rider_dashboard.dart';
+import 'features/rider/rider_invite_acceptance_screen.dart';
 import 'features/admin/responsive_admin_dashboard.dart';
 import 'firebase_options.dart';
 
@@ -1053,6 +1054,7 @@ class EcoRouteApp extends StatelessWidget {
             '/resident': (context) => const ResponsiveResidentDashboard(),
             '/rider': (context) => const ResponsiveRiderDashboard(),
             '/admin': (context) => const ResponsiveAdminDashboard(),
+            '/rider-onboard': (context) => const RiderInviteAcceptanceScreen(),
           },
         );
       },

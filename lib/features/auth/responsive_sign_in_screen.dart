@@ -695,6 +695,34 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 10),
+              InkWell(
+                onTap: () => Navigator.pushNamed(context, '/rider-onboard'),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E5E3A).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF1E5E3A).withOpacity(0.35)),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.vpn_key_outlined, size: 14, color: Color(0xFF1E5E3A)),
+                      SizedBox(width: 6),
+                      Text(
+                        'Invited as a Field Rider? Redeem Code Here',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E5E3A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),

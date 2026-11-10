@@ -4,8 +4,13 @@ import 'package:latlong2/latlong.dart';
 
 import '../../core/layout/adaptive_layout.dart';
 import '../../core/services/osrm_routing_service.dart';
+import '../../core/theme/eco_palette.dart';
 import '../../main.dart';
 import '../common/widgets/eco_carto_map.dart';
+import 'widgets/rider_evening_reconciliation_modal.dart';
+import 'widgets/rider_morning_clockin_sheet.dart';
+import 'widgets/rider_pickup_action_modal.dart';
+import 'widgets/rider_profile_setup_wizard.dart';
 
 /// Responsive Rider Field Operations Dashboard
 /// Conforms to Architectural Wireframe B:
@@ -108,6 +113,11 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
             onPressed: () => state.toggleTheme(),
           ),
           IconButton(
+            tooltip: 'Rider Profile Wizard',
+            icon: Icon(Icons.badge_outlined, color: textColor),
+            onPressed: () => _openProfileSetupWizard(context),
+          ),
+          IconButton(
             tooltip: 'My Profile',
             icon: Icon(Icons.account_circle_outlined, color: textColor),
             onPressed: () => showEcoRouteProfileSheet(context),
@@ -170,6 +180,76 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // SHIFT STATUS & DEPOT OPERATIONS BANNER
+          Builder(
+            builder: (ctx) {
+              final isShiftActive = state.prefs?.getBool('ecoroute_rider_shift_active') ?? false;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 14),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: isShiftActive
+                      ? (isDark ? const Color(0xFF1E3224) : const Color(0xFFE8F5E9))
+                      : (isDark ? const Color(0xFF332015) : const Color(0xFFFFF3E0)),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isShiftActive ? const Color(0xFF81C784) : const Color(0xFFFFB74D),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isShiftActive ? Icons.radio_button_checked : Icons.lock_clock,
+                      color: isShiftActive ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isShiftActive ? '● SHIFT ACTIVE: ON ARUA ROUTE' : 'SHIFT NOT STARTED',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isShiftActive ? const Color(0xFF1B5E20) : const Color(0xFFBF360C),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isShiftActive
+                                ? 'Cash in Pouch: ${state.riderCashInPouch} UGX'
+                                : 'Clock in at Depot to unlock route navigation.',
+                            style: TextStyle(fontSize: 11, color: subtextColor),
+                          ),
+                        ],
+                      ),
+                    ),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: isShiftActive ? const Color(0xFF9C3D18) : const Color(0xFF1E5E3A),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () {
+                        if (isShiftActive) {
+                          _openEveningReconciliationSheet(context);
+                        } else {
+                          _openMorningClockInSheet(context);
+                        }
+                      },
+                      child: Text(
+                        isShiftActive ? 'Reconcile' : 'Clock In',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+
           // CURRENT RECIPIENT TASK CARD
           Container(
             padding: const EdgeInsets.all(16),
@@ -883,6 +963,69 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
     );
   }
 
+  void _openMorningClockInSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => RiderMorningClockInSheet(
+        onShiftStarted: () {
+          Navigator.pop(ctx);
+          setState(() {});
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Shift Started! Live route broadcast to municipal dispatch.'),
+              backgroundColor: Color(0xFF1E5E3A),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _openEveningReconciliationSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => RiderEveningReconciliationModal(
+        onShiftEnded: () {
+          Navigator.pop(ctx);
+          setState(() {});
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Shift Reconciled & Closed. Cash handover logged at Depot Desk.'),
+              backgroundColor: Color(0xFF1E5E3A),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _openProfileSetupWizard(BuildContext context) {
+    final state = EcoRouteState.instance;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => RiderProfileSetupWizard(
+        riderName: state.userName.isNotEmpty ? state.userName : 'EcoRoute Field Rider',
+        assignedTricycleId: state.prefs?.getString('ecoroute_rider_tricycle_v1') ?? 'TRIC-02',
+        onFinished: () {
+          Navigator.pop(ctx);
+          setState(() {});
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Rider Profile Updated!'),
+              backgroundColor: Color(0xFF1E5E3A),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   void _handleCompleteJob(BuildContext context) {
     final state = EcoRouteState.instance;
     if (state.riderTasks.isEmpty) {
@@ -892,53 +1035,27 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard> {
       return;
     }
     final activeTask = state.riderTasks[_selectedTaskIndex.clamp(0, state.riderTasks.length - 1)];
-    final codeCtrl = TextEditingController(text: _smsCodeController.text.isNotEmpty ? _smsCodeController.text : '');
 
-    showDialog(
+    showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Row(
-          children: const [
-            Icon(Icons.verified_user, color: Color(0xFF2E7D32)),
-            SizedBox(width: 8),
-            Text('Verify Handover', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Client: ' + (activeTask['client']?.toString() ?? 'Customer'), style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text('Location: ' + (activeTask['address']?.toString() ?? 'Arua Central / Trading Center'), style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            Text('Volume: ' + (activeTask['sacks']?.toString() ?? '1') + ' Sacks (' + (activeTask['wasteType']?.toString() ?? 'Solid Waste') + ')', style: const TextStyle(fontSize: 12)),
-            const SizedBox(height: 14),
-            const Text('Enter 4-Digit Resident PIN or "PASS":', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 6),
-            TextField(
-              controller: codeCtrl,
-              keyboardType: TextInputType.text,
-              maxLength: 6,
-              decoration: const InputDecoration(
-                hintText: 'e.g. 4829',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.pin),
-              ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => RiderPickupActionModal(
+        task: activeTask,
+        onCompleted: () {
+          Navigator.pop(ctx);
+          setState(() {
+            if (_selectedTaskIndex < state.riderTasks.length - 1) {
+              _selectedTaskIndex++;
+            }
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Stop Completed! Cash in pouch & route progress updated.'),
+              backgroundColor: Color(0xFF1E5E3A),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () {
-              final enteredCode = codeCtrl.text.trim();
-              if (enteredCode.isEmpty) return;
-              Navigator.pop(ctx);
-              state.riderVerifyAndSettle(inputCode: enteredCode, context: context);
-            },
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
-            child: const Text('Verify & Settle'),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
