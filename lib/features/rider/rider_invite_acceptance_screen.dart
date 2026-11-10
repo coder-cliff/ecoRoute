@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/layout/adaptive_layout.dart';
 import '../../core/services/auth_service.dart';
@@ -73,7 +74,8 @@ class _RiderInviteAcceptanceScreenState
 
     try {
       final state = EcoRouteState.instance;
-      final auth = AuthService(state.prefs);
+      final prefs = state.prefs ?? await SharedPreferences.getInstance();
+      final auth = AuthService(prefs);
       final invite = auth.getRiderInvite(code.isNotEmpty ? code : email);
 
       if (invite != null) {
@@ -119,7 +121,8 @@ class _RiderInviteAcceptanceScreenState
       final code = _codeController.text.trim();
 
       // Mark invite accepted in AuthService
-      final auth = AuthService(state.prefs);
+      final prefs = state.prefs ?? await SharedPreferences.getInstance();
+      final auth = AuthService(prefs);
       await auth.acceptRiderInvite(email, code);
 
       // Persist in state

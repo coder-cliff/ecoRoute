@@ -416,6 +416,11 @@ class AuthService {
     }
   }
 
+  /// Accepts a rider invitation by email or code
+  Future<void> acceptRiderInvite(String email, [String? code]) async {
+    await markInviteAccepted(email);
+  }
+
   Future<String> inviteRider({
     required String email,
     required String fullName,
