@@ -1868,7 +1868,7 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
               subtitle: const Text('Optimize contrast for night collection runs'),
               value: state.isDarkMode,
               onChanged: (val) {
-                state.toggleDarkMode(val);
+                state.toggleTheme();
                 Navigator.pop(ctx);
               },
             ),

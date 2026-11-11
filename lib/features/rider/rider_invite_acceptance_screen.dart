@@ -131,28 +131,24 @@ class _RiderInviteAcceptanceScreenState
           );
         }
       } else {
-        // Check if matching phone is in registered users with role rider
-        final isReg = auth.isPhoneRegistered(phone);
-        if (isReg) {
-          final user = await auth.loginWithPhoneOrEmail(phone: phone, password: pin);
-          if (user != null && user.role == AppRole.rider) {
-            _finalizeRiderLogin(
-              name: user.fullName,
-              phone: user.phone,
-              vehicle: 'Tricycle / Tuk-Tuk',
-              plate: 'UFD 123A',
-            );
-            return;
-          }
-        }
-
-        // If not found, check if PIN matches invite code directly
+        // If not found by phone+pin, check if PIN matches invite code directly
         final inviteByCode = auth.getRiderInvite(pin);
         if (inviteByCode != null) {
           _verifiedPhone = phone;
           _nameController.text = inviteByCode['fullName'] as String? ?? '';
           _assignedTricycleId = inviteByCode['tricycleId'] as String? ?? 'TRIC-04';
           _assignedZone = inviteByCode['zone'] as String? ?? 'Arua Central';
+
+          final status = (inviteByCode['status'] as String? ?? '').toLowerCase();
+          if (status == 'active' || status == 'approved') {
+            _finalizeRiderLogin(
+              name: inviteByCode['fullName'] ?? 'Field Rider',
+              phone: phone,
+              vehicle: inviteByCode['vehicleType'] ?? 'Tricycle',
+              plate: inviteByCode['plateNumber'] ?? 'UFD 123A',
+            );
+            return;
+          }
 
           _pageController.animateToPage(
             1,
