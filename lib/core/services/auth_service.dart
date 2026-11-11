@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/entities/app_user.dart';
 import '../../domain/enums/role.dart';
+export '../../domain/enums/role.dart';
 
 class AuthService {
   AuthService(this._preferences, {this._firebaseAuth, this._firestore});

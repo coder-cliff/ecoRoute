@@ -18,6 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'core/services/pdf_report_service.dart';
 import 'core/services/rider_invite_service.dart';
 import 'core/services/auth_service.dart';
+import 'domain/enums/role.dart';
 import 'core/layout/adaptive_layout.dart';
 import 'features/auth/responsive_sign_in_screen.dart';
 import 'features/resident/responsive_resident_dashboard.dart';
@@ -136,6 +137,8 @@ class EcoRouteState extends ChangeNotifier {
   int get activeRidersCount {
     return riderRoster.where((r) => r['status'] == 'Approved' || r['status'] == 'Active').length;
   }
+
+  int get activeRiderCount => activeRidersCount;
 
   // Real-world physical cash in pouch and settlement desk
   int riderCashInPouch = 0;
