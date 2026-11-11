@@ -354,20 +354,58 @@ class _RiderInviteAcceptanceScreenState
   @override
   Widget build(BuildContext context) {
     final isDark = AntigravityTheme.isDark(context);
-    final surfaceColor = isDark ? const Color(0xFF101913) : Colors.white;
+    final isWide = ViewportBreakpoints.isWide(context);
+    final surfaceColor = isDark
+        ? const Color(0xFF101913)
+        : (isWide ? const Color(0xFFF1F5F9) : Colors.white);
 
+    final pageView = PageView(
+      controller: _pageController,
+      physics: const NeverScrollableScrollPhysics(),
+      onPageChanged: (page) => setState(() => _currentPage = page),
+      children: [
+        _buildActivationPage(context, isDark),
+        _buildProfileSetupPage(context, isDark),
+        _buildPendingApprovalPage(context, isDark),
+      ],
+    );
+
+    if (!isWide) {
+      return Scaffold(
+        backgroundColor: surfaceColor,
+        body: SafeArea(child: pageView),
+      );
+    }
+
+    // Standardized Tablet & Desktop Device Showcase Frame
     return Scaffold(
       backgroundColor: surfaceColor,
       body: SafeArea(
-        child: PageView(
-          controller: _pageController,
-          physics: const NeverScrollableScrollPhysics(),
-          onPageChanged: (page) => setState(() => _currentPage = page),
-          children: [
-            _buildActivationPage(context, isDark),
-            _buildProfileSetupPage(context, isDark),
-            _buildPendingApprovalPage(context, isDark),
-          ],
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            child: Container(
+              width: 440,
+              height: 740,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+                border: Border.all(
+                  color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                  width: 1,
+                ),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: pageView,
+            ),
+          ),
         ),
       ),
     );
@@ -424,13 +462,13 @@ class _RiderInviteAcceptanceScreenState
             ],
           ),
 
-          const SizedBox(height: 36),
+          const SizedBox(height: 32),
 
           // Title: Rider Activation
           const Text(
             'Rider Activation',
             style: TextStyle(
-              fontSize: 26,
+              fontSize: 24,
               fontWeight: FontWeight.w800,
               color: textColor,
               letterSpacing: -0.5,
@@ -449,7 +487,7 @@ class _RiderInviteAcceptanceScreenState
             ),
           ),
 
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
 
           // Error banner
           if (_activationError != null) ...[
@@ -511,7 +549,7 @@ class _RiderInviteAcceptanceScreenState
             ],
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
           // Field 2: Temporary PIN
           Column(
@@ -557,12 +595,12 @@ class _RiderInviteAcceptanceScreenState
             ],
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 22),
 
           // Primary Action: Verify & Continue >
           SizedBox(
             width: double.infinity,
-            height: 52,
+            height: 50,
             child: ElevatedButton(
               onPressed: _isVerifying ? null : _handleActivation,
               style: ElevatedButton.styleFrom(
@@ -593,7 +631,7 @@ class _RiderInviteAcceptanceScreenState
             ),
           ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
           // Secondary Link: Didn't receive a PIN? Resend
           InkWell(
@@ -612,17 +650,19 @@ class _RiderInviteAcceptanceScreenState
             ),
           ),
 
-          const SizedBox(height: 36),
+          const SizedBox(height: 20),
 
           // Bottom Illustration: Rider on Scooter / Tricycle with Cargo Box
-          SizedBox(
-            height: 130,
-            width: 220,
-            child: CustomPaint(
-              painter: DeliveryRiderIllustrationPainter(),
+          Center(
+            child: SizedBox(
+              height: 110,
+              width: 220,
+              child: CustomPaint(
+                painter: DeliveryRiderIllustrationPainter(),
+              ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
         ],
       ),
     );

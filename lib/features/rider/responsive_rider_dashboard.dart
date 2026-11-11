@@ -283,37 +283,60 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
   @override
   Widget build(BuildContext context) {
     final isDark = AntigravityTheme.isDark(context);
-    final surfaceColor = isDark ? const Color(0xFF101913) : const Color(0xFFF8FAFC);
+    final isWide = ViewportBreakpoints.isWide(context);
+    final surfaceColor = isDark
+        ? const Color(0xFF101913)
+        : (isWide ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC));
 
+    Widget bodyWidget;
     // If an active task is running, show the dedicated Active Task or Completed Screen
     if (_currentTabIndex == 0) {
       if (_jobPhase == _RiderJobPhase.enRoute || _jobPhase == _RiderJobPhase.arrived) {
-        return Scaffold(
-          backgroundColor: surfaceColor,
-          body: SafeArea(child: _buildActiveTaskScreen(context, isDark)),
-          bottomNavigationBar: _buildBottomNav(context, isDark),
-        );
+        bodyWidget = _buildActiveTaskScreen(context, isDark);
       } else if (_jobPhase == _RiderJobPhase.completed) {
-        return Scaffold(
-          backgroundColor: surfaceColor,
-          body: SafeArea(child: _buildCompletedTaskScreen(context, isDark)),
-          bottomNavigationBar: _buildBottomNav(context, isDark),
-        );
-      }
-    }
-
-    return Scaffold(
-      backgroundColor: surfaceColor,
-      body: SafeArea(
-        child: IndexedStack(
+        bodyWidget = _buildCompletedTaskScreen(context, isDark);
+      } else {
+        bodyWidget = IndexedStack(
           index: _currentTabIndex,
           children: [
             _buildHomeDashboard(context, isDark),
             _buildShiftScheduleScreen(context, isDark),
             _buildRiderAccountScreen(context, isDark),
           ],
+        );
+      }
+    } else {
+      bodyWidget = IndexedStack(
+        index: _currentTabIndex,
+        children: [
+          _buildHomeDashboard(context, isDark),
+          _buildShiftScheduleScreen(context, isDark),
+          _buildRiderAccountScreen(context, isDark),
+        ],
+      );
+    }
+
+    if (isWide) {
+      return Scaffold(
+        backgroundColor: surfaceColor,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Scaffold(
+                backgroundColor: isDark ? const Color(0xFF101913) : const Color(0xFFF8FAFC),
+                body: bodyWidget,
+                bottomNavigationBar: _buildBottomNav(context, isDark),
+              ),
+            ),
+          ),
         ),
-      ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: surfaceColor,
+      body: SafeArea(child: bodyWidget),
       bottomNavigationBar: _buildBottomNav(context, isDark),
     );
   }
