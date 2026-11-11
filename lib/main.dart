@@ -148,6 +148,38 @@ class EcoRouteState extends ChangeNotifier {
   int bulkyWasteSurchargeUgx = 5000;
   int riderCommissionPercent = 70;
 
+  // Master System Settings (Command HQ - Image 6 & Master Specs)
+  bool autoDispatchEnabled = true;
+  int autoAssignmentTimeoutMinutes = 3;
+  bool acceptNewRiders = true;
+  bool backgroundCheckIntegration = true;
+  bool surgePricingEnabled = false;
+  int baseFareModifierUgx = 5000;
+  bool smsAlertsEnabled = true;
+  bool whatsAppIntegration = false;
+
+  void updateSystemSettings({
+    bool? autoDispatch,
+    int? timeoutMinutes,
+    bool? acceptRiders,
+    bool? backgroundCheck,
+    bool? surgePricing,
+    int? baseFareModifier,
+    bool? smsAlerts,
+    bool? whatsApp,
+  }) {
+    if (autoDispatch != null) autoDispatchEnabled = autoDispatch;
+    if (timeoutMinutes != null) autoAssignmentTimeoutMinutes = timeoutMinutes;
+    if (acceptRiders != null) acceptNewRiders = acceptRiders;
+    if (backgroundCheck != null) backgroundCheckIntegration = backgroundCheck;
+    if (surgePricing != null) surgePricingEnabled = surgePricing;
+    if (baseFareModifier != null) baseFareModifierUgx = baseFareModifier;
+    if (smsAlerts != null) smsAlertsEnabled = smsAlerts;
+    if (whatsApp != null) whatsAppIntegration = whatsApp;
+    _saveState();
+    notifyListeners();
+  }
+
   // Municipal Administrative Staff Roster (Dynamic RBAC - populated via Firestore)
   List<Map<String, dynamic>> staffRoster = [];
 
@@ -207,6 +239,14 @@ class EcoRouteState extends ChangeNotifier {
           if (map['baseSackPriceUgx'] != null) baseSackPriceUgx = (map['baseSackPriceUgx'] as num).toInt();
           if (map['bulkyWasteSurchargeUgx'] != null) bulkyWasteSurchargeUgx = (map['bulkyWasteSurchargeUgx'] as num).toInt();
           if (map['riderCommissionPercent'] != null) riderCommissionPercent = (map['riderCommissionPercent'] as num).toInt();
+          if (map['autoDispatchEnabled'] != null) autoDispatchEnabled = map['autoDispatchEnabled'] as bool;
+          if (map['autoAssignmentTimeoutMinutes'] != null) autoAssignmentTimeoutMinutes = (map['autoAssignmentTimeoutMinutes'] as num).toInt();
+          if (map['acceptNewRiders'] != null) acceptNewRiders = map['acceptNewRiders'] as bool;
+          if (map['backgroundCheckIntegration'] != null) backgroundCheckIntegration = map['backgroundCheckIntegration'] as bool;
+          if (map['surgePricingEnabled'] != null) surgePricingEnabled = map['surgePricingEnabled'] as bool;
+          if (map['baseFareModifierUgx'] != null) baseFareModifierUgx = (map['baseFareModifierUgx'] as num).toInt();
+          if (map['smsAlertsEnabled'] != null) smsAlertsEnabled = map['smsAlertsEnabled'] as bool;
+          if (map['whatsAppIntegration'] != null) whatsAppIntegration = map['whatsAppIntegration'] as bool;
           if (map['residentRequests'] != null) {
             residentRequests = (map['residentRequests'] as List)
                 .map((e) => Map<String, dynamic>.from(e as Map))
@@ -267,6 +307,14 @@ class EcoRouteState extends ChangeNotifier {
         'baseSackPriceUgx': baseSackPriceUgx,
         'bulkyWasteSurchargeUgx': bulkyWasteSurchargeUgx,
         'riderCommissionPercent': riderCommissionPercent,
+        'autoDispatchEnabled': autoDispatchEnabled,
+        'autoAssignmentTimeoutMinutes': autoAssignmentTimeoutMinutes,
+        'acceptNewRiders': acceptNewRiders,
+        'backgroundCheckIntegration': backgroundCheckIntegration,
+        'surgePricingEnabled': surgePricingEnabled,
+        'baseFareModifierUgx': baseFareModifierUgx,
+        'smsAlertsEnabled': smsAlertsEnabled,
+        'whatsAppIntegration': whatsAppIntegration,
         'residentRequests': residentRequests,
         'riderTasks': riderTasks,
         'riderTransactions': riderTransactions,
@@ -963,6 +1011,21 @@ class EcoRouteState extends ChangeNotifier {
 
     notifyListeners();
     return inviteCode;
+  }
+
+  void approveRider(String phone) {
+    for (final rider in riderRoster) {
+      if (rider['phone'] == phone) {
+        rider['status'] = 'Active';
+      }
+    }
+    for (final rider in invitedRiders) {
+      if (rider['phone'] == phone) {
+        rider['status'] = 'Active';
+      }
+    }
+    _saveState();
+    notifyListeners();
   }
 
   Future<void> exportCollectionAuditCsv(BuildContext context) async {
