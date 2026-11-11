@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../../core/layout/adaptive_layout.dart';
@@ -11,6 +12,10 @@ import 'widgets/admin_overview_view.dart';
 import 'widgets/admin_requests_view.dart';
 import 'widgets/admin_settings_quadrant_view.dart';
 import 'widgets/admin_transactions_ledger_view.dart';
+import 'widgets/admin_feedback_view.dart';
+import '../common/widgets/profile_photo_manager_sheet.dart';
+import '../../core/services/rider_invite_service.dart';
+import '../../core/services/email_notification_service.dart';
 
 /// Responsive Admin Command HQ Portal
 /// Conforms to ecoRoute Master System Specifications and UI Design Blueprints
@@ -34,6 +39,7 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
     'System Analytics Dashboard',
     'Photo Evidence & Rider Approvals',
     'System Settings',
+    'Client & Rider Feedback',
   ];
 
   @override
@@ -45,7 +51,8 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
   void _showAddRiderDialog(BuildContext context) {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
-    String selectedVehicle = 'Motorcycle (Bajaj Boxer)';
+    final emailController = TextEditingController();
+    String selectedVehicle = 'Tricycle (Tuk-Tuk Hauler)';
     final formKey = GlobalKey<FormState>();
 
     showDialog(
@@ -60,11 +67,11 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
               children: const [
                 Icon(Icons.person_add, color: Color(0xFF2E7D32)),
                 SizedBox(width: 10),
-                Text('Add New Fleet Rider', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text('Invite Field Rider via Email', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ],
             ),
             content: SizedBox(
-              width: 420,
+              width: 440,
               child: Form(
                 key: formKey,
                 child: Column(
@@ -72,7 +79,7 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Dispatch an onboarding invitation and temporary activation PIN to a field rider.',
+                      'Dispatch an official onboarding invitation, access token, and temporary PIN directly to the rider\'s email address.',
                       style: TextStyle(
                         fontSize: 12,
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -83,11 +90,25 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                       controller: nameController,
                       decoration: const InputDecoration(
                         labelText: 'Rider Full Name',
+                        hintText: 'e.g. Samuel Buga',
                         prefixIcon: Icon(Icons.person_outline, size: 20),
                         border: OutlineInputBorder(),
                         isDense: true,
                       ),
                       validator: (val) => (val == null || val.trim().isEmpty) ? 'Enter rider name' : null,
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Rider Email Address (Official Dispatch)',
+                        hintText: 'e.g. rider@example.com',
+                        prefixIcon: Icon(Icons.email_outlined, size: 20),
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      validator: (val) => (val == null || !val.contains('@')) ? 'Enter a valid email address' : null,
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
@@ -112,8 +133,8 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                       ),
                       dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
                       items: const [
-                        DropdownMenuItem(value: 'Motorcycle (Bajaj Boxer)', child: Text('Motorcycle (Bajaj Boxer)')),
                         DropdownMenuItem(value: 'Tricycle (Tuk-Tuk Hauler)', child: Text('Tricycle (Tuk-Tuk Hauler)')),
+                        DropdownMenuItem(value: 'Motorcycle (Bajaj Boxer)', child: Text('Motorcycle (Bajaj Boxer)')),
                         DropdownMenuItem(value: 'Truck (Isuzu 3-Ton)', child: Text('Truck (Isuzu 3-Ton)')),
                         DropdownMenuItem(value: 'Bicycle Cart', child: Text('Bicycle Cart')),
                       ],
@@ -135,23 +156,51 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                   if (formKey.currentState?.validate() ?? false) {
                     final name = nameController.text.trim();
                     final phone = phoneController.text.trim();
+                    final email = emailController.text.trim().toLowerCase();
+
                     final inviteCode = EcoRouteState.instance.inviteRider(
                       name: name,
                       phone: phone,
+                      email: email,
                       tricycleId: selectedVehicle,
                     );
+
+                    final rider = EcoRouteState.instance.invitedRiders.firstWhere(
+                      (r) => r['email'] == email || r['inviteCode'] == inviteCode,
+                      orElse: () => {'temporaryPin': '123456'},
+                    );
+                    final pin = (rider['temporaryPin'] ?? '123456').toString();
+
+                    final draft = EmailNotificationService.draftRiderInvitation(
+                      riderName: name,
+                      riderEmail: email,
+                      inviteCode: inviteCode,
+                      temporaryPin: pin,
+                      tricycleId: selectedVehicle,
+                    );
+
+                    EmailNotificationService.sendEmail(
+                      toEmail: email,
+                      subject: draft['subject']!,
+                      body: draft['body']!,
+                      htmlBody: draft['htmlBody'],
+                    );
+
                     Navigator.pop(ctx);
                     setState(() {});
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        backgroundColor: const Color(0xFF2E7D32),
-                        content: Text('Rider invite sent to $name ($phone). Code: $inviteCode'),
-                      ),
+                    _showInviteSuccessDialog(
+                      context,
+                      name: name,
+                      email: email,
+                      code: inviteCode,
+                      pin: pin,
+                      vehicle: selectedVehicle,
+                      draft: draft,
                     );
                   }
                 },
                 icon: const Icon(Icons.send, size: 16),
-                label: const Text('Send Invitation'),
+                label: const Text('Dispatch Email Invitation'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2E7D32),
                   foregroundColor: Colors.white,
@@ -159,6 +208,100 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  void _showInviteSuccessDialog(
+    BuildContext context, {
+    required String name,
+    required String email,
+    required String code,
+    required String pin,
+    required String vehicle,
+    required Map<String, String> draft,
+  }) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Row(
+            children: const [
+              Icon(Icons.check_circle, color: Color(0xFF2E7D32)),
+              SizedBox(width: 10),
+              Text('Rider Invitation Dispatched!'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('An official invitation has been queued for $name ($email).'),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2E7D32).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('• Invite Code: $code', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text('• Temporary PIN: $pin', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
+                    const SizedBox(height: 4),
+                    Text('• Assigned Vehicle: $vehicle'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton.icon(
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: const Text('Open Mail Client'),
+              onPressed: () {
+                EmailNotificationService.openMailClient(
+                  toEmail: email,
+                  subject: draft['subject']!,
+                  body: draft['body']!,
+                );
+              },
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Done'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _confirmSignOut(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Sign out of Admin HQ?'),
+          content: const Text('Are you sure you want to end your administrative session?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+              onPressed: () {
+                Navigator.pop(ctx);
+                EcoRouteState.instance.logout(context);
+              },
+              child: const Text('Sign Out'),
+            ),
+          ],
         );
       },
     );
@@ -221,11 +364,18 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
         actions: [
           IconButton(
             icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+            tooltip: 'Toggle Theme',
             onPressed: () => EcoRouteState.instance.toggleTheme(),
           ),
           IconButton(
             icon: const Icon(Icons.person_add_outlined),
+            tooltip: 'Invite Rider',
             onPressed: () => _showAddRiderDialog(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.redAccent),
+            tooltip: 'Sign Out',
+            onPressed: () => _confirmSignOut(context),
           ),
         ],
       ),
@@ -341,12 +491,14 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
               // Profile Dropdown
               PopupMenuButton<String>(
                 onSelected: (val) {
-                  if (val == 'theme') {
+                  if (val == 'photo') {
+                    showProfilePhotoManagerSheet(context);
+                  } else if (val == 'theme') {
                     state.toggleTheme();
                   } else if (val == 'csv') {
                     state.exportCollectionAuditCsv(context);
                   } else if (val == 'signout') {
-                    state.logout(context);
+                    _confirmSignOut(context);
                   }
                 },
                 itemBuilder: (ctx) => [
@@ -359,12 +511,22 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                     ),
                   ),
                   const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'photo',
+                    child: Row(
+                      children: [
+                        Icon(Icons.photo_camera_outlined, size: 18, color: Color(0xFF2E7D32)),
+                        SizedBox(width: 8),
+                        Text('Manage Profile Photo'),
+                      ],
+                    ),
+                  ),
                   PopupMenuItem(
                     value: 'theme',
                     child: Row(
                       children: [
                         Icon(isDark ? Icons.light_mode : Icons.dark_mode, size: 18),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Text(isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'),
                       ],
                     ),
@@ -386,7 +548,7 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                       children: [
                         Icon(Icons.logout, size: 18, color: Colors.redAccent),
                         SizedBox(width: 8),
-                        Text('Sign Out', style: TextStyle(color: Colors.redAccent)),
+                        Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -399,10 +561,19 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                   ),
                   child: Row(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 14,
-                        backgroundColor: Color(0xFF2E7D32),
-                        child: Icon(Icons.person, size: 16, color: Colors.white),
+                        backgroundColor: const Color(0xFF2E7D32),
+                        child: state.userPhotoBase64 != null && state.userPhotoBase64!.isNotEmpty
+                            ? ClipOval(
+                                child: Image.memory(
+                                  base64Decode(state.userPhotoBase64!),
+                                  width: 28,
+                                  height: 28,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : const Icon(Icons.person, size: 16, color: Colors.white),
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -422,6 +593,14 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                     ],
                   ),
                 ),
+              ),
+              const SizedBox(width: 8),
+
+              // Dedicated Red Sign Out Button for Admin TopBar
+              IconButton(
+                icon: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
+                tooltip: 'Sign Out of Admin HQ',
+                onPressed: () => _confirmSignOut(context),
               ),
             ],
           ),
@@ -483,9 +662,27 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                 _buildNavItem(5, 'System Analytics', Icons.bar_chart_outlined, Icons.bar_chart),
                 _buildNavItem(6, 'Approvals & Evidence', Icons.check_circle_outlined, Icons.check_circle),
                 _buildNavItem(7, 'Settings', Icons.settings_outlined, Icons.settings),
+                _buildNavItem(8, 'Feedback & Inquiries', Icons.mark_chat_unread_outlined, Icons.mark_chat_unread),
               ],
             ),
           ),
+
+          // Admin Sign Out Tile
+          ListTile(
+            dense: true,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            leading: const Icon(Icons.logout, color: Colors.redAccent, size: 19),
+            title: const Text(
+              'Sign Out',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+            onTap: () => _confirmSignOut(context),
+          ),
+          const SizedBox(height: 12),
 
           // Bottom System Live Status Indicator
           Container(
@@ -566,6 +763,8 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
         return const AdminApprovalsView();
       case 7:
         return const AdminSettingsQuadrantView();
+      case 8:
+        return const AdminFeedbackView();
       case 0:
       default:
         return AdminOverviewView(

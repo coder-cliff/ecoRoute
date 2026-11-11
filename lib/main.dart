@@ -18,6 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'core/services/pdf_report_service.dart';
 import 'core/services/rider_invite_service.dart';
 import 'core/services/auth_service.dart';
+import 'core/services/inactivity_timeout_manager.dart';
 import 'domain/enums/role.dart';
 import 'core/layout/adaptive_layout.dart';
 import 'features/auth/responsive_sign_in_screen.dart';
@@ -65,6 +66,7 @@ class EcoRouteState extends ChangeNotifier {
   factory EcoRouteState() => instance;
   EcoRouteState._internal();
 
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   static const String _kStorageKey = 'ecoroute_app_state_v4';
   SharedPreferences? _prefs;
   SharedPreferences? get prefs => _prefs;
@@ -127,6 +129,7 @@ class EcoRouteState extends ChangeNotifier {
   double totalTonnes = 0.0;
   List<double> weeklyTonnage = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]; // Mon to Sun
   List<Map<String, dynamic>> supportTickets = [];
+  List<Map<String, dynamic>> residentFeedbackList = [];
   List<Map<String, dynamic>> invitedRiders = [];
   List<Map<String, dynamic>> offlineSyncQueue = [];
 
@@ -353,7 +356,7 @@ class EcoRouteState extends ChangeNotifier {
     }
   }
 
-  Future<void> logout(BuildContext context) async {
+  Future<void> signOut() async {
     userName = '';
     userUsername = '';
     userEmail = '';
@@ -368,11 +371,122 @@ class EcoRouteState extends ChangeNotifier {
         await FirebaseAuth.instance.signOut();
       }
     } catch (e) {
-      debugPrint('Logout notice: $e');
+      debugPrint('SignOut notice: $e');
     }
     notifyListeners();
+  }
+
+  Future<void> logout(BuildContext context) async {
+    await signOut();
     if (context.mounted) {
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    }
+  }
+
+  void deleteProfilePhoto() {
+    userPhotoBase64 = null;
+    _saveState();
+    notifyListeners();
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null && Firebase.apps.isNotEmpty) {
+      try {
+        FirebaseFirestore.instance.collection('profiles').doc(uid).update({
+          'photoBase64': FieldValue.delete(),
+          'photoUrl': FieldValue.delete(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        debugPrint('Firestore delete photo notice: $e');
+      }
+    }
+
+    final p = _prefs;
+    if (p != null) {
+      final auth = AuthService(p);
+      auth.updateProfilePhoto(null);
+    }
+  }
+
+  void setProfilePhoto(String? base64) {
+    userPhotoBase64 = base64;
+    _saveState();
+    notifyListeners();
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null && Firebase.apps.isNotEmpty) {
+      try {
+        FirebaseFirestore.instance.collection('profiles').doc(uid).set({
+          'photoBase64': base64,
+          'photoUrl': base64,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('Firestore photo update notice: $e');
+      }
+    }
+
+    final p = _prefs;
+    if (p != null) {
+      final auth = AuthService(p);
+      auth.updateProfilePhoto(base64);
+    }
+  }
+
+  void submitFeedback({
+    required String authorName,
+    required String authorRole,
+    required String contact,
+    required String category,
+    required String subject,
+    required String message,
+  }) {
+    final ticket = {
+      'id': 'FDBK-${DateTime.now().millisecondsSinceEpoch % 100000}',
+      'authorName': authorName,
+      'authorRole': authorRole,
+      'contact': contact,
+      'category': category,
+      'subject': subject,
+      'message': message,
+      'status': 'Pending',
+      'createdAt': DateTime.now().toIso8601String(),
+      'adminReply': null,
+    };
+    residentFeedbackList.insert(0, ticket);
+    _saveState();
+    notifyListeners();
+
+    if (Firebase.apps.isNotEmpty) {
+      try {
+        FirebaseFirestore.instance.collection('feedbacks').doc(ticket['id'] as String).set({
+          ...ticket,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        debugPrint('Firestore submit feedback notice: $e');
+      }
+    }
+  }
+
+  void resolveFeedback(String id, String reply) {
+    final idx = residentFeedbackList.indexWhere((f) => f['id'] == id);
+    if (idx != -1) {
+      residentFeedbackList[idx]['status'] = 'Resolved';
+      residentFeedbackList[idx]['adminReply'] = reply;
+      residentFeedbackList[idx]['resolvedAt'] = DateTime.now().toIso8601String();
+      _saveState();
+      notifyListeners();
+
+      if (Firebase.apps.isNotEmpty) {
+        try {
+          FirebaseFirestore.instance.collection('feedbacks').doc(id).update({
+            'status': 'Resolved',
+            'adminReply': reply,
+            'resolvedAt': FieldValue.serverTimestamp(),
+          });
+        } catch (_) {}
+      }
     }
   }
 
@@ -1128,12 +1242,18 @@ class EcoRouteApp extends StatelessWidget {
       builder: (context, _) {
         final state = EcoRouteState.instance;
         return MaterialApp(
+          navigatorKey: EcoRouteState.navigatorKey,
           title: 'EcoRoute Antigravity',
           debugShowCheckedModeBanner: false,
           theme: AntigravityTheme.buildTheme(isDarkMode: state.isDarkMode),
           darkTheme: AntigravityTheme.buildTheme(isDarkMode: true),
           themeMode: state.isDarkMode ? ThemeMode.dark : ThemeMode.light,
           initialRoute: '/',
+          builder: (context, child) {
+            return InactivityTimeoutManager(
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
           routes: {
             '/': (context) => const SplashScreen(),
             '/login': (context) => const ResponsiveSignInScreen(),
@@ -1823,6 +1943,21 @@ void showEcoRouteProfileSheet(BuildContext context) {
                 pickProfilePhoto(ImageSource.gallery, ctx);
               },
             ),
+            if (state.userPhotoBase64 != null && state.userPhotoBase64!.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                title: const Text('Remove Photo', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
+                subtitle: const Text('Revert back to default initials avatar (WhatsApp style)', style: TextStyle(fontSize: 11)),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  state.deleteProfilePhoto();
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(content: Text('Profile photo removed. Default avatar restored.')),
+                    );
+                  }
+                },
+              ),
           ],
         ),
       ),

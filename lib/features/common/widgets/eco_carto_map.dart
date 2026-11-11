@@ -251,23 +251,28 @@ class _EcoCartoMapState extends State<EcoCartoMap> {
               ),
               children: [
                 TileLayer(
-                  urlTemplate: isDark
-                      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-                      : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  subdomains: isDark ? const ['a', 'b', 'c', 'd'] : const ['a', 'b', 'c'],
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'ug.ecoroute.app',
                   tileBuilder: (context, tileWidget, tile) {
-                    if (!isDark) {
-                      // Harmonize with Rich Sage aesthetic
+                    if (isDark) {
                       return ColorFiltered(
-                        colorFilter: ColorFilter.mode(
-                          EcoPalette.surface.withOpacity(0.08),
-                          BlendMode.darken,
-                        ),
+                        colorFilter: const ColorFilter.matrix(<double>[
+                          -0.8, 0, 0, 0, 255,
+                          0, -0.8, 0, 0, 255,
+                          0, 0, -0.8, 0, 255,
+                          0, 0, 0, 1, 0,
+                        ]),
                         child: tileWidget,
                       );
                     }
-                    return tileWidget;
+                    // Harmonize with Rich Sage aesthetic
+                    return ColorFiltered(
+                      colorFilter: ColorFilter.mode(
+                        EcoPalette.surface.withOpacity(0.08),
+                        BlendMode.darken,
+                      ),
+                      child: tileWidget,
+                    );
                   },
                 ),
                 if (widget.routePoints != null && widget.routePoints!.isNotEmpty)

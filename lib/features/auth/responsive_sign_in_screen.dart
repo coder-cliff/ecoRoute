@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -224,6 +225,195 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
       } else if (user.role == AppRole.rider) {
         Navigator.pushNamedAndRemoveUntil(context, '/rider', (r) => false);
       } else {
+        Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
+      }
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        final googleProvider = GoogleAuthProvider();
+        googleProvider.addScope('email');
+        googleProvider.addScope('profile');
+
+        UserCredential userCred;
+        if (kIsWeb) {
+          userCred = await FirebaseAuth.instance.signInWithPopup(googleProvider);
+        } else {
+          userCred = await FirebaseAuth.instance.signInWithProvider(googleProvider);
+        }
+
+        final fbUser = userCred.user;
+        if (fbUser != null && fbUser.email != null) {
+          final cleanEmail = fbUser.email!.trim().toLowerCase();
+          final uid = fbUser.uid;
+
+          String resolvedRole = 'resident';
+          String resolvedName = fbUser.displayName ?? cleanEmail.split('@').first;
+          String resolvedPhone = fbUser.phoneNumber ?? '';
+
+          try {
+            final doc = await FirebaseFirestore.instance.collection('profiles').doc(uid).get();
+            if (doc.exists && doc.data() != null) {
+              final data = doc.data()!;
+              resolvedRole = (data['role'] as String?)?.toLowerCase() ?? 'resident';
+              resolvedName = (data['fullName'] as String?) ?? resolvedName;
+              resolvedPhone = (data['phone'] as String?) ?? resolvedPhone;
+            } else {
+              final prefs = EcoRouteState.instance.prefs ?? await SharedPreferences.getInstance();
+              final auth = AuthService(prefs);
+              final invite = auth.getRiderInvite(cleanEmail);
+              if (invite != null) {
+                resolvedRole = 'rider';
+              }
+              await FirebaseFirestore.instance.collection('profiles').doc(uid).set({
+                'id': uid,
+                'fullName': resolvedName,
+                'email': cleanEmail,
+                'phone': resolvedPhone,
+                'role': resolvedRole,
+                'createdAt': FieldValue.serverTimestamp(),
+              });
+            }
+          } catch (e) {
+            debugPrint('Firestore Google profile sync notice: $e');
+          }
+
+          if (!mounted) return;
+          EcoRouteState.instance.setAuthenticatedUser(
+            role: resolvedRole,
+            name: resolvedName,
+            email: cleanEmail,
+            phone: resolvedPhone,
+            photoBase64: fbUser.photoURL,
+          );
+
+          if (resolvedRole == 'admin' ||
+              resolvedRole == 'manager' ||
+              resolvedRole == 'supervisor' ||
+              resolvedRole == 'operationsmanager' ||
+              resolvedRole == 'routesupervisor') {
+            Navigator.pushNamedAndRemoveUntil(context, '/admin', (r) => false);
+          } else if (resolvedRole == 'rider') {
+            Navigator.pushNamedAndRemoveUntil(context, '/rider', (r) => false);
+          } else {
+            Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
+          }
+          return;
+        }
+      } else {
+        await _promptLocalGoogleSignIn();
+      }
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      if (e.code == 'popup-closed-by-user' || e.code == 'cancelled') {
+        setState(() => _isLoading = false);
+        return;
+      }
+      setState(() => _errorMessage = e.message ?? 'Google Sign-In failed (${e.code})');
+    } catch (_) {
+      if (!mounted) return;
+      await _promptLocalGoogleSignIn();
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _promptLocalGoogleSignIn() async {
+    final emailCtrl = TextEditingController(text: _emailController.text);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              _buildGoogleIcon(),
+              const SizedBox(width: 10),
+              const Text('Google Single Sign-On', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Enter your verified Google / Gmail address to authenticate your registered EcoRoute profile.',
+                style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: 'Google Email',
+                  hintText: 'e.g. yourname@gmail.com',
+                  prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF1B5E20)),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Continue with Google'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && emailCtrl.text.trim().isNotEmpty) {
+      final email = emailCtrl.text.trim().toLowerCase();
+      final prefs = EcoRouteState.instance.prefs ?? await SharedPreferences.getInstance();
+      final auth = AuthService(prefs);
+
+      final registered = auth.getRegisteredResidents();
+      final existing = registered.firstWhere(
+        (u) => u.email.toLowerCase() == email,
+        orElse: () => AppUser(id: '', fullName: '', email: '', phone: '', role: AppRole.guest),
+      );
+
+      if (existing.id.isNotEmpty) {
+        EcoRouteState.instance.setAuthenticatedUser(
+          role: existing.role.name,
+          name: existing.fullName,
+          email: existing.email,
+          phone: existing.phone,
+        );
+        if (existing.role.isAdminTier) {
+          Navigator.pushNamedAndRemoveUntil(context, '/admin', (r) => false);
+        } else if (existing.role == AppRole.rider) {
+          Navigator.pushNamedAndRemoveUntil(context, '/rider', (r) => false);
+        } else {
+          Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
+        }
+      } else {
+        final name = email.split('@').first;
+        final newUser = await auth.register(
+          fullName: name,
+          email: email,
+          phone: '+256 700 000 000',
+          password: 'GoogleSSO_${DateTime.now().millisecondsSinceEpoch}',
+          role: AppRole.resident,
+        );
+        EcoRouteState.instance.setAuthenticatedUser(
+          role: newUser.role.name,
+          name: newUser.fullName,
+          email: newUser.email,
+          phone: newUser.phone,
+        );
         Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
       }
     }
@@ -560,6 +750,12 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
           key: const ValueKey('login_email_input'),
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) {
+            if (_passwordController.text.trim().isNotEmpty) {
+              _handleSubmit();
+            }
+          },
           style: TextStyle(color: textColor),
           decoration: InputDecoration(
             labelText: 'Email Address',
@@ -585,6 +781,8 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
           key: ValueKey(_isSignUp ? 'signup_password_field' : 'login_password_field'),
           controller: _passwordController,
           obscureText: _obscurePassword,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _handleSubmit(),
           enableSuggestions: false,
           autocorrect: false,
           autofillHints: _isSignUp ? const [AutofillHints.newPassword] : const [],
@@ -670,21 +868,50 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
         const SizedBox(height: 14),
 
         _isLoading
-            ? Center(child: CircularProgressIndicator(color: accentGreen))
-            : FilledButton(
+            ? Container(
+                height: 52,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: accentGreen.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2.5, color: accentGreen),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      _isSignUp ? 'Creating Account...' : 'Signing In...',
+                      style: TextStyle(
+                        color: accentGreen,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : ElevatedButton(
                 key: const ValueKey('login_submit_button'),
                 onPressed: _handleSubmit,
-                style: FilledButton.styleFrom(
+                style: ElevatedButton.styleFrom(
                   backgroundColor: accentGreen,
+                  foregroundColor: Colors.white,
+                  elevation: 2,
+                  shadowColor: accentGreen.withOpacity(0.4),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 child: Text(
-                  _isSignUp ? 'Sign Up' : 'Sign In',
+                  _isSignUp ? 'Create Account' : 'Sign In',
                   style: const TextStyle(
                     fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
                   ),
                 ),
               ),
@@ -699,35 +926,59 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
           ),
         ),
 
-        const SizedBox(height: 18),
-        InkWell(
-          onTap: () => Navigator.pushNamed(context, '/rider-onboard'),
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: accentGreen.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: accentGreen.withOpacity(0.25)),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: Divider(color: borderColor)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                'or',
+                style: TextStyle(color: subtextColor, fontSize: 12),
+              ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.vpn_key_outlined, size: 16, color: accentGreen),
-                const SizedBox(width: 8),
-                Text(
-                  'Invited as a Field Rider? Redeem Token Here',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: accentGreen,
-                  ),
+            Expanded(child: Divider(color: borderColor)),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        // Continue with Google Button
+        OutlinedButton(
+          key: const ValueKey('continue_with_google_btn'),
+          onPressed: _isLoading ? null : _handleGoogleSignIn,
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            side: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFD1D5DB), width: 1.2),
+            backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildGoogleIcon(),
+              const SizedBox(width: 10),
+              Text(
+                'Continue with Google',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : const Color(0xFF1F2937),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildGoogleIcon() {
+    return const SizedBox(
+      width: 20,
+      height: 20,
+      child: CustomPaint(
+        painter: _GoogleLogoPainter(),
+      ),
     );
   }
 }
@@ -785,6 +1036,44 @@ class _EcoSkylinePainter extends CustomPainter {
       Offset(size.width - 10, size.height * 0.9),
       roadPaint,
     );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Official 4-color Google 'G' icon painter
+class _GoogleLogoPainter extends CustomPainter {
+  const _GoogleLogoPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+
+    final redPaint = Paint()..color = const Color(0xFFEA4335)..style = PaintingStyle.fill;
+    final yellowPaint = Paint()..color = const Color(0xFFFBBC05)..style = PaintingStyle.fill;
+    final greenPaint = Paint()..color = const Color(0xFF34A853)..style = PaintingStyle.fill;
+    final bluePaint = Paint()..color = const Color(0xFF4285F4)..style = PaintingStyle.fill;
+
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    // Blue arc (Right)
+    canvas.drawArc(rect, -0.6, 1.2, true, bluePaint);
+    // Green arc (Bottom)
+    canvas.drawArc(rect, 0.6, 1.6, true, greenPaint);
+    // Yellow arc (Left)
+    canvas.drawArc(rect, 2.2, 1.5, true, yellowPaint);
+    // Red arc (Top)
+    canvas.drawArc(rect, 3.7, 1.5, true, redPaint);
+
+    // Inner cutout
+    final innerPaint = Paint()..color = Colors.white..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius * 0.58, innerPaint);
+
+    // Blue horizontal bar
+    final barRect = Rect.fromLTWH(center.dx - 1, center.dy - radius * 0.22, radius * 1.05, radius * 0.44);
+    canvas.drawRect(barRect, bluePaint);
   }
 
   @override

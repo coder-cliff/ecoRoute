@@ -13,6 +13,8 @@ import '../../core/services/auth_service.dart';
 import '../../core/theme/eco_palette.dart';
 import '../../main.dart';
 import '../common/widgets/slide_to_confirm_widget.dart';
+import '../common/widgets/profile_photo_manager_sheet.dart';
+import '../common/widgets/feedback_dialog.dart';
 
 /// Rider Job Execution Phase
 enum _RiderJobPhase {
@@ -1611,39 +1613,51 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
 
           const SizedBox(height: 20),
 
-          // Rider Profile Avatar with Verified Badge
+          // Rider Profile Avatar with Verified Badge & WhatsApp-Style Photo Management
           Center(
-            child: Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFC8E6C9),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
-                  ),
-                  child: Center(
-                    child: Text(
-                      fullName.isNotEmpty ? fullName[0].toUpperCase() : 'R',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1B5E20),
-                      ),
+            child: GestureDetector(
+              onTap: () => showProfilePhotoManagerSheet(context),
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFC8E6C9),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 3),
+                    ),
+                    child: ClipOval(
+                      child: state.userPhotoBase64 != null && state.userPhotoBase64!.isNotEmpty
+                          ? Image.memory(
+                              base64Decode(state.userPhotoBase64!),
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                            )
+                          : Center(
+                              child: Text(
+                                fullName.isNotEmpty ? fullName[0].toUpperCase() : 'R',
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1B5E20),
+                                ),
+                              ),
+                            ),
                     ),
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF00C853),
-                    shape: BoxShape.circle,
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF2E7D32),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
                   ),
-                  child: const Icon(Icons.check, color: Colors.white, size: 14),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
@@ -1691,6 +1705,12 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
                   icon: Icons.account_balance_wallet_outlined,
                   label: 'Payout & Wallet',
                   onTap: () => _showPayoutWalletModal(context),
+                ),
+                const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                _buildAccountTile(
+                  icon: Icons.rate_review_outlined,
+                  label: 'Report Field Challenge / Feedback',
+                  onTap: () => showFeedbackSubmissionDialog(context, isRider: true),
                 ),
                 const Divider(height: 1, color: Color(0xFFE2E8F0)),
                 _buildAccountTile(
@@ -1905,6 +1925,16 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
             const SizedBox(height: 6),
             const Text('Arua City Waste Management Dispatch Desk', style: TextStyle(fontSize: 13, color: Colors.grey)),
             const SizedBox(height: 14),
+            ListTile(
+              leading: const Icon(Icons.rate_review_outlined, color: Color(0xFF1B5E20)),
+              title: const Text('Report Field Challenge / Feedback'),
+              subtitle: const Text('Send incident report or inquiry directly to Dispatch Admins'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+              onTap: () {
+                Navigator.pop(ctx);
+                showFeedbackSubmissionDialog(context, isRider: true);
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.call, color: Color(0xFF1B5E20)),
               title: const Text('Call Dispatch Officer'),

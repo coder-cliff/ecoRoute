@@ -173,11 +173,19 @@ class _AdminDispatchMapViewState extends State<AdminDispatchMapView> {
           ),
           children: [
             TileLayer(
-              urlTemplate: isDark
-                  ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                  : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-              subdomains: const ['a', 'b', 'c', 'd'],
-              userAgentPackageName: 'com.ecoroute.app',
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'ug.ecoroute.app',
+              tileBuilder: isDark
+                  ? (context, tileWidget, tile) => ColorFiltered(
+                        colorFilter: const ColorFilter.matrix(<double>[
+                          -0.8, 0, 0, 0, 255,
+                          0, -0.8, 0, 0, 255,
+                          0, 0, -0.8, 0, 255,
+                          0, 0, 0, 1, 0,
+                        ]),
+                        child: tileWidget,
+                      )
+                  : null,
             ),
             PolylineLayer(
               polylines: [

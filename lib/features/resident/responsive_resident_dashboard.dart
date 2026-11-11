@@ -9,6 +9,8 @@ import '../../domain/enums/waste_type.dart';
 import 'package:latlong2/latlong.dart';
 import '../common/widgets/eco_carto_map.dart';
 import '../payment/digital_receipt_dialog.dart';
+import '../common/widgets/profile_photo_manager_sheet.dart';
+import '../common/widgets/feedback_dialog.dart';
 import '../../main.dart';
 import 'widgets/eco_gemini_assistant_sheet.dart';
 
@@ -223,14 +225,42 @@ class _ResponsiveResidentDashboardState
                 ),
                 const SizedBox(height: 18),
 
-                // User Avatar Circle
-                CircleAvatar(
-                  radius: 36,
-                  backgroundColor: Colors.white.withOpacity(0.2),
-                  child: const CircleAvatar(
-                    radius: 34,
-                    backgroundColor: Color(0xFFCFD8DC),
-                    child: Icon(Icons.person, size: 42, color: Colors.white),
+                // User Avatar Circle (WhatsApp Style Management)
+                GestureDetector(
+                  onTap: () => showProfilePhotoManagerSheet(context),
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 36,
+                        backgroundColor: Colors.white.withOpacity(0.2),
+                        child: CircleAvatar(
+                          radius: 34,
+                          backgroundColor: const Color(0xFFCFD8DC),
+                          child: state.userPhotoBase64 != null && state.userPhotoBase64!.isNotEmpty
+                              ? ClipOval(
+                                  child: Image.memory(
+                                    base64Decode(state.userPhotoBase64!),
+                                    width: 68,
+                                    height: 68,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : const Icon(Icons.person, size: 42, color: Colors.white),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF2E7D32),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1056,13 +1086,41 @@ class _ResponsiveResidentDashboardState
                   ),
                 ),
                 const SizedBox(height: 18),
-                CircleAvatar(
-                  radius: 36,
-                  backgroundColor: Colors.white.withOpacity(0.2),
-                  child: const CircleAvatar(
-                    radius: 34,
-                    backgroundColor: Color(0xFFCFD8DC),
-                    child: Icon(Icons.person, size: 42, color: Colors.white),
+                GestureDetector(
+                  onTap: () => showProfilePhotoManagerSheet(context),
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 36,
+                        backgroundColor: Colors.white.withOpacity(0.2),
+                        child: CircleAvatar(
+                          radius: 34,
+                          backgroundColor: const Color(0xFFCFD8DC),
+                          child: state.userPhotoBase64 != null && state.userPhotoBase64!.isNotEmpty
+                              ? ClipOval(
+                                  child: Image.memory(
+                                    base64Decode(state.userPhotoBase64!),
+                                    width: 68,
+                                    height: 68,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : const Icon(Icons.person, size: 42, color: Colors.white),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF2E7D32),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1127,6 +1185,13 @@ class _ResponsiveResidentDashboardState
                         title: 'App Preferences',
                         textColor: textColor,
                         onTap: () => state.toggleTheme(),
+                      ),
+                      const Divider(height: 1, indent: 56),
+                      _buildAccountTile(
+                        icon: Icons.rate_review_outlined,
+                        title: 'Feedback & Report Challenges',
+                        textColor: textColor,
+                        onTap: () => showFeedbackSubmissionDialog(context),
                       ),
                       const Divider(height: 1, indent: 56),
                       _buildAccountTile(
@@ -1372,6 +1437,19 @@ class _ResponsiveResidentDashboardState
             const SizedBox(height: 6),
             const Text('Need assistance with your waste collection or schedules?'),
             const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.rate_review_outlined, color: Color(0xFF2E7D32)),
+              title: const Text('Report Field Challenge / Feedback'),
+              subtitle: const Text('Direct dispatch ticket to Municipal Admins'),
+              trailing: FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  showFeedbackSubmissionDialog(context);
+                },
+                child: const Text('Submit'),
+              ),
+            ),
             ListTile(
               leading: const Icon(Icons.phone, color: Color(0xFF00C853)),
               title: const Text('Toll-Free Dispatch Hotline'),
@@ -1824,12 +1902,40 @@ class _ResponsiveResidentDashboardState
             ),
             child: Column(
               children: [
-                CircleAvatar(
-                  backgroundColor: accentGreen,
-                  radius: 34,
-                  child: Text(
-                    state.userName.isNotEmpty ? state.userName[0].toUpperCase() : 'R',
-                    style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                GestureDetector(
+                  onTap: () => showProfilePhotoManagerSheet(context),
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: accentGreen,
+                        radius: 34,
+                        child: state.userPhotoBase64 != null && state.userPhotoBase64!.isNotEmpty
+                            ? ClipOval(
+                                child: Image.memory(
+                                  base64Decode(state.userPhotoBase64!),
+                                  width: 68,
+                                  height: 68,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : Text(
+                                state.userName.isNotEmpty ? state.userName[0].toUpperCase() : 'R',
+                                style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                              ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF2E7D32),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.camera_alt, size: 14, color: Colors.white),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1937,6 +2043,14 @@ class _ResponsiveResidentDashboardState
                   subtitle: const Text('Chat with Arua Dispatch', style: TextStyle(fontSize: 12)),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 14),
                   onTap: () => launchEcoRouteWhatsApp(),
+                ),
+                Divider(height: 1, color: AntigravityTheme.border(context)),
+                ListTile(
+                  leading: const Icon(Icons.rate_review_outlined, color: Color(0xFF2E7D32)),
+                  title: Text('Report Field Challenge / Feedback', style: TextStyle(fontSize: 14, color: textColor)),
+                  subtitle: const Text('Send direct message to Municipal Dispatch', style: TextStyle(fontSize: 12)),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                  onTap: () => showFeedbackSubmissionDialog(context),
                 ),
                 Divider(height: 1, color: AntigravityTheme.border(context)),
                 ListTile(
