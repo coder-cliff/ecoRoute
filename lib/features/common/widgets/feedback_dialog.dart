@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../main.dart';
+import '../../../main.dart';
 
 /// Interactive modal allowing residents and field riders to submit
 /// feedbacks, challenges, and inquiries directly to municipal administrators.
