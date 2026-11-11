@@ -1566,7 +1566,7 @@ class _LoginScreenState extends State<LoginScreen> {
         email: user.email,
         phone: user.phone,
       );
-      if (user.role == AppRole.admin || user.role == AppRole.manager || user.role == AppRole.supervisor) {
+      if (user.role.isAdminTier) {
         Navigator.pushNamedAndRemoveUntil(context, '/admin', (route) => false);
       } else if (user.role == AppRole.rider) {
         Navigator.pushNamedAndRemoveUntil(context, '/rider', (route) => false);
