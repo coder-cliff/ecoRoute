@@ -897,6 +897,7 @@ class EcoRouteState extends ChangeNotifier {
   String inviteRider({required String name, required String phone, required String tricycleId, String? email}) {
     final cleanEmail = (email ?? '${name.toLowerCase().replaceAll(' ', '.')}@ecoroute.ug').trim();
     final inviteCode = 'RIDER-${(DateTime.now().millisecondsSinceEpoch % 1000000).toString().padLeft(6, '0')}';
+    final tempPin = ((DateTime.now().millisecondsSinceEpoch ~/ 10) % 900000 + 100000).toString();
     final riderRecord = {
       'id': 'RIDER-${riderRoster.length + 1}',
       'name': name,
@@ -906,6 +907,7 @@ class EcoRouteState extends ChangeNotifier {
       'zone': _getZoneForTricycle(tricycleId),
       'status': 'Invited (Pending Sign-In)',
       'inviteCode': inviteCode,
+      'temporaryPin': tempPin,
       'rating': 5.0,
       'trips': 0,
       'invitedAt': DateTime.now().toIso8601String(),
@@ -914,6 +916,15 @@ class EcoRouteState extends ChangeNotifier {
 
     riderRoster.add(riderRecord);
     invitedRiders.add(riderRecord);
+
+    if (_prefs != null) {
+      AuthService(_prefs!).inviteRider(
+        email: cleanEmail,
+        fullName: name,
+        phone: phone,
+        temporaryPin: tempPin,
+      );
+    }
 
     // Update the tricycle assignment in Fleet
     final tIdx = tricycles.indexWhere((t) => t['id'] == tricycleId);

@@ -425,17 +425,21 @@ class AuthService {
     required String email,
     required String fullName,
     required String phone,
+    String? temporaryPin,
   }) async {
     final cleanEmail = email.trim().toLowerCase();
+    final cleanPhone = phone.replaceAll(RegExp(r'\s+'), '').trim();
     final inviteCode = 'RIDER-${(DateTime.now().millisecondsSinceEpoch % 1000000).toString().padLeft(6, '0')}';
+    final pin = temporaryPin ?? ((DateTime.now().millisecondsSinceEpoch ~/ 10) % 900000 + 100000).toString();
     final riders = getInvitedRiders();
     riders.removeWhere((r) => (r['email'] as String).toLowerCase() == cleanEmail);
     riders.add({
       'id': 'rider-${DateTime.now().millisecondsSinceEpoch}',
       'fullName': fullName.trim(),
       'email': cleanEmail,
-      'phone': phone.trim(),
+      'phone': cleanPhone,
       'inviteCode': inviteCode,
+      'temporaryPin': pin,
       'status': 'invited',
       'invitedAt': DateTime.now().toIso8601String(),
     });
@@ -448,8 +452,9 @@ class AuthService {
         await firestore.collection('invitedRiders').doc(cleanEmail).set({
           'fullName': fullName.trim(),
           'email': cleanEmail,
-          'phone': phone.trim(),
+          'phone': cleanPhone,
           'inviteCode': inviteCode,
+          'temporaryPin': pin,
           'status': 'invited',
           'invitedAt': FieldValue.serverTimestamp(),
         });
@@ -457,6 +462,105 @@ class AuthService {
     }
 
     return inviteCode;
+  }
+
+  /// Validates a rider's phone and temporary PIN for activation.
+  Map<String, dynamic>? validateRiderActivation({
+    required String phone,
+    required String pin,
+  }) {
+    final cleanPhone = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
+    final cleanPin = pin.trim();
+    if (cleanPhone.isEmpty || cleanPin.isEmpty) return null;
+
+    final riders = getInvitedRiders();
+    for (final r in riders) {
+      final rPhone = (r['phone'] as String? ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
+      final rPin = (r['temporaryPin'] ?? r['inviteCode'] ?? '').toString().trim();
+      final rCode = (r['inviteCode'] as String? ?? '').trim();
+
+      final phoneMatch = rPhone == cleanPhone ||
+          cleanPhone.endsWith(rPhone.replaceFirst('+256', '0')) ||
+          rPhone.endsWith(cleanPhone.replaceFirst('+256', '0')) ||
+          cleanPhone.endsWith(rPhone) ||
+          rPhone.endsWith(cleanPhone);
+
+      final pinMatch = rPin == cleanPin ||
+          rPin.endsWith(cleanPin) ||
+          rCode.toLowerCase() == cleanPin.toLowerCase() ||
+          rCode.toLowerCase().endsWith(cleanPin.toLowerCase());
+
+      if (phoneMatch && pinMatch) {
+        return r;
+      }
+    }
+    return null;
+  }
+
+  /// Updates or records a rider's profile setup (name, vehicle, plate, selfie)
+  /// and sets status to 'pending_approval'.
+  Future<void> submitRiderProfile({
+    required String phone,
+    required String fullName,
+    required String vehicleType,
+    required String plateNumber,
+    String? selfieBase64,
+  }) async {
+    final cleanPhone = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
+    final riders = getInvitedRiders();
+    final idx = riders.indexWhere((r) {
+      final rPhone = (r['phone'] as String? ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
+      return rPhone == cleanPhone || cleanPhone.endsWith(rPhone) || rPhone.endsWith(cleanPhone);
+    });
+
+    final updated = <String, dynamic>{
+      'phone': cleanPhone,
+      'fullName': fullName.trim(),
+      'vehicleType': vehicleType,
+      'plateNumber': plateNumber.trim().toUpperCase(),
+      if (selfieBase64 != null) 'selfieBase64': selfieBase64,
+      'status': 'pending_approval',
+      'submittedAt': DateTime.now().toIso8601String(),
+    };
+
+    if (idx != -1) {
+      riders[idx].addAll(updated);
+    } else {
+      riders.add({
+        'id': 'rider-${DateTime.now().millisecondsSinceEpoch}',
+        ...updated,
+      });
+    }
+
+    await _preferences.setString(_invitedRidersKey, jsonEncode(riders));
+  }
+
+  /// Checks if a rider's account is approved.
+  bool isRiderApproved(String phone) {
+    final cleanPhone = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
+    final riders = getInvitedRiders();
+    for (final r in riders) {
+      final rPhone = (r['phone'] as String? ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
+      if (rPhone == cleanPhone || cleanPhone.endsWith(rPhone) || rPhone.endsWith(cleanPhone)) {
+        final status = (r['status'] as String? ?? '').toLowerCase();
+        return status == 'active' || status == 'approved';
+      }
+    }
+    return false;
+  }
+
+  /// Approves a rider's application.
+  Future<void> approveRider(String phone) async {
+    final cleanPhone = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
+    final riders = getInvitedRiders();
+    for (final r in riders) {
+      final rPhone = (r['phone'] as String? ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
+      if (rPhone == cleanPhone || cleanPhone.endsWith(rPhone) || rPhone.endsWith(cleanPhone)) {
+        r['status'] = 'active';
+        r['approvedAt'] = DateTime.now().toIso8601String();
+      }
+    }
+    await _preferences.setString(_invitedRidersKey, jsonEncode(riders));
   }
 
   List<Map<String, dynamic>> getInvitedRiders() {
