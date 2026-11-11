@@ -354,7 +354,7 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                     value: 'profile',
                     enabled: false,
                     child: Text(
-                      'Signed in as ${state.userName.isNotEmpty ? state.userName : "Dispatcher"}',
+                      'Signed in as ${state.userName.isNotEmpty ? state.userName : "Admin HQ"}',
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                     ),
                   ),
@@ -406,7 +406,7 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Dispatcher Hub',
+                        state.userName.isNotEmpty ? state.userName : 'Admin HQ',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,

@@ -1838,7 +1838,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                   controller: _riderNameController,
                   decoration: InputDecoration(
                     labelText: 'Rider full name',
-                    hintText: 'e.g. John Boda',
+                    hintText: 'Enter full name',
                     prefixIcon: const Icon(Icons.person_outline, size: 20),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
@@ -1851,7 +1851,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: 'Rider email address',
-                    hintText: 'e.g. rider@ecoroute.ug',
+                    hintText: 'e.g. rider@example.com',
                     prefixIcon: const Icon(Icons.email_outlined, size: 20),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),

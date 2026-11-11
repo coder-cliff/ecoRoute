@@ -1839,7 +1839,7 @@ class _ResponsiveResidentDashboardState
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  state.userEmail.isNotEmpty ? state.userEmail : 'resident@ecoroute.ug',
+                  state.userEmail.isNotEmpty ? state.userEmail : 'No email linked',
                   style: TextStyle(fontSize: 12, color: subtextColor),
                 ),
                 const SizedBox(height: 8),

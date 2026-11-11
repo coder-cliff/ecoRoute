@@ -808,7 +808,7 @@ class _RiderInviteAcceptanceScreenState
                   style: TextStyle(fontSize: 14, color: isDark ? Colors.white : textColor),
                   decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.person_outline, size: 20, color: subtextColor),
-                    hintText: 'e.g. Ayiko Gift Clifford',
+                    hintText: 'Enter your full name',
                     hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),

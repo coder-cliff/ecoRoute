@@ -217,6 +217,14 @@ class EcoRouteState extends ChangeNotifier {
             saved.contains('jane_arua') ||
             saved.contains('resident.arua') ||
             saved.contains('admin@ecoroute.ug') ||
+            saved.contains('Acan Grace') ||
+            saved.contains('Kato David') ||
+            saved.contains('Okello John') ||
+            saved.contains('Mukasa Paul') ||
+            saved.contains('Drileba Emmanuel') ||
+            saved.contains('Atiku Samuel') ||
+            saved.contains('Buga Denis') ||
+            saved.contains('Ayiko Gift') ||
             saved.contains('TRIC-04')) {
           await _prefs?.remove(_kStorageKey);
         } else {
@@ -1439,7 +1447,7 @@ class _LoginScreenState extends State<LoginScreen> {
           String resolvedRole = 'resident';
           String resolvedName = targetEmail.split('@').first;
           String resolvedUsername = targetEmail.split('@').first;
-          String resolvedPhone = '+256 394 880 352';
+          String resolvedPhone = userCred.user?.phoneNumber ?? '';
           String? resolvedCell;
           String? resolvedPhoto;
 
@@ -1501,22 +1509,68 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
 
-    // Headless / offline direct navigation for automated unit testing only
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+    // Local / offline authentic authentication via AuthService (No demo bypasses)
+    final prefs = EcoRouteState.instance.prefs ?? await SharedPreferences.getInstance();
+    final authService = AuthService(prefs);
 
-    final clean = identifier.toLowerCase();
-    if (clean.contains('supervisor')) {
-      EcoRouteState.instance.switchRole('supervisor', context);
-    } else if (clean.contains('manager')) {
-      EcoRouteState.instance.switchRole('manager', context);
-    } else if (clean.contains('admin')) {
-      EcoRouteState.instance.switchRole('admin', context);
-    } else if (clean.contains('rider')) {
-      EcoRouteState.instance.switchRole('rider', context);
+    if (_isSignUp) {
+      final name = _fullNameController.text.trim().isNotEmpty
+          ? _fullNameController.text.trim()
+          : identifier.split('@').first;
+      final phone = _phoneController.text.trim();
+      try {
+        final user = await authService.register(
+          fullName: name,
+          email: identifier.contains('@') ? identifier : '$identifier@ecoroute.ug',
+          phone: phone.isNotEmpty ? phone : '+256700000000',
+          password: password,
+          role: AppRole.resident,
+        );
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        EcoRouteState.instance.setAuthenticatedUser(
+          role: user.role.name,
+          name: user.fullName,
+          email: user.email,
+          phone: user.phone,
+        );
+        Navigator.pushNamedAndRemoveUntil(context, '/resident', (route) => false);
+        return;
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Registration error: ${e.toString().replaceAll("StateError: ", "")}')),
+        );
+        return;
+      }
     } else {
-      EcoRouteState.instance.switchRole('resident', context);
+      final user = await authService.login(email: identifier, password: password);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invalid credentials. Please enter a valid registered email and password.'),
+            backgroundColor: Color(0xFF991B1B),
+          ),
+        );
+        return;
+      }
+      EcoRouteState.instance.setAuthenticatedUser(
+        role: user.role.name,
+        name: user.fullName,
+        email: user.email,
+        phone: user.phone,
+      );
+      if (user.role == AppRole.admin || user.role == AppRole.manager || user.role == AppRole.supervisor) {
+        Navigator.pushNamedAndRemoveUntil(context, '/admin', (route) => false);
+      } else if (user.role == AppRole.rider) {
+        Navigator.pushNamedAndRemoveUntil(context, '/rider', (route) => false);
+      } else {
+        Navigator.pushNamedAndRemoveUntil(context, '/resident', (route) => false);
+      }
+      return;
     }
   }
 
@@ -1560,7 +1614,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: const TextStyle(color: Color(0xFF0D2618)),
                   decoration: InputDecoration(
                     labelText: 'Full Name',
-                    hintText: 'e.g. Jane Agondua',
+                    hintText: 'Enter your full name',
                     labelStyle: const TextStyle(color: Color(0xFF0D2618)),
                     filled: true,
                     fillColor: Colors.white,
@@ -1574,7 +1628,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: const TextStyle(color: Color(0xFF0D2618)),
                   decoration: InputDecoration(
                     labelText: 'Choose Username',
-                    hintText: 'e.g. jane_arua',
+                    hintText: 'Choose a username',
                     labelStyle: const TextStyle(color: Color(0xFF0D2618)),
                     filled: true,
                     fillColor: Colors.white,
@@ -1616,7 +1670,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: const TextStyle(color: Color(0xFF0D2618)),
                 decoration: InputDecoration(
                   labelText: _isSignUp ? 'Email Address' : 'Email, Username, or Phone Number',
-                  hintText: _isSignUp ? 'name@ecoroute.ug' : 'e.g. jane_arua, +256..., or name@ecoroute.ug',
+                  hintText: _isSignUp ? 'name@example.com' : 'Email, username, or phone number',
                   labelStyle: const TextStyle(color: Color(0xFF0D2618)),
                   filled: true,
                   fillColor: Colors.white,
@@ -3708,7 +3762,7 @@ class _RiderRouteScreenState extends State<RiderRouteScreen> {
                       children: [
                         _buildStepItem('1', 'Head North on Ediofe Road toward Market Junction', '600 m', true),
                         _buildStepItem('2', 'Turn right at Ediofe Trading Center entrance', '450 m', true),
-                        _buildStepItem('3', 'Arrive at Client Doorstep (${activeTask?['client'] ?? 'Jane A.'})', '350 m', false),
+                        _buildStepItem('3', 'Arrive at Client Doorstep (${activeTask?['client'] ?? 'Client'})', '350 m', false),
                       ],
                     ),
                   ),
@@ -5775,7 +5829,7 @@ class _LiveMapTrackerSheet extends StatelessWidget {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Rider: ${pickup!['assignedRiderName'] ?? 'John B.'} (${pickup!['assignedRiderId'] ?? 'TRIC-04'})', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                              Text('Rider: ${pickup!['assignedRiderName'] ?? 'Assigned Rider'} (${pickup!['assignedRiderId'] ?? 'EcoFleet'})', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
                               const Text('1.4 km away • Estimated 8 mins ETA', style: TextStyle(color: Colors.grey, fontSize: 12)),
                             ],
                           ),

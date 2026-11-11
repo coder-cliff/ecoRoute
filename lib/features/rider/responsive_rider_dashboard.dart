@@ -225,14 +225,14 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
     if (pendingReq.isNotEmpty) {
       final newJob = <String, dynamic>{
         'id': pendingReq['id']?.toString().replaceAll('Pickup #', '') ?? 'ER${DateTime.now().millisecondsSinceEpoch % 100000}',
-        'client': state.userName.isNotEmpty ? state.userName : 'Ayiko Gift',
-        'address': pendingReq['address'] ?? 'Block 3, Arua Hill',
+        'client': pendingReq['residentName'] ?? pendingReq['client'] ?? (state.userName.isNotEmpty ? state.userName : 'Municipal Client'),
+        'address': pendingReq['address'] ?? pendingReq['cell'] ?? 'Pickup Location',
         'wasteType': pendingReq['wasteType'] ?? 'General Commercial Waste',
-        'distance': '1.8 km',
+        'distance': pendingReq['distance'] ?? '1.8 km',
         'expectedEarnings': pendingReq['price'] ?? 15000,
         'status': 'Dispatched',
         'sacks': pendingReq['sacks'] ?? 3,
-        'phone': '+256700000000',
+        'phone': pendingReq['phone'] ?? '+256700000000',
       };
 
       setState(() {
@@ -241,25 +241,15 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
         _currentTabIndex = 0; // Switch to Home
       });
     } else {
-      // Create active on-demand commercial job
-      final newId = (DateTime.now().millisecondsSinceEpoch % 90000 + 10000).toString();
-      final onDemandJob = <String, dynamic>{
-        'id': newId,
-        'client': 'Ayiko Gift',
-        'address': 'Block 3, Arua Hill',
-        'wasteType': 'General Waste Pickup Block 3',
-        'distance': '1.8 km',
-        'expectedEarnings': 15000,
-        'status': 'Dispatched',
-        'sacks': 2,
-        'phone': '+256700000000',
-      };
-
-      setState(() {
-        _activeJob = onDemandJob;
-        _jobPhase = _RiderJobPhase.incoming;
-        _currentTabIndex = 0; // Switch to Home
-      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No pending dispatch requests in queue right now. You are online and on standby.'),
+            backgroundColor: Color(0xFF0F3822),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
@@ -405,7 +395,7 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
 
     final riderName = state.userName.isNotEmpty
         ? state.userName.split(' ').first
-        : (state.userEmail.isNotEmpty ? state.userEmail.split('@').first : 'Ayiko');
+        : (state.userEmail.isNotEmpty ? state.userEmail.split('@').first : 'Rider');
 
     return Stack(
       children: [
@@ -702,8 +692,8 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
     const textColor = Color(0xFF1E293B);
     const subtextColor = Color(0xFF64748B);
 
-    final client = _activeJob?['client'] ?? 'Ayiko Gift';
-    final location = _activeJob?['address'] ?? 'Block 3, Arua Hill';
+    final client = _activeJob?['client'] ?? 'Client';
+    final location = _activeJob?['address'] ?? 'Pickup Location';
     final distance = _activeJob?['distance'] ?? '1.8 km';
     final rawPrice = _activeJob?['expectedEarnings'] ?? _activeJob?['price'] ?? 15000;
     final int earnings = (rawPrice is num) ? rawPrice.toInt() : 15000;
@@ -847,8 +837,8 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
     const textColor = Color(0xFF1E293B);
     const subtextColor = Color(0xFF64748B);
 
-    final client = _activeJob?['client'] ?? 'Ayiko Gift';
-    final location = _activeJob?['address'] ?? 'Block 3, Arua Hill';
+    final client = _activeJob?['client'] ?? 'Client';
+    final location = _activeJob?['address'] ?? 'Pickup Location';
     final phone = _activeJob?['phone'] ?? '+256700000000';
 
     return Stack(
@@ -1602,7 +1592,7 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
     const textColor = Color(0xFF1E293B);
     const subtextColor = Color(0xFF64748B);
 
-    final fullName = state.userName.isNotEmpty ? state.userName : 'Ayiko Gift Clifford';
+    final fullName = state.userName.isNotEmpty ? state.userName : 'EcoRoute Rider';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -1773,12 +1763,12 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
             ListTile(
               leading: const Icon(Icons.person, color: Color(0xFF1B5E20)),
               title: const Text('Full Name'),
-              subtitle: Text(state.userName.isNotEmpty ? state.userName : 'Ayiko Gift Clifford'),
+              subtitle: Text(state.userName.isNotEmpty ? state.userName : 'EcoRoute Rider'),
             ),
             ListTile(
               leading: const Icon(Icons.phone, color: Color(0xFF1B5E20)),
               title: const Text('Phone Number'),
-              subtitle: Text(state.userPhone.isNotEmpty ? state.userPhone : '+256 700 000 000'),
+              subtitle: Text(state.userPhone.isNotEmpty ? state.userPhone : 'Not provided'),
             ),
             ListTile(
               leading: const Icon(Icons.verified, color: Color(0xFF00C853)),

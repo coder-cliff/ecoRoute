@@ -570,7 +570,22 @@ class AuthService {
     }
     try {
       final list = jsonDecode(raw) as List<dynamic>;
-      return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      return list
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .where((r) {
+            final name = (r['fullName'] as String? ?? '').toLowerCase();
+            final email = (r['email'] as String? ?? '').toLowerCase();
+            return !name.contains('acan') &&
+                !name.contains('kato') &&
+                !name.contains('okello') &&
+                !name.contains('mukasa') &&
+                !name.contains('drileba') &&
+                !name.contains('atiku') &&
+                !name.contains('buga') &&
+                !name.contains('ayiko') &&
+                !email.contains('demo');
+          })
+          .toList();
     } catch (_) {
       return <Map<String, dynamic>>[];
     }
@@ -833,9 +848,15 @@ class AuthService {
           .map((e) => Map<String, dynamic>.from(e as Map))
           .where((u) {
             final email = (u['email'] as String? ?? '').toLowerCase();
+            final name = (u['fullName'] as String? ?? '').toLowerCase();
             return !email.contains('demo') &&
                 !email.contains('saviordeogratius') &&
-                !email.contains('techcliff');
+                !email.contains('techcliff') &&
+                !name.contains('jane') &&
+                !name.contains('ayiko') &&
+                !name.contains('acan') &&
+                !name.contains('kato') &&
+                !name.contains('okello');
           })
           .toList();
     } catch (_) {
