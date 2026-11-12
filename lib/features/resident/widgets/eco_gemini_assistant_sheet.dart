@@ -39,8 +39,8 @@ class _EcoRouteBotChatSheetState extends State<EcoRouteBotChatSheet>
     {
       'role': 'model',
       'text':
-          "Hey there! 👋 I'm ecoRoute Bot, your 24/7 WhatsApp waste assistant in Arua City.\n\n"
-          "Need a quick sack pickup, want to check rates (2,500 UGX home / 3,000 UGX shop), or just saying hello? I'm right here! 😊",
+          "Hey there! I'm ecoRoute Bot, your 24/7 WhatsApp waste assistant in Arua City.\n\n"
+          "Need a quick sack pickup, want to check rates (2,500 UGX home / 3,000 UGX shop), or just saying hello? I'm right here!",
       'time': _formatCurrentTime(),
     }
   ];
@@ -49,14 +49,14 @@ class _EcoRouteBotChatSheetState extends State<EcoRouteBotChatSheet>
   bool _isProcessing = false;
 
   static const List<String> _quickPrompts = [
-    '👋 Muke! How are you?',
-    '🗑️ Request Sack Pickup',
-    '💰 How much per sack?',
-    '📍 Are you in Ediofe today?',
-    '♻️ How do I sort plastics?',
-    '📞 Dispatch Hotline',
-    '😂 Tell me a joke',
-    '🎓 Muni University schedule',
+    'Muke! How are you?',
+    'Request Sack Pickup',
+    'How much per sack?',
+    'Are you in Ediofe today?',
+    'How do I sort plastics?',
+    'Dispatch Hotline',
+    'Tell me a joke',
+    'Muni University schedule',
   ];
 
   static String _formatCurrentTime() {

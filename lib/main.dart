@@ -2858,7 +2858,7 @@ class ResidentHomeScreen extends StatelessWidget {
                                     onPressed: () => _showRatingModal(context),
                                     icon: const Icon(Icons.star, size: 16, color: Colors.amber),
                                     label: Text(
-                                      pickup!['riderRating'] != null ? 'Rated ${pickup!['riderRating']}★' : 'Rate Rider',
+                                      pickup!['riderRating'] != null ? 'Rated ${pickup!['riderRating']}/5' : 'Rate Rider',
                                       style: const TextStyle(color: Color(0xFF0D2618), fontSize: 12, fontWeight: FontWeight.bold),
                                     ),
                                   ),

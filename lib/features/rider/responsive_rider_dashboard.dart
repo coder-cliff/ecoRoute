@@ -162,7 +162,7 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✓ Waste photo evidence locked to pickup order.'),
+              content: Text('Waste photo evidence locked to pickup order.'),
               backgroundColor: Color(0xFF1B5E20),
               duration: Duration(seconds: 2),
             ),
@@ -1139,7 +1139,7 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
                           const SizedBox(width: 10),
                           const Expanded(
                             child: Text(
-                              '✓ Photo Evidence Locked',
+                              'Photo Evidence Locked',
                               style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
                             ),
                           ),

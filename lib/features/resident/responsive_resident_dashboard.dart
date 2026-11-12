@@ -2291,7 +2291,7 @@ class _ResponsiveResidentDashboardState
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
-                                            '🗺️ DETAILED SPATIAL INTERACTIVE MAP',
+                                            'DETAILED SPATIAL INTERACTIVE MAP',
                                             style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor),
                                           ),
                                           Container(
@@ -2338,7 +2338,7 @@ class _ResponsiveResidentDashboardState
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      '📑 ACCOUNT DISPOSAL HISTORY',
+                                      'ACCOUNT DISPOSAL HISTORY',
                                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor),
                                     ),
                                     const SizedBox(height: 12),
@@ -2391,7 +2391,7 @@ class _ResponsiveResidentDashboardState
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '📊 MY CARBON IMPACT REDUCTION TRENDS',
+                                'MY CARBON IMPACT REDUCTION TRENDS',
                                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
                               ),
                               const SizedBox(height: 4),

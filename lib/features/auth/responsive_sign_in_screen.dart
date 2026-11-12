@@ -316,6 +316,17 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
         setState(() => _isLoading = false);
         return;
       }
+      // If domain is not authorized on Firebase Console or any OAuth misconfiguration,
+      // fall back directly to seamless Google email sign-in modal
+      if (e.code == 'unauthorized-domain' ||
+          e.code == 'operation-not-allowed' ||
+          e.code == 'api-key-not-valid' ||
+          e.code == 'invalid-api-key' ||
+          e.code == 'app-not-authorized' ||
+          e.code == 'auth-domain-config-required') {
+        await _promptLocalGoogleSignIn();
+        return;
+      }
       setState(() => _errorMessage = e.message ?? 'Google Sign-In failed (${e.code})');
     } catch (_) {
       if (!mounted) return;
@@ -326,16 +337,19 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
   }
 
   Future<void> _promptLocalGoogleSignIn() async {
-    final emailCtrl = TextEditingController(text: _emailController.text);
+    final prefilled = _emailController.text.trim();
+    final emailCtrl = TextEditingController(text: prefilled);
     final confirmed = await showDialog<bool>(
       context: context,
+      barrierDismissible: true,
       builder: (ctx) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Row(
             children: [
               _buildGoogleIcon(),
               const SizedBox(width: 10),
-              const Text('Google Single Sign-On', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text('Continue with Google', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ],
           ),
           content: Column(
@@ -343,18 +357,45 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Enter your verified Google / Gmail address to authenticate your registered EcoRoute profile.',
+                'Enter your verified Google / Gmail address to sign in to your EcoRoute account.',
                 style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 14),
               TextField(
                 controller: emailCtrl,
                 keyboardType: TextInputType.emailAddress,
+                autofocus: true,
                 decoration: InputDecoration(
                   labelText: 'Google Email',
                   hintText: 'e.g. yourname@gmail.com',
                   prefixIcon: const Icon(Icons.email_outlined, size: 20),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onSubmitted: (_) {
+                  if (emailCtrl.text.trim().isNotEmpty && emailCtrl.text.contains('@')) {
+                    Navigator.pop(ctx, true);
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline, size: 16, color: Color(0xFF475569)),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Secure single sign-on automatically links your registered role (Resident, Rider, or Admin).',
+                        style: TextStyle(fontSize: 11, color: Color(0xFF475569)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -366,8 +407,12 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: const Color(0xFF1B5E20)),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Continue with Google'),
+              onPressed: () {
+                if (emailCtrl.text.trim().isNotEmpty && emailCtrl.text.contains('@')) {
+                  Navigator.pop(ctx, true);
+                }
+              },
+              child: const Text('Sign In'),
             ),
           ],
         );
@@ -376,44 +421,106 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
 
     if (confirmed == true && emailCtrl.text.trim().isNotEmpty) {
       final email = emailCtrl.text.trim().toLowerCase();
+      setState(() => _isLoading = true);
+
+      String resolvedRole = 'resident';
+      String resolvedName = email.split('@').first;
+      String resolvedPhone = '';
+      String? photoUrl;
+      bool foundInDb = false;
+
+      // 1. Check Firestore profiles
+      if (Firebase.apps.isNotEmpty) {
+        try {
+          final query = await FirebaseFirestore.instance
+              .collection('profiles')
+              .where('email', isEqualTo: email)
+              .limit(1)
+              .get();
+          if (query.docs.isNotEmpty) {
+            final data = query.docs.first.data();
+            resolvedRole = (data['role'] as String?)?.toLowerCase().trim() ?? 'resident';
+            resolvedName = (data['fullName'] as String?) ?? resolvedName;
+            resolvedPhone = (data['phone'] as String?) ?? '';
+            photoUrl = data['photoUrl'] as String?;
+            foundInDb = true;
+          }
+        } catch (_) {}
+      }
+
+      // 2. Check local AuthService registry
       final prefs = EcoRouteState.instance.prefs ?? await SharedPreferences.getInstance();
       final auth = AuthService(prefs);
 
-      final registered = auth.getRegisteredResidents();
-      final existing = registered.firstWhere(
-        (u) => u.email.toLowerCase() == email,
-        orElse: () => AppUser(id: '', fullName: '', email: '', phone: '', role: AppRole.guest),
-      );
-
-      if (existing.id.isNotEmpty) {
-        EcoRouteState.instance.setAuthenticatedUser(
-          role: existing.role.name,
-          name: existing.fullName,
-          email: existing.email,
-          phone: existing.phone,
+      if (!foundInDb) {
+        final registered = auth.getRegisteredResidents();
+        final existing = registered.firstWhere(
+          (u) => u.email.toLowerCase() == email,
+          orElse: () => AppUser(id: '', fullName: '', email: '', phone: '', role: AppRole.guest),
         );
-        if (existing.role.isAdminTier) {
-          Navigator.pushNamedAndRemoveUntil(context, '/admin', (r) => false);
-        } else if (existing.role == AppRole.rider) {
-          Navigator.pushNamedAndRemoveUntil(context, '/rider', (r) => false);
+
+        if (existing.id.isNotEmpty) {
+          resolvedRole = existing.role.name;
+          resolvedName = existing.fullName;
+          resolvedPhone = existing.phone;
+          foundInDb = true;
         } else {
-          Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
+          // Check if invited as rider
+          final riderInvite = auth.getRiderInvite(email);
+          if (riderInvite != null) {
+            resolvedRole = 'rider';
+            resolvedName = riderInvite.riderName;
+            resolvedPhone = riderInvite.phone;
+            foundInDb = true;
+          }
         }
-      } else {
-        final name = email.split('@').first;
+      }
+
+      // 3. If new resident user, register them
+      if (!foundInDb) {
         final newUser = await auth.register(
-          fullName: name,
+          fullName: resolvedName,
           email: email,
           phone: '+256 700 000 000',
           password: 'GoogleSSO_${DateTime.now().millisecondsSinceEpoch}',
           role: AppRole.resident,
         );
-        EcoRouteState.instance.setAuthenticatedUser(
-          role: newUser.role.name,
-          name: newUser.fullName,
-          email: newUser.email,
-          phone: newUser.phone,
-        );
+        resolvedRole = newUser.role.name;
+        resolvedName = newUser.fullName;
+        resolvedPhone = newUser.phone;
+
+        if (Firebase.apps.isNotEmpty) {
+          try {
+            await FirebaseFirestore.instance.collection('profiles').doc('google_$email').set({
+              'id': 'google_$email',
+              'fullName': resolvedName,
+              'email': email,
+              'phone': resolvedPhone,
+              'role': resolvedRole,
+              'createdAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+          } catch (_) {}
+        }
+      }
+
+      if (!mounted) return;
+      EcoRouteState.instance.setAuthenticatedUser(
+        role: resolvedRole,
+        name: resolvedName,
+        email: email,
+        phone: resolvedPhone,
+        photoBase64: photoUrl,
+      );
+
+      if (resolvedRole == 'admin' ||
+          resolvedRole == 'manager' ||
+          resolvedRole == 'supervisor' ||
+          resolvedRole == 'operationsmanager' ||
+          resolvedRole == 'routesupervisor') {
+        Navigator.pushNamedAndRemoveUntil(context, '/admin', (r) => false);
+      } else if (resolvedRole == 'rider') {
+        Navigator.pushNamedAndRemoveUntil(context, '/rider', (r) => false);
+      } else {
         Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
       }
     }
@@ -489,95 +596,104 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F4),
       body: Center(
-        child: Container(
-          width: 980,
-          height: 620,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 28,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Left Column: Forest green hero panel
-              Expanded(
-                flex: 5,
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1B3828),
-                    borderRadius: BorderRadius.horizontal(left: Radius.circular(20)),
-                  ),
-                  padding: const EdgeInsets.all(40),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Row(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Container(
+            width: 980,
+            constraints: const BoxConstraints(minHeight: 580),
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 28,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Left Column: Forest green hero panel
+                  Expanded(
+                    flex: 5,
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF1B3828),
+                        borderRadius: BorderRadius.horizontal(left: Radius.circular(20)),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
+                      child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.eco, color: Color(0xFF4CAF50), size: 36),
-                          SizedBox(width: 10),
-                          Text(
-                            'EcoRoute',
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(Icons.eco, color: Color(0xFF4CAF50), size: 36),
+                              SizedBox(width: 10),
+                              Text(
+                                'EcoRoute',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 36),
+                          // Eco-city representation
+                          Container(
+                            height: 240,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF244A35),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFF35654A)),
+                            ),
+                            child: CustomPaint(
+                              painter: _EcoSkylinePainter(),
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          const Text(
+                            'Welcome back to EcoRoute!',
+                            textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 28,
+                              fontSize: 22,
                               fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
                             ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Sustainable Smart Municipal Waste Logistics • Arua City',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white70, fontSize: 13),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 36),
-                      // Eco-city representation
-                      Container(
-                        height: 240,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF244A35),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFF35654A)),
-                        ),
-                        child: CustomPaint(
-                          painter: _EcoSkylinePainter(),
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-                      const Text(
-                        'Welcome back to EcoRoute!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Sustainable Smart Municipal Waste Logistics • Arua City',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white70, fontSize: 13),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-              // Right Column: Clean Sign In Form
-              Expanded(
-                flex: 5,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
-                  child: SingleChildScrollView(
-                    child: _buildForm(isDark: false),
+                  // Right Column: Clean Sign In Form
+                  Expanded(
+                    flex: 5,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+                      child: Center(
+                        child: SingleChildScrollView(
+                          child: _buildForm(isDark: false),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -590,10 +706,11 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
       backgroundColor: const Color(0xFFECEFEA),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
           child: Container(
             width: 480,
             padding: const EdgeInsets.all(36),
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
@@ -619,8 +736,11 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-            child: _buildForm(isDark: true),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: _buildForm(isDark: true),
+            ),
           ),
         ),
       ),

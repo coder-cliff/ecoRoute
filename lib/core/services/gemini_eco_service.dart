@@ -239,7 +239,7 @@ Respond STRICTLY with valid JSON matching this schema:
       'role': 'model',
       'parts': [
         {
-          'text': 'Hey! ecoRoute Bot here 😊 Ready to chat WhatsApp-style and help with your compound or shop waste in Arua!'
+          'text': 'Hey! ecoRoute Bot here. Ready to chat WhatsApp-style and help with your compound or shop waste in Arua!'
         }
       ]
     });

@@ -49,7 +49,7 @@ STEP-BY-STEP ACCOUNT ACTIVATION:
 4. Provide your Next of Kin / Emergency contact phone and your Mobile Money payout phone (MTN MoMo or Airtel Money for daily wage settlements).
 5. Submit for municipal verification. Account approval is typically completed within 5 minutes to 24 hours.
 
-📲 HOW TO INSTALL ECOROUTE ON YOUR PHONE:
+HOW TO INSTALL ECOROUTE ON YOUR PHONE:
 ------------------------------------------
 No app store download is required! Install directly to your phone's home screen:
 • Android (Google Chrome):
@@ -102,7 +102,7 @@ Official Dispatch: $senderEmail
       <a href="$onboardUrl" style="background-color: #1B5E20; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">Activate Rider Account &rarr;</a>
     </div>
     <div style="background-color: #F8FAFC; border: 1px dashed #CBD5E1; padding: 14px; border-radius: 6px; font-size: 12.5px; line-height: 1.5; color: #475569;">
-      <strong style="color: #0F172A;">📲 How to Install the App to Your Mobile Phone:</strong><br/>
+      <strong style="color: #0F172A;">How to Install the App to Your Mobile Phone:</strong><br/>
       &bull; <strong>Android (Chrome):</strong> Tap the link &gt; Tap menu (⋮) &gt; Tap <em>"Install App"</em> or <em>"Add to Home screen"</em>.<br/>
       &bull; <strong>iPhone (Safari):</strong> Tap the link &gt; Tap Share button (square with arrow) &gt; Tap <em>"Add to Home Screen"</em>.
     </div>
@@ -128,7 +128,7 @@ Official Dispatch: $senderEmail
     required String tricycleId,
   }) {
     final loginUrl = '$appUrl#/login';
-    final subject = 'EcoRoute Fleet Authorization: Your Rider Account is Approved! 🚀';
+    final subject = 'EcoRoute Fleet Authorization: Your Rider Account is Approved!';
     final body = '''
 Hello $riderName,
 
@@ -171,7 +171,7 @@ Arua City Council & Muni University Campus
   </div>
   <div style="background-color: #FFFFFF; padding: 24px; border-radius: 8px; border: 1px solid #E2E8F0;">
     <div style="text-align: center; margin-bottom: 16px;">
-      <div style="display: inline-block; width: 48px; height: 48px; line-height: 48px; border-radius: 50%; background-color: #E8F5E9; color: #2E7D32; font-size: 24px;">✓</div>
+      <div style="display: inline-block; width: 48px; height: 48px; line-height: 48px; border-radius: 50%; background-color: #E8F5E9; color: #2E7D32; font-size: 16px; font-weight: bold;">OK</div>
       <h2 style="color: #1B5E20; font-size: 20px; margin: 8px 0 0 0;">Your Rider Account is Approved!</h2>
     </div>
     <p style="font-size: 14px; line-height: 1.6; color: #334155;">

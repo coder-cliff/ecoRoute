@@ -1,4 +1,4 @@
-allprojects {
+﻿allprojects {
     repositories {
         google()
         maven("https://cache-redirector.jetbrains.com/maven-central")
@@ -17,7 +17,9 @@ subprojects {
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 subprojects {
-    project.evaluationDependsOn(":app")
+    if (project.name != "app") {
+        project.evaluationDependsOn(":app")
+    }
 }
 
 subprojects {
