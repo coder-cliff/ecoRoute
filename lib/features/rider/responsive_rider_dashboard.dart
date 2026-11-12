@@ -1714,6 +1714,12 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
                 ),
                 const Divider(height: 1, color: Color(0xFFE2E8F0)),
                 _buildAccountTile(
+                  icon: Icons.install_mobile,
+                  label: 'Install App on Phone (Home Screen)',
+                  onTap: () => _showAppInstallGuideModal(context),
+                ),
+                const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                _buildAccountTile(
                   icon: Icons.settings_outlined,
                   label: 'App Preferences',
                   onTap: () => _showAppPreferencesModal(context),
@@ -1945,6 +1951,86 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showAppInstallGuideModal(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Install App on Your Phone', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text('Add EcoRoute to your mobile home screen to use it like a native app without app stores:'),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1B5E20).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF1B5E20).withOpacity(0.3)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.android, color: Color(0xFF1B5E20), size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text('Android (Google Chrome)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1B5E20))),
+                          SizedBox(height: 4),
+                          Text('1. Tap the three dots (⋮) in the top-right corner.\n2. Tap "Install App" or "Add to Home Screen".\n3. Confirm and the app icon will appear on your phone screen.', style: TextStyle(fontSize: 12.5, height: 1.4)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.apple, color: Color(0xFF0284C7), size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text('iPhone (Apple Safari)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0284C7))),
+                          SizedBox(height: 4),
+                          Text('1. Tap the Share button (square with arrow up) at the bottom.\n2. Scroll down and tap "Add to Home Screen".\n3. Tap "Add" in the top-right corner.', style: TextStyle(fontSize: 12.5, height: 1.4)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );

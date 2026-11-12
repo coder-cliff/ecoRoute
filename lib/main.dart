@@ -19,6 +19,7 @@ import 'core/services/pdf_report_service.dart';
 import 'core/services/rider_invite_service.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/inactivity_timeout_manager.dart';
+import 'core/services/email_notification_service.dart';
 import 'domain/enums/role.dart';
 import 'core/layout/adaptive_layout.dart';
 import 'features/auth/responsive_sign_in_screen.dart';
@@ -1138,19 +1139,50 @@ class EcoRouteState extends ChangeNotifier {
     return inviteCode;
   }
 
-  void approveRider(String phone) {
+  void approveRider(String identifier) {
+    String? matchedEmail;
+    String? matchedName;
+    String? matchedUnit;
+
+    final clean = identifier.trim().toLowerCase().replaceAll(RegExp(r'[\s\-\(\)]'), '');
+
     for (final rider in riderRoster) {
-      if (rider['phone'] == phone) {
+      final rPhone = (rider['phone'] as String? ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
+      final rEmail = (rider['email'] as String? ?? '').trim().toLowerCase();
+      if (rPhone == clean || clean.endsWith(rPhone) || rPhone.endsWith(clean) || (rEmail.isNotEmpty && rEmail == clean)) {
         rider['status'] = 'Active';
+        matchedEmail ??= rEmail;
+        matchedName ??= rider['name'] as String? ?? rider['fullName'] as String?;
+        matchedUnit ??= rider['assignedVehicle'] as String? ?? rider['tricycleId'] as String?;
       }
     }
     for (final rider in invitedRiders) {
-      if (rider['phone'] == phone) {
+      final rPhone = (rider['phone'] as String? ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
+      final rEmail = (rider['email'] as String? ?? '').trim().toLowerCase();
+      if (rPhone == clean || clean.endsWith(rPhone) || rPhone.endsWith(clean) || (rEmail.isNotEmpty && rEmail == clean)) {
         rider['status'] = 'Active';
+        matchedEmail ??= rEmail;
+        matchedName ??= rider['name'] as String? ?? rider['fullName'] as String?;
+        matchedUnit ??= rider['assignedVehicle'] as String? ?? rider['tricycleId'] as String?;
       }
     }
+
+    final p = _prefs;
+    if (p != null) {
+      final auth = AuthService(p);
+      auth.approveRider(identifier);
+    }
+
     _saveState();
     notifyListeners();
+
+    if (matchedEmail != null && matchedEmail.isNotEmpty) {
+      EmailNotificationService.sendRiderApprovalEmail(
+        riderName: matchedName ?? 'Field Rider',
+        riderEmail: matchedEmail,
+        tricycleId: matchedUnit ?? 'TRIC-04',
+      );
+    }
   }
 
   Future<void> exportCollectionAuditCsv(BuildContext context) async {
@@ -1261,6 +1293,7 @@ class EcoRouteApp extends StatelessWidget {
             '/rider': (context) => const ResponsiveRiderDashboard(),
             '/admin': (context) => const ResponsiveAdminDashboard(),
             '/rider-onboard': (context) => const RiderInviteAcceptanceScreen(),
+            '/rider-activate': (context) => const RiderInviteAcceptanceScreen(),
           },
         );
       },

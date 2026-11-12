@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/entities/app_user.dart';
 import '../../domain/enums/role.dart';
+import 'email_notification_service.dart';
 export '../../domain/enums/role.dart';
 
 class AuthService {
@@ -465,60 +466,88 @@ class AuthService {
     return inviteCode;
   }
 
-  /// Validates a rider's phone and temporary PIN for activation.
+  /// Validates a rider's phone OR email and temporary PIN for activation.
   Map<String, dynamic>? validateRiderActivation({
-    required String phone,
+    String? phone,
+    String? email,
+    String? identifier,
     required String pin,
   }) {
-    final cleanPhone = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
     final cleanPin = pin.trim();
-    if (cleanPhone.isEmpty || cleanPin.isEmpty) return null;
+    if (cleanPin.isEmpty) return null;
 
+    final target = (identifier ?? email ?? phone ?? '').trim();
+    if (target.isEmpty) return null;
+
+    final cleanTarget = target.toLowerCase().replaceAll(RegExp(r'[\s\-\(\)]'), '');
     final riders = getInvitedRiders();
+
     for (final r in riders) {
+      final rEmail = (r['email'] as String? ?? '').trim().toLowerCase();
       final rPhone = (r['phone'] as String? ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
       final rPin = (r['temporaryPin'] ?? r['inviteCode'] ?? '').toString().trim();
       final rCode = (r['inviteCode'] as String? ?? '').trim();
 
-      final phoneMatch = rPhone == cleanPhone ||
-          cleanPhone.endsWith(rPhone.replaceFirst('+256', '0')) ||
-          rPhone.endsWith(cleanPhone.replaceFirst('+256', '0')) ||
-          cleanPhone.endsWith(rPhone) ||
-          rPhone.endsWith(cleanPhone);
+      final emailMatch = rEmail.isNotEmpty && (rEmail == cleanTarget || target.toLowerCase() == rEmail);
+      final phoneMatch = rPhone.isNotEmpty && (
+          rPhone == cleanTarget ||
+          cleanTarget.endsWith(rPhone.replaceFirst('+256', '0')) ||
+          rPhone.endsWith(cleanTarget.replaceFirst('+256', '0')) ||
+          cleanTarget.endsWith(rPhone) ||
+          rPhone.endsWith(cleanTarget)
+      );
 
       final pinMatch = rPin == cleanPin ||
           rPin.endsWith(cleanPin) ||
           rCode.toLowerCase() == cleanPin.toLowerCase() ||
           rCode.toLowerCase().endsWith(cleanPin.toLowerCase());
 
-      if (phoneMatch && pinMatch) {
+      if ((emailMatch || phoneMatch) && pinMatch) {
         return r;
       }
     }
     return null;
   }
 
-  /// Updates or records a rider's profile setup (name, vehicle, plate, selfie)
-  /// and sets status to 'pending_approval'.
+  /// Updates or records a rider's profile setup (name, vehicle, plate, selfie,
+  /// permanent password, next of kin, and mobile money payout info)
+  /// and registers the rider for future Email & Password sign-in.
   Future<void> submitRiderProfile({
     required String phone,
+    String? email,
+    String? password,
     required String fullName,
     required String vehicleType,
     required String plateNumber,
+    String? nextOfKinPhone,
+    String? mobileMoneyPhone,
+    String? mobileMoneyNetwork,
     String? selfieBase64,
   }) async {
     final cleanPhone = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
+    final cleanEmail = (email ?? '').trim().toLowerCase();
     final riders = getInvitedRiders();
     final idx = riders.indexWhere((r) {
       final rPhone = (r['phone'] as String? ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
+      final rEmail = (r['email'] as String? ?? '').trim().toLowerCase();
+      if (cleanEmail.isNotEmpty && rEmail == cleanEmail) return true;
       return rPhone == cleanPhone || cleanPhone.endsWith(rPhone) || rPhone.endsWith(cleanPhone);
     });
 
+    final riderId = idx != -1
+        ? (riders[idx]['id'] as String? ?? 'rider-${DateTime.now().millisecondsSinceEpoch}')
+        : 'rider-${DateTime.now().millisecondsSinceEpoch}';
+
     final updated = <String, dynamic>{
+      'id': riderId,
       'phone': cleanPhone,
+      if (cleanEmail.isNotEmpty) 'email': cleanEmail,
       'fullName': fullName.trim(),
       'vehicleType': vehicleType,
       'plateNumber': plateNumber.trim().toUpperCase(),
+      if (nextOfKinPhone != null && nextOfKinPhone.isNotEmpty) 'nextOfKinPhone': nextOfKinPhone.trim(),
+      if (mobileMoneyPhone != null && mobileMoneyPhone.isNotEmpty) 'mobileMoneyPhone': mobileMoneyPhone.trim(),
+      if (mobileMoneyNetwork != null && mobileMoneyNetwork.isNotEmpty) 'mobileMoneyNetwork': mobileMoneyNetwork.trim(),
       if (selfieBase64 != null) 'selfieBase64': selfieBase64,
       'status': 'pending_approval',
       'submittedAt': DateTime.now().toIso8601String(),
@@ -527,22 +556,87 @@ class AuthService {
     if (idx != -1) {
       riders[idx].addAll(updated);
     } else {
-      riders.add({
-        'id': 'rider-${DateTime.now().millisecondsSinceEpoch}',
-        ...updated,
-      });
+      riders.add(updated);
     }
 
     await _preferences.setString(_invitedRidersKey, jsonEncode(riders));
+
+    // Register into system credentials so rider can log in with Email and Password
+    final effectiveEmail = cleanEmail.isNotEmpty
+        ? cleanEmail
+        : '${fullName.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')}@ecoroute.ug';
+
+    if (password != null && password.isNotEmpty) {
+      final registered = _getRegisteredUsers();
+      final regIdx = registered.indexWhere(
+        (u) => (u['email'] as String).toLowerCase() == effectiveEmail.toLowerCase() ||
+               (u['phone'] as String? ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '') == cleanPhone,
+      );
+
+      final riderUserMap = {
+        'id': riderId,
+        'fullName': fullName.trim(),
+        'email': effectiveEmail,
+        'phone': cleanPhone,
+        'role': AppRole.rider.name,
+        'password': password,
+        'passwordHash': hashPassword(password),
+        'address': 'Arua Municipal Collection Depot',
+        'photoUrl': selfieBase64,
+        'nextOfKinPhone': nextOfKinPhone,
+        'mobileMoneyPhone': mobileMoneyPhone,
+        'mobileMoneyNetwork': mobileMoneyNetwork,
+        'status': 'pending_approval',
+        'updatedAt': DateTime.now().toIso8601String(),
+      };
+
+      if (regIdx != -1) {
+        registered[regIdx].addAll(riderUserMap);
+      } else {
+        registered.add(riderUserMap);
+      }
+      await _preferences.setString(_usersKey, jsonEncode(registered));
+
+      // Sync to Firebase Auth & Firestore if available
+      final firebaseAuth = _firebaseAuth;
+      final firestore = _firestore;
+      if (firebaseAuth != null && firestore != null) {
+        try {
+          final cred = await firebaseAuth.createUserWithEmailAndPassword(
+            email: effectiveEmail,
+            password: password,
+          );
+          if (cred.user != null) {
+            await firestore.collection('profiles').doc(cred.user!.uid).set({
+              'id': cred.user!.uid,
+              'fullName': fullName.trim(),
+              'email': effectiveEmail,
+              'phone': cleanPhone,
+              'role': 'rider',
+              'status': 'pending_approval',
+              'vehicleType': vehicleType,
+              'plateNumber': plateNumber.trim().toUpperCase(),
+              'nextOfKinPhone': nextOfKinPhone,
+              'mobileMoneyPhone': mobileMoneyPhone,
+              'mobileMoneyNetwork': mobileMoneyNetwork,
+              'createdAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+          }
+        } catch (e) {
+          debugPrint('Firebase rider account sync notice: $e');
+        }
+      }
+    }
   }
 
-  /// Checks if a rider's account is approved.
-  bool isRiderApproved(String phone) {
-    final cleanPhone = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
+  /// Checks if a rider's account is approved by phone or email.
+  bool isRiderApproved(String identifier) {
+    final clean = identifier.trim().toLowerCase().replaceAll(RegExp(r'[\s\-\(\)]'), '');
     final riders = getInvitedRiders();
     for (final r in riders) {
       final rPhone = (r['phone'] as String? ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
-      if (rPhone == cleanPhone || cleanPhone.endsWith(rPhone) || rPhone.endsWith(cleanPhone)) {
+      final rEmail = (r['email'] as String? ?? '').trim().toLowerCase();
+      if (rPhone == clean || clean.endsWith(rPhone) || rPhone.endsWith(clean) || (rEmail.isNotEmpty && rEmail == clean)) {
         final status = (r['status'] as String? ?? '').toLowerCase();
         return status == 'active' || status == 'approved';
       }
@@ -550,18 +644,53 @@ class AuthService {
     return false;
   }
 
-  /// Approves a rider's application.
-  Future<void> approveRider(String phone) async {
-    final cleanPhone = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
+  /// Approves a rider's application and dispatches confirmation email.
+  Future<void> approveRider(String identifier) async {
+    final clean = identifier.trim().toLowerCase().replaceAll(RegExp(r'[\s\-\(\)]'), '');
     final riders = getInvitedRiders();
+    String? matchedEmail;
+    String? matchedName;
+    String? matchedTricycle;
+
     for (final r in riders) {
       final rPhone = (r['phone'] as String? ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
-      if (rPhone == cleanPhone || cleanPhone.endsWith(rPhone) || rPhone.endsWith(cleanPhone)) {
+      final rEmail = (r['email'] as String? ?? '').trim().toLowerCase();
+      if (rPhone == clean || clean.endsWith(rPhone) || rPhone.endsWith(clean) || (rEmail.isNotEmpty && rEmail == clean)) {
         r['status'] = 'active';
         r['approvedAt'] = DateTime.now().toIso8601String();
+        matchedEmail ??= rEmail;
+        matchedName ??= r['fullName'] as String? ?? r['name'] as String?;
+        matchedTricycle ??= r['tricycleId'] as String? ?? 'TRIC-04';
       }
     }
     await _preferences.setString(_invitedRidersKey, jsonEncode(riders));
+
+    // Also update registered users
+    final registered = _getRegisteredUsers();
+    for (final reg in registered) {
+      final regEmail = (reg['email'] as String? ?? '').toLowerCase();
+      final regPhone = (reg['phone'] as String? ?? '').replaceAll(RegExp(r'[\s\-\(\)]'), '').trim();
+      if ((regEmail.isNotEmpty && regEmail == clean) || regPhone == clean || clean.endsWith(regPhone)) {
+        reg['status'] = 'active';
+        reg['role'] = AppRole.rider.name;
+        matchedEmail ??= regEmail;
+        matchedName ??= reg['fullName'] as String?;
+      }
+    }
+    await _preferences.setString(_usersKey, jsonEncode(registered));
+
+    // Send automatic Rider Approval Confirmation Email if email is present
+    if (matchedEmail != null && matchedEmail.isNotEmpty) {
+      try {
+        await EmailNotificationService.sendRiderApprovalEmail(
+          riderName: matchedName ?? 'Field Rider',
+          riderEmail: matchedEmail,
+          tricycleId: matchedTricycle ?? 'TRIC-04',
+        );
+      } catch (e) {
+        debugPrint('Approval notification email notice: $e');
+      }
+    }
   }
 
   List<Map<String, dynamic>> getInvitedRiders() {

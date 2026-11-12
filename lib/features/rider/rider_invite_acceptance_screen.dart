@@ -32,7 +32,7 @@ class _RiderInviteAcceptanceScreenState
   int _currentPage = 0;
 
   // Activation Form Controllers
-  final _phoneController = TextEditingController();
+  final _emailOrPhoneController = TextEditingController();
   final _pinController = TextEditingController();
   bool _obscurePin = true;
   bool _isVerifying = false;
@@ -41,6 +41,12 @@ class _RiderInviteAcceptanceScreenState
   // Profile Setup Controllers
   final _nameController = TextEditingController();
   final _plateController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _nextOfKinController = TextEditingController();
+  final _mobileMoneyController = TextEditingController();
+  String _selectedMobileMoneyNetwork = 'MTN MoMo';
+  bool _obscurePassword = true;
   String _selectedVehicleType = 'Tricycle / Tuk-Tuk';
   String? _selfieBase64;
   bool _isSubmittingProfile = false;
@@ -48,6 +54,7 @@ class _RiderInviteAcceptanceScreenState
 
   // Verified / Assigned Data
   String? _verifiedPhone;
+  String? _verifiedEmail;
   String? _assignedTricycleId;
   String? _assignedZone;
 
@@ -57,6 +64,9 @@ class _RiderInviteAcceptanceScreenState
   @override
   void initState() {
     super.initState();
+    if (widget.initialEmail != null && widget.initialEmail!.isNotEmpty) {
+      _emailOrPhoneController.text = widget.initialEmail!;
+    }
     if (widget.initialInviteCode != null && widget.initialInviteCode!.isNotEmpty) {
       _pinController.text = widget.initialInviteCode!;
     }
@@ -65,23 +75,27 @@ class _RiderInviteAcceptanceScreenState
   @override
   void dispose() {
     _pageController.dispose();
-    _phoneController.dispose();
+    _emailOrPhoneController.dispose();
     _pinController.dispose();
     _nameController.dispose();
     _plateController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _nextOfKinController.dispose();
+    _mobileMoneyController.dispose();
     super.dispose();
   }
 
   // =========================================================================
-  // STEP 1: VALIDATE ACTIVATION (PHONE + TEMPORARY PIN)
+  // STEP 1: VALIDATE ACTIVATION (EMAIL/PHONE + TEMPORARY PIN)
   // =========================================================================
   Future<void> _handleActivation() async {
-    final phone = _phoneController.text.trim();
+    final identifier = _emailOrPhoneController.text.trim();
     final pin = _pinController.text.trim();
 
-    if (phone.isEmpty || pin.isEmpty) {
+    if (identifier.isEmpty || pin.isEmpty) {
       setState(() {
-        _activationError = 'Please enter both your phone number and 6-digit PIN.';
+        _activationError = 'Please enter both your email address/phone number and 6-digit PIN.';
       });
       return;
     }
@@ -95,22 +109,28 @@ class _RiderInviteAcceptanceScreenState
       final prefs = EcoRouteState.instance.prefs ?? await SharedPreferences.getInstance();
       final auth = AuthService(prefs);
 
-      // 1. Verify against invited riders in local storage / backend
-      final invite = auth.validateRiderActivation(phone: phone, pin: pin);
+      // Verify against invited riders in backend / storage
+      final invite = auth.validateRiderActivation(identifier: identifier, pin: pin);
 
       if (invite != null) {
-        _verifiedPhone = phone;
-        _nameController.text = invite['fullName'] as String? ?? '';
+        _verifiedPhone = invite['phone'] as String? ?? (identifier.contains('@') ? '' : identifier);
+        _verifiedEmail = invite['email'] as String? ?? (identifier.contains('@') ? identifier : '');
+        _nameController.text = invite['fullName'] as String? ?? invite['name'] as String? ?? '';
         _assignedTricycleId = invite['tricycleId'] as String? ?? 'TRIC-04';
         _assignedZone = invite['zone'] as String? ?? 'Arua Central';
+
+        if (_mobileMoneyController.text.isEmpty && _verifiedPhone != null && _verifiedPhone!.isNotEmpty) {
+          _mobileMoneyController.text = _verifiedPhone!;
+        }
 
         final status = (invite['status'] as String? ?? '').toLowerCase();
 
         if (status == 'active' || status == 'approved') {
           // Already fully approved -> login directly
           _finalizeRiderLogin(
-            name: invite['fullName'] ?? 'Field Rider',
-            phone: phone,
+            name: invite['fullName'] ?? invite['name'] ?? 'Field Rider',
+            phone: _verifiedPhone ?? '',
+            email: _verifiedEmail,
             vehicle: invite['vehicleType'] ?? 'Tricycle',
             plate: invite['plateNumber'] ?? 'UFD 123A',
           );
@@ -131,10 +151,11 @@ class _RiderInviteAcceptanceScreenState
           );
         }
       } else {
-        // If not found by phone+pin, check if PIN matches invite code directly
+        // Check if PIN alone matches an active invite code
         final inviteByCode = auth.getRiderInvite(pin);
         if (inviteByCode != null) {
-          _verifiedPhone = phone;
+          _verifiedPhone = inviteByCode['phone'] as String? ?? (identifier.contains('@') ? '' : identifier);
+          _verifiedEmail = inviteByCode['email'] as String? ?? (identifier.contains('@') ? identifier : '');
           _nameController.text = inviteByCode['fullName'] as String? ?? '';
           _assignedTricycleId = inviteByCode['tricycleId'] as String? ?? 'TRIC-04';
           _assignedZone = inviteByCode['zone'] as String? ?? 'Arua Central';
@@ -143,7 +164,8 @@ class _RiderInviteAcceptanceScreenState
           if (status == 'active' || status == 'approved') {
             _finalizeRiderLogin(
               name: inviteByCode['fullName'] ?? 'Field Rider',
-              phone: phone,
+              phone: _verifiedPhone ?? '',
+              email: _verifiedEmail,
               vehicle: inviteByCode['vehicleType'] ?? 'Tricycle',
               plate: inviteByCode['plateNumber'] ?? 'UFD 123A',
             );
@@ -160,7 +182,7 @@ class _RiderInviteAcceptanceScreenState
 
         setState(() {
           _activationError =
-              'Invalid authorization PIN or phone number. Please check your SMS invitation or contact dispatch.';
+              'Invalid authorization PIN or email/phone number. Please check your invitation email or contact dispatch.';
         });
       }
     } catch (e) {
@@ -203,9 +225,29 @@ class _RiderInviteAcceptanceScreenState
   Future<void> _handleSubmitProfile() async {
     final name = _nameController.text.trim();
     final plate = _plateController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+    final nextOfKin = _nextOfKinController.text.trim();
+    final mobileMoney = _mobileMoneyController.text.trim();
 
     if (name.isEmpty) {
       setState(() => _profileError = 'Please enter your full name.');
+      return;
+    }
+    if (password.length < 6) {
+      setState(() => _profileError = 'Password must be at least 6 characters long.');
+      return;
+    }
+    if (password != confirmPassword) {
+      setState(() => _profileError = 'Passwords do not match.');
+      return;
+    }
+    if (nextOfKin.isEmpty) {
+      setState(() => _profileError = 'Please provide a next of kin / emergency contact phone number.');
+      return;
+    }
+    if (mobileMoney.isEmpty) {
+      setState(() => _profileError = 'Please enter your Mobile Money phone number for daily wage payouts.');
       return;
     }
     if (plate.isEmpty) {
@@ -222,23 +264,36 @@ class _RiderInviteAcceptanceScreenState
       final prefs = EcoRouteState.instance.prefs ?? await SharedPreferences.getInstance();
       final auth = AuthService(prefs);
 
-      final phone = _verifiedPhone ?? _phoneController.text.trim();
+      final phone = _verifiedPhone?.isNotEmpty == true
+          ? _verifiedPhone!
+          : (_emailOrPhoneController.text.contains('@') ? mobileMoney : _emailOrPhoneController.text.trim());
+      final email = _verifiedEmail?.isNotEmpty == true
+          ? _verifiedEmail!
+          : (_emailOrPhoneController.text.contains('@')
+              ? _emailOrPhoneController.text.trim()
+              : '${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')}@ecoroute.ug');
 
       await auth.submitRiderProfile(
         phone: phone,
+        email: email,
+        password: password,
         fullName: name,
         vehicleType: _selectedVehicleType,
         plateNumber: plate,
+        nextOfKinPhone: nextOfKin,
+        mobileMoneyPhone: mobileMoney,
+        mobileMoneyNetwork: _selectedMobileMoneyNetwork,
         selfieBase64: _selfieBase64,
       );
 
-      // Check if admin has already pre-approved this phone
-      final isApproved = auth.isRiderApproved(phone);
+      // Check if admin has already pre-approved
+      final isApproved = auth.isRiderApproved(email.isNotEmpty ? email : phone);
 
       if (isApproved) {
         _finalizeRiderLogin(
           name: name,
           phone: phone,
+          email: email,
           vehicle: _selectedVehicleType,
           plate: plate,
         );
@@ -266,16 +321,23 @@ class _RiderInviteAcceptanceScreenState
     try {
       final prefs = EcoRouteState.instance.prefs ?? await SharedPreferences.getInstance();
       final auth = AuthService(prefs);
-      final phone = _verifiedPhone ?? _phoneController.text.trim();
+
+      final identifier = _verifiedEmail?.isNotEmpty == true
+          ? _verifiedEmail!
+          : (_verifiedPhone?.isNotEmpty == true
+              ? _verifiedPhone!
+              : _emailOrPhoneController.text.trim());
 
       await Future<void>.delayed(const Duration(milliseconds: 600));
 
-      final isApproved = auth.isRiderApproved(phone);
+      final isApproved = auth.isRiderApproved(identifier);
 
       if (isApproved && mounted) {
+        final phone = _verifiedPhone ?? _mobileMoneyController.text.trim();
         _finalizeRiderLogin(
           name: _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : 'Field Rider',
           phone: phone,
+          email: _verifiedEmail,
           vehicle: _selectedVehicleType,
           plate: _plateController.text.trim().isNotEmpty ? _plateController.text.trim() : 'UFD 123A',
         );
@@ -283,8 +345,8 @@ class _RiderInviteAcceptanceScreenState
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Account still under review by Arua City Operations. Please check back shortly.'),
-            duration: Duration(seconds: 3),
+            content: Text('Account still under review by Arua City Operations (5m–24h). Please check back shortly.'),
+            duration: Duration(seconds: 4),
           ),
         );
       }
@@ -296,14 +358,19 @@ class _RiderInviteAcceptanceScreenState
   void _finalizeRiderLogin({
     required String name,
     required String phone,
+    String? email,
     required String vehicle,
     required String plate,
   }) {
     final state = EcoRouteState.instance;
+    final effectiveEmail = (email != null && email.isNotEmpty)
+        ? email
+        : '${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '')}@ecoroute.ug';
+
     state.setAuthenticatedUser(
       role: 'rider',
       name: name,
-      email: '${name.toLowerCase().replaceAll(' ', '.')}@ecoroute.ug',
+      email: effectiveEmail,
       phone: phone,
     );
     state.isRiderShiftActive = true;
@@ -514,12 +581,12 @@ class _RiderInviteAcceptanceScreenState
             const SizedBox(height: 16),
           ],
 
-          // Field 1: Phone Number
+          // Field 1: Email Address or Phone Number
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Phone Number',
+                'Email Address or Phone Number',
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
@@ -534,12 +601,12 @@ class _RiderInviteAcceptanceScreenState
                   border: Border.all(color: isDark ? const Color(0xFF334155) : borderColor),
                 ),
                 child: TextField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
+                  controller: _emailOrPhoneController,
+                  keyboardType: TextInputType.emailAddress,
                   style: TextStyle(fontSize: 14, color: isDark ? Colors.white : textColor),
                   decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.phone_outlined, size: 20, color: subtextColor),
-                    hintText: '+256 700 000000',
+                    prefixIcon: Icon(Icons.mark_email_read_outlined, size: 20, color: subtextColor),
+                    hintText: 'e.g. rider@gmail.com or +256 700 000000',
                     hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -820,6 +887,167 @@ class _RiderInviteAcceptanceScreenState
 
           const SizedBox(height: 14),
 
+          // Permanent Account Password
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Permanent Account Password (for future logins)',
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: textColor),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : fieldBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: isDark ? const Color(0xFF334155) : borderColor),
+                ),
+                child: TextField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  style: TextStyle(fontSize: 14, color: isDark ? Colors.white : textColor),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.lock_outline, size: 20, color: subtextColor),
+                    hintText: 'Create secure password (min 6 chars)',
+                    hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        size: 20,
+                        color: subtextColor,
+                      ),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          // Confirm Password
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Confirm Password', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: textColor)),
+              const SizedBox(height: 6),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : fieldBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: isDark ? const Color(0xFF334155) : borderColor),
+                ),
+                child: TextField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscurePassword,
+                  style: TextStyle(fontSize: 14, color: isDark ? Colors.white : textColor),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.lock_reset_outlined, size: 20, color: subtextColor),
+                    hintText: 'Re-enter your password',
+                    hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          // Next of Kin / Emergency Contact
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Next of Kin / Emergency Contact Phone',
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: textColor),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : fieldBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: isDark ? const Color(0xFF334155) : borderColor),
+                ),
+                child: TextField(
+                  controller: _nextOfKinController,
+                  keyboardType: TextInputType.phone,
+                  style: TextStyle(fontSize: 14, color: isDark ? Colors.white : textColor),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.emergency_outlined, size: 20, color: subtextColor),
+                    hintText: 'e.g. +256 772 000000 (Spouse / Parent / Kin)',
+                    hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          // Mobile Money Payout Phone & Network (for daily wage settlements)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Mobile Money Number (for Daily Wage Payouts)',
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: textColor),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : fieldBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: isDark ? const Color(0xFF334155) : borderColor),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        border: Border(right: BorderSide(color: isDark ? const Color(0xFF334155) : borderColor)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedMobileMoneyNetwork,
+                          icon: const Icon(Icons.arrow_drop_down, color: subtextColor),
+                          items: const [
+                            DropdownMenuItem(value: 'MTN MoMo', child: Text('MTN MoMo', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+                            DropdownMenuItem(value: 'Airtel Money', child: Text('Airtel Money', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) setState(() => _selectedMobileMoneyNetwork = val);
+                          },
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: _mobileMoneyController,
+                        keyboardType: TextInputType.phone,
+                        style: TextStyle(fontSize: 14, color: isDark ? Colors.white : textColor),
+                        decoration: const InputDecoration(
+                          hintText: 'e.g. +256 780 000000',
+                          hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
           // Vehicle Type Dropdown
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1015,7 +1243,7 @@ class _RiderInviteAcceptanceScreenState
 
                 // Body: We are currently reviewing your rider profile...
                 Text(
-                  "We are currently reviewing your rider profile. This usually takes 24–48 hours. We'll notify you as soon as your account is activated and you're ready to hit the road!",
+                  "We are currently reviewing your rider profile. This usually takes 5 minutes to 24 hours. We'll notify you via email as soon as your account is activated and you're ready to hit the road!",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13.5,
@@ -1027,7 +1255,7 @@ class _RiderInviteAcceptanceScreenState
             ),
           ),
 
-          const SizedBox(height: 36),
+          const SizedBox(height: 24),
 
           // Refresh Status Action Link
           InkWell(
@@ -1058,6 +1286,113 @@ class _RiderInviteAcceptanceScreenState
                   ],
                 ],
               ),
+            ),
+          ),
+
+          const SizedBox(height: 28),
+
+          // Instructions on how a rider can install the app (PWA)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    Icon(Icons.install_mobile, color: brandGreen, size: 22),
+                    SizedBox(width: 10),
+                    Text(
+                      'How to Install EcoRoute on Your Phone',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'No app store download is required! Install EcoRoute directly to your mobile home screen to work like a native app:',
+                  style: TextStyle(fontSize: 12.5, color: subtextColor, height: 1.4),
+                ),
+                const SizedBox(height: 14),
+
+                // Android Chrome Step
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: brandGreen.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: brandGreen.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(color: brandGreen, shape: BoxShape.circle),
+                        child: const Icon(Icons.android, color: Colors.white, size: 14),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text('Android (Google Chrome)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: brandGreen)),
+                            SizedBox(height: 4),
+                            Text(
+                              '1. Tap the three dots (⋮) in the top-right corner of Chrome.\n'
+                              '2. Select "Install app" or "Add to Home screen".\n'
+                              '3. Tap "Install" — the EcoRoute app icon will appear on your phone.',
+                              style: TextStyle(fontSize: 12, height: 1.4),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // iPhone Safari Step
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(color: Color(0xFF0284C7), shape: BoxShape.circle),
+                        child: const Icon(Icons.apple, color: Colors.white, size: 14),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text('iPhone (Apple Safari)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0284C7))),
+                            SizedBox(height: 4),
+                            Text(
+                              '1. Tap the Share icon (square with arrow pointing up) at the bottom.\n'
+                              '2. Scroll down and tap "Add to Home Screen".\n'
+                              '3. Tap "Add" in the top-right corner.',
+                              style: TextStyle(fontSize: 12, height: 1.4),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
 

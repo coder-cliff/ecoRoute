@@ -336,15 +336,21 @@ class _AdminApprovalsViewState extends State<AdminApprovalsView> {
                 context,
                 {
                   'name': invite['fullName'] ?? invite['name'] ?? 'Field Rider',
+                  'email': invite['email'] ?? '',
                   'phone': invite['phone'] ?? '',
-                  'vehicle': invite['tricycleId'] ?? 'Field Vehicle',
-                  'nationalId': 'Document Verification',
-                  'license': 'PIN: ${invite['temporaryPin'] ?? invite['inviteCode'] ?? ''}',
+                  'vehicle': invite['vehicleType'] ?? invite['tricycleId'] ?? 'Tricycle',
+                  'plate': invite['plateNumber'] ?? 'UFD 123A',
+                  'nationalId': invite['nextOfKinPhone'] != null && invite['nextOfKinPhone'].toString().isNotEmpty
+                      ? 'Kin: ${invite['nextOfKinPhone']}'
+                      : 'Verified Invitation',
+                  'license': invite['mobileMoneyPhone'] != null && invite['mobileMoneyPhone'].toString().isNotEmpty
+                      ? '${invite['mobileMoneyNetwork'] ?? 'MoMo'}: ${invite['mobileMoneyPhone']}'
+                      : 'PIN: ${invite['temporaryPin'] ?? invite['inviteCode'] ?? ''}',
                   'appliedDate': 'Recent Invitation',
                   'status': invite['status'] ?? 'Pending',
                 },
                 isDark,
-                rawInvitePhone: invite['phone']?.toString(),
+                rawInvitePhone: (invite['phone'] ?? invite['email'])?.toString(),
               ),
           ],
         ],
@@ -470,7 +476,7 @@ class _AdminApprovalsViewState extends State<AdminApprovalsView> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         backgroundColor: const Color(0xFF2E7D32),
-                        content: Text('Rider ${rider['name']} activated & dispatched to fleet!'),
+                        content: Text('Rider ${rider['name']} approved! Confirmation email dispatched to rider.'),
                       ),
                     );
                   },
