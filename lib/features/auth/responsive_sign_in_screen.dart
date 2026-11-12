@@ -469,8 +469,8 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
           final riderInvite = auth.getRiderInvite(email);
           if (riderInvite != null) {
             resolvedRole = 'rider';
-            resolvedName = riderInvite.riderName;
-            resolvedPhone = riderInvite.phone;
+            resolvedName = (riderInvite['fullName'] as String?) ?? (riderInvite['name'] as String?) ?? resolvedName;
+            resolvedPhone = (riderInvite['phone'] as String?) ?? resolvedPhone;
             foundInDb = true;
           }
         }
