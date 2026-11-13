@@ -114,7 +114,7 @@ class ActiveTripBanner extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '${activeStop.residentName} • ${activeStop.address}',
+                        '${activeStop.residentName}  ${activeStop.address}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(

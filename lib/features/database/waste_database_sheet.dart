@@ -112,7 +112,7 @@ class _WasteDatabaseSheetState extends State<WasteDatabaseSheet> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
-                      '• ${fac.name} (${fac.address})',
+                      ' ${fac.name} (${fac.address})',
                       style: const TextStyle(fontSize: 12),
                     ),
                   ),
@@ -247,7 +247,7 @@ class _WasteDatabaseSheetState extends State<WasteDatabaseSheet> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'World Bank / NEMA Municipal Data (${benchmark.citation}): ${benchmark.dailyPerCapitaKg} kg/day • ${benchmark.organicPercentage.toInt()}% Organic • ${benchmark.recyclablePotentialPercentage.toInt()}% Recyclable',
+                    'World Bank / NEMA Municipal Data (${benchmark.citation}): ${benchmark.dailyPerCapitaKg} kg/day  ${benchmark.organicPercentage.toInt()}% Organic  ${benchmark.recyclablePotentialPercentage.toInt()}% Recyclable',
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -504,7 +504,7 @@ class _WasteDatabaseSheetState extends State<WasteDatabaseSheet> {
                                             ),
                                           ),
                                           Text(
-                                            'Lugbara: ${item.lugbaraName} • ${item.category.label}',
+                                            'Lugbara: ${item.lugbaraName}  ${item.category.label}',
                                             style: const TextStyle(
                                               fontSize: 11,
                                               color: Color(0xFF647568),
@@ -535,7 +535,7 @@ class _WasteDatabaseSheetState extends State<WasteDatabaseSheet> {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  'Degrades: ${item.decompositionTime} • ${item.sortingTip}',
+                                  'Degrades: ${item.decompositionTime}  ${item.sortingTip}',
                                   style: const TextStyle(
                                     fontSize: 11,
                                     color: Color(0xFF384A3B),

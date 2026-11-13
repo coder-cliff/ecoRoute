@@ -212,7 +212,7 @@ Status: ${_isCashMode ? 'CASH COMMITMENT ACCEPTED' : 'VERIFIED PAID'}
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                     ),
                     Text(
-                      'EcoRoute Commercial Settlement Hub • Arua',
+                      'EcoRoute Commercial Settlement Hub  Arua',
                       style: TextStyle(fontSize: 11, color: Color(0xFF647568)),
                     ),
                   ],
@@ -344,7 +344,7 @@ Status: ${_isCashMode ? 'CASH COMMITMENT ACCEPTED' : 'VERIFIED PAID'}
                     children: [
                       const Text('Amount Due', style: TextStyle(fontSize: 11, color: Color(0xFF2E7D32))),
                       Text(
-                        '${widget.request.sackCount} sack(s) • ${widget.request.wasteType.label}',
+                        '${widget.request.sackCount} sack(s)  ${widget.request.wasteType.label}',
                         style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -584,7 +584,7 @@ Status: ${_isCashMode ? 'CASH COMMITMENT ACCEPTED' : 'VERIFIED PAID'}
                 const Divider(height: 16),
                 _receiptRow('Sacks & Waste', '${widget.request.sackCount} sacks (${widget.request.wasteType.label})'),
                 const Divider(height: 16),
-                _receiptRow('Location', 'Instant Pickup • ${widget.request.address}'),
+                _receiptRow('Location', 'Instant Pickup  ${widget.request.address}'),
                 const Divider(height: 16),
                 _receiptRow('Collection Account', MoMoPaymentDialog.collectionAccount),
                 const Divider(height: 16),
@@ -610,8 +610,8 @@ Status: ${_isCashMode ? 'CASH COMMITMENT ACCEPTED' : 'VERIFIED PAID'}
                 Flexible(
                   child: Text(
                     _isCashMode
-                        ? 'CASH PAYMENT ACCEPTED • ECOROUTE'
-                        : 'OFFICIAL TRANSACTION • ECOROUTE',
+                        ? 'CASH PAYMENT ACCEPTED  ECOROUTE'
+                        : 'OFFICIAL TRANSACTION  ECOROUTE',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(

@@ -107,7 +107,7 @@ class RouteStopTile extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               Text(
-                '${request.residentName} • ${request.address}',
+                '${request.residentName}  ${request.address}',
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
               ),
               if (request.description.isNotEmpty) ...[

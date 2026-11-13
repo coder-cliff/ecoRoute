@@ -773,7 +773,7 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
                 if (user != null) ...[
                   const SizedBox(height: 8),
                   Text(
-                    '${user.email} • ${user.phone}',
+                    '${user.email}  ${user.phone}',
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontSize: 12, color: Color(0xFF71877D)),
                   ),
@@ -833,7 +833,7 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
                           ),
                         ),
                         Text(
-                          '$totalSacks sack(s) collected & recycled • Thank you for keeping Arua green!',
+                          '$totalSacks sack(s) collected & recycled  Thank you for keeping Arua green!',
                           style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFF2E7D32),
@@ -882,7 +882,7 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
                     Container(width: 1, height: 32, color: const Color(0xFFE2EAE1)),
                     _buildMetricCol('Sacks', '$totalSacks', Icons.shopping_bag_outlined),
                     Container(width: 1, height: 32, color: const Color(0xFFE2EAE1)),
-                    _buildMetricCol('CO₂ Avoided', '$totalCo2 kg', Icons.cloud_done_outlined, const Color(0xFF2E7D32)),
+                    _buildMetricCol('CO Avoided', '$totalCo2 kg', Icons.cloud_done_outlined, const Color(0xFF2E7D32)),
                   ],
                 ),
               ],
@@ -1028,7 +1028,7 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
           ),
           const SizedBox(height: 18),
           const Text(
-            'EcoRoute Arua v2.4.0 • Municipal Waste Logistics Platform',
+            'EcoRoute Arua v2.4.0  Municipal Waste Logistics Platform',
             style: TextStyle(fontSize: 11, color: Color(0xFF8B9D90)),
           ),
         ],

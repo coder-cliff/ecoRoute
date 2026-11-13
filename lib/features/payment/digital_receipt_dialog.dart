@@ -64,7 +64,7 @@ Payment Method: $methodLabel
 Status: ${request.cashReceivedByRider || request.paymentMethod == 'momo' ? 'VERIFIED & SETTLED' : 'CASH CONFIRMED BY CLIENT'}
 ========================================
 EcoRoute Private Commercial Waste Hub
-Muni • Ayivu • Central Division • Arua
+Muni  Ayivu  Central Division  Arua
 ========================================
 ''';
     }
@@ -91,7 +91,7 @@ Payment Method: $methodLabel
 Status: ${request.cashReceivedByRider || request.paymentMethod == 'momo' ? 'VERIFIED & SETTLED' : 'CASH CONFIRMED BY RESIDENT'}
 ========================================
 EcoRoute Private Commercial Waste Hub
-Muni • Ayivu • Central Division • Arua
+Muni  Ayivu  Central Division  Arua
 ========================================
 ''';
   }
@@ -153,8 +153,8 @@ Muni • Ayivu • Central Division • Arua
                         ),
                         Text(
                           request.isCommercial
-                              ? 'Commercial B2B Tax Invoice • Arua Hub'
-                              : 'Commercial Waste Receipt • Arua Hub',
+                              ? 'Commercial B2B Tax Invoice  Arua Hub'
+                              : 'Commercial Waste Receipt  Arua Hub',
                           style: TextStyle(fontSize: 11, color: subtextColor),
                         ),
                       ],
@@ -364,11 +364,11 @@ Muni • Ayivu • Central Division • Arua
                             child: Text(
                               request.isCommercial
                                   ? (isPaid
-                                      ? 'VERIFIED B2B TAX INVOICE • ECOROUTE LOGISTICS LTD'
-                                      : 'PENDING B2B CLEARANCE • PAY AT GATE')
+                                      ? 'VERIFIED B2B TAX INVOICE  ECOROUTE LOGISTICS LTD'
+                                      : 'PENDING B2B CLEARANCE  PAY AT GATE')
                                   : (isPaid
-                                      ? 'VERIFIED PAYMENT • ECOROUTE PRIVATE LTD'
-                                      : 'CASH COMMITMENT ACCEPTED • PAY RIDER AT GATE'),
+                                      ? 'VERIFIED PAYMENT  ECOROUTE PRIVATE LTD'
+                                      : 'CASH COMMITMENT ACCEPTED  PAY RIDER AT GATE'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,

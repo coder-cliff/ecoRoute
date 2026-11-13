@@ -345,7 +345,7 @@ class _RiderInviteAcceptanceScreenState
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Account still under review by Arua City Operations (5m–24h). Please check back shortly.'),
+            content: Text('Account still under review by Arua City Operations (5m24h). Please check back shortly.'),
             duration: Duration(seconds: 4),
           ),
         );
@@ -401,9 +401,9 @@ class _RiderInviteAcceptanceScreenState
             SizedBox(height: 10),
             Text(
               'If you have been recruited but did not receive your SMS PIN:\n'
-              '• Confirm your phone number is correct\n'
-              '• Contact Arua City Dispatch at +256 700 000 000\n'
-              '• Or request dispatch authorization directly from the Admin Portal.',
+              ' Confirm your phone number is correct\n'
+              ' Contact Arua City Dispatch at +256 700 000 000\n'
+              ' Or request dispatch authorization directly from the Admin Portal.',
               style: TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
             ),
           ],
@@ -644,7 +644,7 @@ class _RiderInviteAcceptanceScreenState
                   style: TextStyle(fontSize: 14, color: isDark ? Colors.white : textColor),
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.lock_outline, size: 20, color: subtextColor),
-                    hintText: '••••••',
+                    hintText: '',
                     hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 16, letterSpacing: 2),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -1344,9 +1344,9 @@ class _RiderInviteAcceptanceScreenState
                             Text('Android (Google Chrome)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: brandGreen)),
                             SizedBox(height: 4),
                             Text(
-                              '1. Tap the three dots (⋮) in the top-right corner of Chrome.\n'
+                              '1. Tap the three dots () in the top-right corner of Chrome.\n'
                               '2. Select "Install app" or "Add to Home screen".\n'
-                              '3. Tap "Install" — the EcoRoute app icon will appear on your phone.',
+                              '3. Tap "Install"  the EcoRoute app icon will appear on your phone.',
                               style: TextStyle(fontSize: 12, height: 1.4),
                             ),
                           ],

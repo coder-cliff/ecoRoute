@@ -152,9 +152,9 @@ Tasks data: ${jsonEncode(tasks.take(15).toList())}
     // Offline summary generator
     final total = tasks.length;
     final totalSacks = tasks.fold<int>(0, (sum, t) => sum + ((t['sacks'] as num?)?.toInt() ?? 1));
-    return '• $total pending collections awaiting assignment ($totalSacks total sacks across Arua City).\n'
-           '• Priority Recommendation: Dispatch tricycles to central commercial clusters (Central Market & Oli Division) first to prevent sidewalk accumulation.\n'
-           '• Operational Notice: Ensure all tricycles carry digital scale and hazardous waste separation sacks.';
+    return ' $total pending collections awaiting assignment ($totalSacks total sacks across Arua City).\n'
+           ' Priority Recommendation: Dispatch tricycles to central commercial clusters (Central Market & Oli Division) first to prevent sidewalk accumulation.\n'
+           ' Operational Notice: Ensure all tricycles carry digital scale and hazardous waste separation sacks.';
   }
 
   Future<WasteClassificationResult?> _callGeminiClassifier(String query, String apiKey) async {

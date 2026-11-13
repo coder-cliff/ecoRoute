@@ -233,7 +233,7 @@ class _AdminFeedbackViewState extends State<AdminFeedbackView> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Category: $category • By $author (${contact.isNotEmpty ? contact : "No phone provided"})',
+                        'Category: $category  By $author (${contact.isNotEmpty ? contact : "No phone provided"})',
                         style: TextStyle(
                           fontSize: 12,
                           color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),

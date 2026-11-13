@@ -86,12 +86,12 @@ class ResidentHeroGreeting extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 5),
-        // Middle row: "Arua City • On-Demand Tricycle" followed by inline 9x9 green circle
+        // Middle row: "Arua City  On-Demand Tricycle" followed by inline 9x9 green circle
         Row(
           children: [
             const Flexible(
               child: Text(
-                'Arua City • On-Demand Tricycle',
+                'Arua City  On-Demand Tricycle',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -160,7 +160,7 @@ class ActivePickupTrackerCard extends StatelessWidget {
 
   String get _stageTitle => switch (request.status) {
     RequestStatus.requested => 'Tricycle Rider Dispatched',
-    RequestStatus.collected => 'Waste Collected • In Transit',
+    RequestStatus.collected => 'Waste Collected  In Transit',
     RequestStatus.awaitingVerification => 'Depot Verification Pending',
     RequestStatus.paid => 'Pickup Verified & Settled',
     RequestStatus.cancelled => 'Pickup Cancelled',
@@ -367,7 +367,7 @@ class ActivePickupTrackerCard extends StatelessWidget {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          '${request.sackCount} sack(s) • ${request.wasteType.label}',
+                          '${request.sackCount} sack(s)  ${request.wasteType.label}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -735,7 +735,7 @@ class ResidentEcoImpactCard extends StatelessWidget {
                   icon: Icons.cloud_done_outlined,
                   value: co2AvoidedKg,
                   unit: 'kg',
-                  label: 'CO₂ Saved',
+                  label: 'CO Saved',
                 ),
               ),
             ],
@@ -843,7 +843,7 @@ class WasteSegregationTipsCard extends StatelessWidget {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   child: const Text(
-                    'Full Rates →',
+                    'Full Rates ',
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF2E7D32)),
                   ),
                 ),
@@ -852,7 +852,7 @@ class WasteSegregationTipsCard extends StatelessWidget {
           const SizedBox(height: 8),
           const Row(
             children: [
-              _TipBadge(label: 'Organic (Gboo)', desc: 'UGX 1,500/sack • Compost'),
+              _TipBadge(label: 'Organic (Gboo)', desc: 'UGX 1,500/sack  Compost'),
               SizedBox(width: 8),
               _TipBadge(label: 'Plastics & Glass', desc: 'Recycled at Oli Depot'),
             ],

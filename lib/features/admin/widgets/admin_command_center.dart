@@ -393,7 +393,7 @@ class _AdminCommandCenterState extends State<AdminCommandCenter> {
             ),
           ),
           Text(
-            '$title • $hint',
+            '$title  $hint',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 9, color: Color(0xFF647568)),
@@ -521,7 +521,7 @@ class _AdminCommandCenterState extends State<AdminCommandCenter> {
               ),
               const SizedBox(width: 8),
               Text(
-                '${request.wasteType.label} • ${request.sackCount} sack(s)',
+                '${request.wasteType.label}  ${request.sackCount} sack(s)',
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
               ),
               const Spacer(),
@@ -533,7 +533,7 @@ class _AdminCommandCenterState extends State<AdminCommandCenter> {
           ),
           const SizedBox(height: 6),
           Text(
-            '${request.residentName} (${request.residentPhone}) • ${request.address}',
+            '${request.residentName} (${request.residentPhone})  ${request.address}',
             style: const TextStyle(fontSize: 11, color: Color(0xFF556958)),
           ),
           const SizedBox(height: 10),
@@ -661,7 +661,7 @@ class _AdminCommandCenterState extends State<AdminCommandCenter> {
                         style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
                       ),
                       Text(
-                        '${riders[i]['email']} • ${riders[i]['phone'] ?? ''}',
+                        '${riders[i]['email']}  ${riders[i]['phone'] ?? ''}',
                         style: const TextStyle(fontSize: 10, color: Color(0xFF647568)),
                       ),
                     ],
@@ -741,7 +741,7 @@ class _AdminCommandCenterState extends State<AdminCommandCenter> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(filtered[i].fullName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                      Text('${filtered[i].email} • ${filtered[i].phone}', style: const TextStyle(fontSize: 10, color: Color(0xFF647568))),
+                      Text('${filtered[i].email}  ${filtered[i].phone}', style: const TextStyle(fontSize: 10, color: Color(0xFF647568))),
                       if (filtered[i].address?.isNotEmpty == true)
                         Text(filtered[i].address!, style: const TextStyle(fontSize: 9, color: Color(0xFF8B9D90))),
                     ],

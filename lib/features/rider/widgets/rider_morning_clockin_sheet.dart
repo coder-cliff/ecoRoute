@@ -101,7 +101,7 @@ class _RiderMorningClockInSheetState extends State<RiderMorningClockInSheet> {
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       Text(
-                        'Arua Municipal Depot • Pre-flight safety check',
+                        'Arua Municipal Depot  Pre-flight safety check',
                         style: TextStyle(fontSize: 11.5, color: subtextColor),
                       ),
                     ],
@@ -117,7 +117,7 @@ class _RiderMorningClockInSheetState extends State<RiderMorningClockInSheet> {
                     children: [
                       Icon(Icons.cloud_queue, size: 13, color: Color(0xFF2E7D32)),
                       SizedBox(width: 4),
-                      Text('21°C Dry', style: TextStyle(color: Color(0xFF2E7D32), fontSize: 11, fontWeight: FontWeight.bold)),
+                      Text('21C Dry', style: TextStyle(color: Color(0xFF2E7D32), fontSize: 11, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),

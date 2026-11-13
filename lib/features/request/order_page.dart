@@ -567,7 +567,7 @@ class _OrderPageState extends State<OrderPage> {
                           ),
                           Text(
                             _capturedPhotoLabel != null
-                                ? 'Photo attached • GPS locked'
+                                ? 'Photo attached  GPS locked'
                                 : 'Describe waste (Photo is optional; GPS autofill below)',
                             style: const TextStyle(fontSize: 12, color: Color(0xFF556958)),
                           ),
@@ -1001,7 +1001,7 @@ class _OrderPageState extends State<OrderPage> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            'GPS Locked: ${_latitude!.toStringAsFixed(5)}°N, ${_longitude!.toStringAsFixed(5)}°E (Instant Pin)',
+                            'GPS Locked: ${_latitude!.toStringAsFixed(5)}N, ${_longitude!.toStringAsFixed(5)}E (Instant Pin)',
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -1029,7 +1029,7 @@ class _OrderPageState extends State<OrderPage> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            '$_sackCount sack(s) × ${formatUgx(_ratePerSack)}',
+                            '$_sackCount sack(s)  ${formatUgx(_ratePerSack)}',
                             style: const TextStyle(fontSize: 12, color: Color(0xFF556958)),
                           ),
                           Text(

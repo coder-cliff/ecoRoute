@@ -1674,7 +1674,7 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
           ),
           const SizedBox(height: 4),
           const Text(
-            'Verified Rider • Arua, Uganda',
+            'Verified Rider  Arua, Uganda',
             style: TextStyle(fontSize: 12.5, color: subtextColor),
           ),
 
@@ -1822,12 +1822,12 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
             const ListTile(
               leading: Icon(Icons.electric_rickshaw, color: Color(0xFF1B5E20)),
               title: Text('Assigned Unit'),
-              subtitle: Text('Tricycle / Tuk-Tuk • Plate UFD 123A'),
+              subtitle: Text('Tricycle / Tuk-Tuk  Plate UFD 123A'),
             ),
             const ListTile(
               leading: Icon(Icons.health_and_safety, color: Color(0xFF00C853)),
               title: Text('Safety Equipment'),
-              subtitle: Text('Helmet (Passed) • Reflective Vest (Active) • Heavy Gloves (Issued)'),
+              subtitle: Text('Helmet (Passed)  Reflective Vest (Active)  Heavy Gloves (Issued)'),
             ),
           ],
         ),
@@ -1995,7 +1995,7 @@ class _ResponsiveRiderDashboardState extends State<ResponsiveRiderDashboard>
                         children: const [
                           Text('Android (Google Chrome)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1B5E20))),
                           SizedBox(height: 4),
-                          Text('1. Tap the three dots (⋮) in the top-right corner.\n2. Tap "Install App" or "Add to Home Screen".\n3. Confirm and the app icon will appear on your phone screen.', style: TextStyle(fontSize: 12.5, height: 1.4)),
+                          Text('1. Tap the three dots () in the top-right corner.\n2. Tap "Install App" or "Add to Home Screen".\n3. Confirm and the app icon will appear on your phone screen.', style: TextStyle(fontSize: 12.5, height: 1.4)),
                         ],
                       ),
                     ),

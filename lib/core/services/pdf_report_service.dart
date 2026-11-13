@@ -17,7 +17,7 @@ class PdfReportService {
     int completedPickups = 142,
   }) async {
     final pdf = pw.Document();
-    final now = DateFormat('MMMM dd, yyyy • HH:mm').format(DateTime.now());
+    final now = DateFormat('MMMM dd, yyyy  HH:mm').format(DateTime.now());
 
     pdf.addPage(
       pw.Page(
@@ -43,7 +43,7 @@ class PdfReportService {
                         ),
                       ),
                       pw.Text(
-                        'Sustainable Municipal Waste Logistics • Arua City',
+                        'Sustainable Municipal Waste Logistics  Arua City',
                         style: pw.TextStyle(
                           fontSize: 11,
                           color: PdfColor.fromInt(0xFF1A3A28),
@@ -83,7 +83,7 @@ class PdfReportService {
               ),
               pw.SizedBox(height: 4),
               pw.Text(
-                'Reporting Period: $period • Generated: $now',
+                'Reporting Period: $period  Generated: $now',
                 style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700),
               ),
               pw.SizedBox(height: 20),
@@ -141,7 +141,7 @@ class PdfReportService {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
-                    'EcoRoute Operations Dispatch HQ • Arua, West Nile, Uganda',
+                    'EcoRoute Operations Dispatch HQ  Arua, West Nile, Uganda',
                     style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
                   ),
                   pw.Text(

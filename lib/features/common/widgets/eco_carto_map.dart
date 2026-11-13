@@ -182,7 +182,7 @@ class _EcoCartoMapState extends State<EcoCartoMap> {
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('${lm.name} • ${lm.description}'),
+                    content: Text('${lm.name}  ${lm.description}'),
                     duration: const Duration(seconds: 3),
                   ),
                 );
@@ -302,7 +302,7 @@ class _EcoCartoMapState extends State<EcoCartoMap> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Text(
-                  '© OpenStreetMap contributors',
+                  ' OpenStreetMap contributors',
                   style: TextStyle(fontSize: 8.5, color: Colors.grey),
                 ),
               ),

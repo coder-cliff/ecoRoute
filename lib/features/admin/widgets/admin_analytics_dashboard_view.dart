@@ -608,7 +608,7 @@ class _AdminAnalyticsDashboardViewState extends State<AdminAnalyticsDashboardVie
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
-                  '● System Online • ${EcoRouteState.instance.activeRiderCount} Active',
+                  ' System Online  ${EcoRouteState.instance.activeRiderCount} Active',
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,

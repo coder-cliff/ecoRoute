@@ -34,12 +34,12 @@ An official rider dispatch account has been authorized for you by Arua City Coun
 
 YOUR AUTHORIZATION DETAILS:
 ------------------------------------------
-• Driver Name: $riderName
-• Email Address: $riderEmail
-• Assigned Unit: $tricycleId
-• Invite Code: $inviteCode
-• Temporary 6-Digit PIN: $temporaryPin
-• Operations Hotline: $hotline
+ Driver Name: $riderName
+ Email Address: $riderEmail
+ Assigned Unit: $tricycleId
+ Invite Code: $inviteCode
+ Temporary 6-Digit PIN: $temporaryPin
+ Operations Hotline: $hotline
 
 STEP-BY-STEP ACCOUNT ACTIVATION:
 ------------------------------------------
@@ -52,22 +52,22 @@ STEP-BY-STEP ACCOUNT ACTIVATION:
 HOW TO INSTALL ECOROUTE ON YOUR PHONE:
 ------------------------------------------
 No app store download is required! Install directly to your phone's home screen:
-• Android (Google Chrome):
+ Android (Google Chrome):
   1. Open $appUrl in Google Chrome.
-  2. Tap the three dots (⋮) in the top-right corner.
+  2. Tap the three dots () in the top-right corner.
   3. Tap "Install App" or "Add to Home Screen".
   4. The EcoRoute app icon will now sit on your home screen like any native app.
 
-• iPhone (Apple Safari):
+ iPhone (Apple Safari):
   1. Open $appUrl in Safari.
   2. Tap the Share icon (square with arrow at the bottom).
   3. Scroll down and tap "Add to Home Screen".
   4. Tap "Add" in the top-right corner.
 
 OPERATIONAL REMINDERS:
-• Ensure your tricycle cargo bay is securely fastened before transit.
-• Confirm sack counts and waste categories at resident pickup locations.
-• Transport loaded sacks to designated municipal sorting hubs for scale weighing.
+ Ensure your tricycle cargo bay is securely fastened before transit.
+ Confirm sack counts and waste categories at resident pickup locations.
+ Transport loaded sacks to designated municipal sorting hubs for scale weighing.
 
 If you have any questions, contact municipal dispatch or reply directly to this email.
 
@@ -103,7 +103,7 @@ Official Dispatch: $senderEmail
     </div>
     <div style="background-color: #F8FAFC; border: 1px dashed #CBD5E1; padding: 14px; border-radius: 6px; font-size: 12.5px; line-height: 1.5; color: #475569;">
       <strong style="color: #0F172A;">How to Install the App to Your Mobile Phone:</strong><br/>
-      &bull; <strong>Android (Chrome):</strong> Tap the link &gt; Tap menu (⋮) &gt; Tap <em>"Install App"</em> or <em>"Add to Home screen"</em>.<br/>
+      &bull; <strong>Android (Chrome):</strong> Tap the link &gt; Tap menu () &gt; Tap <em>"Install App"</em> or <em>"Add to Home screen"</em>.<br/>
       &bull; <strong>iPhone (Safari):</strong> Tap the link &gt; Tap Share button (square with arrow) &gt; Tap <em>"Add to Home Screen"</em>.
     </div>
   </div>
@@ -138,11 +138,11 @@ Your account is now fully active and authorized for daily waste collection dispa
 
 DISPATCH AUTHORIZATION SUMMARY:
 ------------------------------------------
-• Driver Name: $riderName
-• Status: APPROVED & ACTIVE
-• Assigned Unit: $tricycleId
-• Municipal Zone: Arua Central & Ayivu Division
-• Wage Payouts: Settled daily to your registered Mobile Money number
+ Driver Name: $riderName
+ Status: APPROVED & ACTIVE
+ Assigned Unit: $tricycleId
+ Municipal Zone: Arua Central & Ayivu Division
+ Wage Payouts: Settled daily to your registered Mobile Money number
 
 HOW TO LOG IN & BEGIN YOUR SHIFT:
 ------------------------------------------
@@ -151,8 +151,8 @@ HOW TO LOG IN & BEGIN YOUR SHIFT:
 3. Clock in to your morning shift and view your assigned route.
 
 If you have not already installed the app to your home screen:
-• Android (Chrome): Tap browser menu (⋮) > "Install App" or "Add to Home screen".
-• iPhone (Safari): Tap Share icon > "Add to Home Screen".
+ Android (Chrome): Tap browser menu () > "Install App" or "Add to Home screen".
+ iPhone (Safari): Tap Share icon > "Add to Home Screen".
 
 Operations Hotline: $hotline
 Emergency Dispatch Desk: $senderEmail
@@ -276,13 +276,13 @@ Your municipal waste collection in Arua City has been completed successfully.
 
 COLLECTION RECEIPT:
 ------------------------------------------
-• Receipt ID: $pickupId
-• Collection Location: $address
-• Waste Category: $wasteType
-• Sacks Collected: $sacks
-• Total Paid: UGX ${amountUgx.toString()}
-• Servicing Field Rider: $riderName
-• Status: Completed & Verified
+ Receipt ID: $pickupId
+ Collection Location: $address
+ Waste Category: $wasteType
+ Sacks Collected: $sacks
+ Total Paid: UGX ${amountUgx.toString()}
+ Servicing Field Rider: $riderName
+ Status: Completed & Verified
 
 Thank you for contributing to a cleaner and greener Arua City!
 

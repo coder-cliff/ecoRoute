@@ -248,11 +248,11 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('• Invite Code: $code', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(' Invite Code: $code', style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
-                    Text('• Temporary PIN: $pin', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
+                    Text(' Temporary PIN: $pin', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
                     const SizedBox(height: 4),
-                    Text('• Assigned Vehicle: $vehicle'),
+                    Text(' Assigned Vehicle: $vehicle'),
                   ],
                 ),
               ),
@@ -697,7 +697,7 @@ class _ResponsiveAdminDashboardState extends State<ResponsiveAdminDashboard> {
                 Icon(Icons.circle, size: 8, color: Color(0xFF4CAF50)),
                 SizedBox(width: 8),
                 Text(
-                  'System Live • Active',
+                  'System Live  Active',
                   style: TextStyle(
                     color: Color(0xFF81C784),
                     fontSize: 11,

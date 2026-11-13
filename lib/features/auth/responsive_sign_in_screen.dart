@@ -671,7 +671,7 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
                           ),
                           const SizedBox(height: 8),
                           const Text(
-                            'Sustainable Smart Municipal Waste Logistics • Arua City',
+                            'Sustainable Smart Municipal Waste Logistics  Arua City',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.white70, fontSize: 13),
                           ),

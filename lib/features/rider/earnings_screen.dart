@@ -75,7 +75,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
                   const SizedBox(height: 8),
                   _payoutRow('Disbursement Fee', '0 UGX (Subsidized)'),
                   const SizedBox(height: 8),
-                  _payoutRow('Target Account', '+256 772 ••• 981 (MTN MoMo)'),
+                  _payoutRow('Target Account', '+256 772  981 (MTN MoMo)'),
                 ],
               ),
             ),

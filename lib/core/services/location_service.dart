@@ -109,7 +109,7 @@ class LocationService {
         resolvedZone: zone,
         isWithinServiceArea: isWithin,
         message: isWithin
-            ? 'Located within Arua ${zone.label} zone (±${position.accuracy.toStringAsFixed(1)}m accuracy).'
+            ? 'Located within Arua ${zone.label} zone (${position.accuracy.toStringAsFixed(1)}m accuracy).'
             : 'Your location is outside the 12km Arua municipal collection perimeter. Please contact support.',
       );
     } catch (e) {
@@ -140,7 +140,7 @@ class LocationService {
         timestamp: position.timestamp,
         resolvedZone: zone,
         isWithinServiceArea: isWithin,
-        message: 'Live GPS: ${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)} (±${position.accuracy.toStringAsFixed(1)}m)',
+        message: 'Live GPS: ${position.latitude.toStringAsFixed(5)}, ${position.longitude.toStringAsFixed(5)} (${position.accuracy.toStringAsFixed(1)}m)',
       );
     });
   }

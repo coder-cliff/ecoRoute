@@ -215,8 +215,8 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                           const SizedBox(width: 5),
                           Text(
                             _mapType == GoogleMapType.roadmap
-                                ? 'Arua Municipal Zones • Map View'
-                                : 'Arua Municipal Zones • Satellite',
+                                ? 'Arua Municipal Zones  Map View'
+                                : 'Arua Municipal Zones  Satellite',
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
@@ -236,7 +236,7 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                         ),
                         child: Text(
                           accuracy != null
-                              ? 'GPS ±${accuracy.toStringAsFixed(1)}m'
+                              ? 'GPS ${accuracy.toStringAsFixed(1)}m'
                               : 'GPS Locked',
                           style: const TextStyle(
                             fontSize: 10,
@@ -256,8 +256,8 @@ class _InteractiveAruaMapPanelState extends State<InteractiveAruaMapPanel> {
                   ),
                   child: Text(
                     hasGps
-                        ? '${lat.toStringAsFixed(5)}°N, ${lng.toStringAsFixed(5)}°E • Instant Service Active'
-                        : 'Arua service radius: 12 km • Instant On-Demand Dispatch',
+                        ? '${lat.toStringAsFixed(5)}N, ${lng.toStringAsFixed(5)}E  Instant Service Active'
+                        : 'Arua service radius: 12 km  Instant On-Demand Dispatch',
                     style: const TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,

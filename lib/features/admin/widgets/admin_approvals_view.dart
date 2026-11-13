@@ -406,7 +406,7 @@ class _AdminApprovalsViewState extends State<AdminApprovalsView> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${rider['phone']} • ${rider['vehicle']}',
+                      '${rider['phone']}  ${rider['vehicle']}',
                       style: TextStyle(
                         fontSize: 12,
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),

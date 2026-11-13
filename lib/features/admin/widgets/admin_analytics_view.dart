@@ -647,7 +647,7 @@ class AdminAnalyticsView extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${commercialOrders.length} wholesale orders • $commercialSacks sacks',
+                      '${commercialOrders.length} wholesale orders  $commercialSacks sacks',
                       style: TextStyle(fontSize: 10, color: subtextColor),
                     ),
                   ],
@@ -681,7 +681,7 @@ class AdminAnalyticsView extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${orders.length - commercialOrders.length} residential orders • $residentialSacks sacks',
+                      '${orders.length - commercialOrders.length} residential orders  $residentialSacks sacks',
                       style: TextStyle(fontSize: 10, color: subtextColor),
                     ),
                   ],
@@ -749,7 +749,7 @@ class AdminAnalyticsView extends StatelessWidget {
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
                         ),
                         Text(
-                          '${order.serviceTier ?? 'Wholesale'} • ${order.sackCount} sacks${order.tinNumber != null ? ' • TIN: ${order.tinNumber}' : ''}',
+                          '${order.serviceTier ?? 'Wholesale'}  ${order.sackCount} sacks${order.tinNumber != null ? '  TIN: ${order.tinNumber}' : ''}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 10, color: subtextColor),

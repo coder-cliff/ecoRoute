@@ -356,7 +356,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
           Row(
             children: [
               const Text(
-                'Hello, Resident • Arua City',
+                'Hello, Resident  Arua City',
                 style: TextStyle(
                   fontFamily: 'Satoshi',
                   fontSize: 16,
@@ -498,7 +498,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                   Text(
                     activeOrder.description.isNotEmpty
                         ? activeOrder.description
-                        : '1 Sack • Household',
+                        : '1 Sack  Household',
                     style: const TextStyle(
                       fontFamily: 'Satoshi',
                       fontSize: 14.5,
@@ -508,7 +508,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${activeOrder.priceUgx} UGX • Pay on Collection',
+                    '${activeOrder.priceUgx} UGX  Pay on Collection',
                     style: const TextStyle(
                       fontFamily: 'Satoshi',
                       fontSize: 13.5,
@@ -603,8 +603,8 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
                 Expanded(
                   child: Text(
                     _weather != null
-                        ? 'Weather: ${_weather!.conditionSummary} • ${_weather!.temperatureC.toStringAsFixed(1)}°C • Open-Meteo'
-                        : 'Weather: Favorable • 20.3°C • Open-Meteo',
+                        ? 'Weather: ${_weather!.conditionSummary}  ${_weather!.temperatureC.toStringAsFixed(1)}C  Open-Meteo'
+                        : 'Weather: Favorable  20.3C  Open-Meteo',
                     style: const TextStyle(
                       fontFamily: 'Satoshi',
                       fontSize: 13.5,
@@ -709,7 +709,7 @@ class _ResidentDashboardState extends State<ResidentDashboard> {
               style: const TextStyle(fontWeight: FontWeight.w700, fontFamily: 'Satoshi'),
             ),
             subtitle: Text(
-              '${order.status.label} • ${order.priceUgx} UGX',
+              '${order.status.label}  ${order.priceUgx} UGX',
               style: const TextStyle(fontFamily: 'Satoshi', fontSize: 13),
             ),
             trailing: const Icon(Icons.chevron_right),

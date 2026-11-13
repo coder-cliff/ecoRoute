@@ -494,7 +494,7 @@ class AdminOverviewView extends StatelessWidget {
                   children: [
                     Expanded(flex: 3, child: Text(t['id']?.toString() ?? 'TRX', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor))),
                     Expanded(flex: 4, child: Text(t['client'] ?? t['residentName'] ?? 'Client', style: TextStyle(fontSize: 12, color: textColor))),
-                    Expanded(flex: 5, child: Text('${t['amount'] ?? 0} UGX • ${t['paymentMethod'] ?? "Cash"}', style: TextStyle(fontSize: 11.5, color: subtextColor))),
+                    Expanded(flex: 5, child: Text('${t['amount'] ?? 0} UGX  ${t['paymentMethod'] ?? "Cash"}', style: TextStyle(fontSize: 11.5, color: subtextColor))),
                   ],
                 ),
               ),

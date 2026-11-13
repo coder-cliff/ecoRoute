@@ -141,7 +141,7 @@ class _RiderEveningReconciliationModalState
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       Text(
-                        'Arua Municipal Depot • Shift wrap-up & cash sign-off',
+                        'Arua Municipal Depot  Shift wrap-up & cash sign-off',
                         style: TextStyle(fontSize: 11.5, color: subtextColor),
                       ),
                     ],

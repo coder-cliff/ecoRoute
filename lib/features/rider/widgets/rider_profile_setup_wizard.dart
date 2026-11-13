@@ -125,7 +125,7 @@ class _RiderProfileSetupWizardState extends State<RiderProfileSetupWizard> {
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       Text(
-                        'Step ${_currentStep + 1} of 3 • Fast field registration',
+                        'Step ${_currentStep + 1} of 3  Fast field registration',
                         style: TextStyle(fontSize: 11.5, color: subtextColor),
                       ),
                     ],

@@ -440,7 +440,7 @@ class _ResponsiveResidentDashboardState
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'WhatsApp-style instant help • 400+ Arua chats',
+                                'WhatsApp-style instant help  400+ Arua chats',
                                 style: TextStyle(fontSize: 11.5, color: subtextColor),
                               ),
                             ],
@@ -478,7 +478,7 @@ class _ResponsiveResidentDashboardState
                 _buildHomeActionCard(
                   icon: Icons.info_outline,
                   title: 'ecoRoute Support',
-                  subtitle: 'Get help with your service • +256394880352',
+                  subtitle: 'Get help with your service  +256394880352',
                   cardColor: cardColor,
                   textColor: textColor,
                   subtextColor: subtextColor,
@@ -690,7 +690,7 @@ class _ResponsiveResidentDashboardState
                             style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor),
                           ),
                           Text(
-                            '$_sackCount Sacks • ${estimatedTotal.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} UGX',
+                            '$_sackCount Sacks  ${estimatedTotal.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} UGX',
                             style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: accentGreen),
                           ),
                         ],
@@ -712,7 +712,7 @@ class _ResponsiveResidentDashboardState
                         ),
                       ),
                       Text(
-                        'Standard Household Rate: 2,500 UGX/sack • Pay via MTN MoMo, Airtel Money or Cash.',
+                        'Standard Household Rate: 2,500 UGX/sack  Pay via MTN MoMo, Airtel Money or Cash.',
                         style: TextStyle(fontSize: 11, color: subtextColor),
                       ),
                     ],
@@ -852,7 +852,7 @@ class _ResponsiveResidentDashboardState
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Tricycle assigned for ${state.activePickup!['address'] ?? 'Arua collection point'} • ETA: ${state.activePickup!['eta'] ?? 'Under 15 Mins'}',
+                      'Tricycle assigned for ${state.activePickup!['address'] ?? 'Arua collection point'}  ETA: ${state.activePickup!['eta'] ?? 'Under 15 Mins'}',
                       style: TextStyle(fontSize: 12.5, color: subtextColor),
                     ),
                     const SizedBox(height: 14),
@@ -927,7 +927,7 @@ class _ResponsiveResidentDashboardState
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Successful ${comp['wasteType'] ?? 'Waste'} collection at ${comp['address'] ?? comp['location'] ?? 'Arua point'} • Ref ${comp['receiptSerial'] ?? comp['id'] ?? ''}',
+                          'Successful ${comp['wasteType'] ?? 'Waste'} collection at ${comp['address'] ?? comp['location'] ?? 'Arua point'}  Ref ${comp['receiptSerial'] ?? comp['id'] ?? ''}',
                           style: TextStyle(fontSize: 12.5, color: subtextColor),
                         ),
                       ],
@@ -1022,7 +1022,7 @@ class _ResponsiveResidentDashboardState
                             style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor),
                           ),
                           Text(
-                            '${req['sacks'] ?? 1} sack(s) • ${req['location'] ?? 'Arua Point'}',
+                            '${req['sacks'] ?? 1} sack(s)  ${req['location'] ?? 'Arua Point'}',
                             style: TextStyle(fontSize: 11, color: subtextColor),
                           ),
                         ],
@@ -1641,12 +1641,12 @@ class _ResponsiveResidentDashboardState
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${req['sacks'] ?? 1} Sacks • ${req['wasteType'] ?? 'Household Waste'}',
+                      '${req['sacks'] ?? 1} Sacks  ${req['wasteType'] ?? 'Household Waste'}',
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textColor),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${req['address'] ?? 'Arua Municipality'} • ${req['date'] ?? 'Recent'}',
+                      '${req['address'] ?? 'Arua Municipality'}  ${req['date'] ?? 'Recent'}',
                       style: TextStyle(fontSize: 12, color: subtextColor),
                     ),
                     const SizedBox(height: 10),
@@ -1771,7 +1771,7 @@ class _ResponsiveResidentDashboardState
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${active['sacks'] ?? 3} Sacks • ${active['wasteType'] ?? 'Household Waste'}',
+                    '${active['sacks'] ?? 3} Sacks  ${active['wasteType'] ?? 'Household Waste'}',
                     style: TextStyle(fontSize: 13, color: textColor),
                   ),
                   const SizedBox(height: 4),
@@ -1781,7 +1781,7 @@ class _ResponsiveResidentDashboardState
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'ETA: ${active['eta'] ?? '12 mins'} • Fare: UGX ${active['fee'] ?? 7500}',
+                    'ETA: ${active['eta'] ?? '12 mins'}  Fare: UGX ${active['fee'] ?? 7500}',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor),
                   ),
                   const SizedBox(height: 14),
@@ -1956,7 +1956,7 @@ class _ResponsiveResidentDashboardState
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    'Active Resident • ${state.userCell.isNotEmpty ? state.userCell : 'Ayivu Ward'}',
+                    'Active Resident  ${state.userCell.isNotEmpty ? state.userCell : 'Ayivu Ward'}',
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: accentGreen),
                   ),
                 ),
@@ -2366,7 +2366,7 @@ class _ResponsiveResidentDashboardState
                                                   dense: true,
                                                   contentPadding: EdgeInsets.zero,
                                                   title: Text(req['address'] as String? ?? 'Arua Area', style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
-                                                  subtitle: Text('${req['sacks']} Sack(s) • ${req['wasteType']}', style: TextStyle(fontSize: 11, color: subtextColor)),
+                                                  subtitle: Text('${req['sacks']} Sack(s)  ${req['wasteType']}', style: TextStyle(fontSize: 11, color: subtextColor)),
                                                   trailing: Text(req['price'] as String? ?? 'UGX 5,000', style: TextStyle(fontWeight: FontWeight.bold, color: accentGreen)),
                                                 );
                                               },

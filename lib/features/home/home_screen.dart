@@ -143,7 +143,7 @@ class _EcoRouteSplashScreenState extends State<EcoRouteSplashScreen>
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Sustainable Waste Logistics • Arua',
+                  'Sustainable Waste Logistics  Arua',
                   style: TextStyle(
                     fontFamily: 'Satoshi',
                     color: Color(0xFF1A3A28),
@@ -1344,8 +1344,8 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
               const SizedBox(height: 3),
               Text(
                 report != null
-                    ? '${report.temperatureC.toStringAsFixed(1)}°C • ${report.conditionSummary}'
-                    : '20.3°C • Favorable collection weather in Arua.',
+                    ? '${report.temperatureC.toStringAsFixed(1)}C  ${report.conditionSummary}'
+                    : '20.3C  Favorable collection weather in Arua.',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -1938,7 +1938,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                               ),
                             ),
                             Text(
-                              '${riders[i]['email']} • ${riders[i]['phone'] ?? ''}',
+                              '${riders[i]['email']}  ${riders[i]['phone'] ?? ''}',
                               style: const TextStyle(
                                 fontSize: 11,
                                 color: Color(0xFF647568),
@@ -2039,7 +2039,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                               ),
                             ),
                             Text(
-                              '${residents[i].email} • ${residents[i].phone}',
+                              '${residents[i].email}  ${residents[i].phone}',
                               style: const TextStyle(
                                 fontSize: 11,
                                 color: Color(0xFF647568),
@@ -2631,7 +2631,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                                       ),
                                       const SizedBox(height: 3),
                                       Text(
-                                        '${order.sackCount} sack(s) • Instant Pickup • ${order.address}',
+                                        '${order.sackCount} sack(s)  Instant Pickup  ${order.address}',
                                         style: const TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,

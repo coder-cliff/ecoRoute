@@ -364,7 +364,7 @@ class _EcoRouteBotChatSheetState extends State<EcoRouteBotChatSheet>
                           ),
                           const SizedBox(width: 4),
                           const Text(
-                            'online • WhatsApp Waste Assistant',
+                            'online  WhatsApp Waste Assistant',
                             style: TextStyle(color: Colors.white70, fontSize: 11),
                           ),
                         ],

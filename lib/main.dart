@@ -115,7 +115,7 @@ class EcoRouteState extends ChangeNotifier {
   List<Map<String, dynamic>> riderRoster = [];
 
   // Live Weather
-  String weatherTemp = '20.3°C';
+  String weatherTemp = '20.3C';
   String weatherCondition = 'Favorable';
   String weatherWind = '7 km/h';
   bool isWeatherLive = false;
@@ -1224,7 +1224,7 @@ class EcoRouteState extends ChangeNotifier {
         if (current != null) {
           final temp = current['temperature'];
           final wind = current['windspeed'];
-          weatherTemp = '$temp°C';
+          weatherTemp = '$tempC';
           weatherWind = '$wind km/h';
           weatherCondition = (temp as num) > 24 ? 'Warm / Dry' : 'Favorable';
           isWeatherLive = true;
@@ -1236,7 +1236,7 @@ class EcoRouteState extends ChangeNotifier {
       debugPrint('Open-Meteo weather fetch offline notice: $e');
     }
     // Safe offline fallback
-    weatherTemp = '20.3°C';
+    weatherTemp = '20.3C';
     weatherCondition = 'Favorable';
     isWeatherLive = false;
     notifyListeners();
@@ -2287,7 +2287,7 @@ void showEcoRouteProfileSheet(BuildContext context) {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: const [
                           Text('Arua City Municipal Rider Badge', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0D2618))),
-                          Text('Unit ID: TRIC-04 • Certified Operator', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          Text('Unit ID: TRIC-04  Certified Operator', style: TextStyle(fontSize: 11, color: Colors.grey)),
                         ],
                       ),
                     ),
@@ -2606,11 +2606,11 @@ class ResidentHomeScreen extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 15, color: Color(0xFF0D2618)),
                   ),
                   const SizedBox(height: 4),
-                  const Text('Arua City Council • Sustainable Solid Waste Logistics', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  const Text('Arua City Council  Sustainable Solid Waste Logistics', style: TextStyle(fontSize: 10, color: Colors.grey)),
                   const SizedBox(height: 12),
                   _buildReceiptRow('Client Name', EcoRouteState.instance.userName),
                   _buildReceiptRow('Cell / Ward', pickup!['address'] as String? ?? 'Ediofe'),
-                  _buildReceiptRow('Waste Payload', '${pickup!['sacks']} Sack(s) • ${pickup!['wasteType']}'),
+                  _buildReceiptRow('Waste Payload', '${pickup!['sacks']} Sack(s)  ${pickup!['wasteType']}'),
                   _buildReceiptRow('Total Amount', '${pickup!['price']} (${pickup!['paymentMethod']})'),
                   _buildReceiptRow('Assigned Unit', '${pickup!['assignedRiderId'] ?? 'Tricycle'} (${pickup!['assignedRiderName'] ?? 'Pending'})'),
                   _buildReceiptRow('Status', 'VERIFIED & SETTLED'),
@@ -2689,7 +2689,7 @@ class ResidentHomeScreen extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Hello, Resident • Arua City', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                    const Text('Hello, Resident  Arua City', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
                     const SizedBox(height: 2),
                     Text('${state.userCell} Service Area', style: const TextStyle(fontSize: 12, color: Color(0xFF1A3A28))),
                   ],
@@ -2828,7 +2828,7 @@ class ResidentHomeScreen extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('${pickup!['sacks']} Sack(s) • ${pickup!['address']}', style: const TextStyle(color: Color(0xFF1A3A28), fontSize: 12)),
+                              Text('${pickup!['sacks']} Sack(s)  ${pickup!['address']}', style: const TextStyle(color: Color(0xFF1A3A28), fontSize: 12)),
                               Text(pickup!['price'] as String, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618), fontSize: 13)),
                             ],
                           ),
@@ -2949,7 +2949,7 @@ class ResidentHomeScreen extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Weather: ${state.weatherCondition} • ${state.weatherTemp} Arua (${state.weatherWind})',
+                      'Weather: ${state.weatherCondition}  ${state.weatherTemp} Arua (${state.weatherWind})',
                       style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
                     ),
                   ),
@@ -3067,7 +3067,7 @@ class ResidentRequestsScreen extends StatelessWidget {
                         children: [
                           Text(req['id'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0D2618))),
                           const SizedBox(height: 4),
-                          Text('${req['date']} • ${req['size']}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                          Text('${req['date']}  ${req['size']}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                         ],
                       ),
                       Row(
@@ -3577,7 +3577,7 @@ class RiderTasksScreen extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Hello, Rider • Arua City', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                    const Text('Hello, Rider  Arua City', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
                     const SizedBox(height: 2),
                     Text(
                       state.isRiderShiftActive ? 'Online Status: Active (TRIC-04)' : 'Online Status: Shift Ended',
@@ -3821,8 +3821,8 @@ class RiderTasksScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Task #${t['id']} • ${t['client']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
-                            Text('${t['address']} • ${t['sacks']} Sack(s)', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                            Text('Task #${t['id']}  ${t['client']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
+                            Text('${t['address']}  ${t['sacks']} Sack(s)', style: const TextStyle(color: Colors.grey, fontSize: 11)),
                           ],
                         ),
                       ),
@@ -3916,7 +3916,7 @@ class _RiderRouteScreenState extends State<RiderRouteScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Target: ${activeTask?['address'] ?? 'Ediofe, Trading Center'}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0D2618))),
-                          Text('Distance: ${activeTask?['distance'] ?? '1.4 km'} • ETA: ${activeTask?['eta'] ?? '8 mins'}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                          Text('Distance: ${activeTask?['distance'] ?? '1.4 km'}  ETA: ${activeTask?['eta'] ?? '8 mins'}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                         ],
                       ),
                       Container(
@@ -4437,7 +4437,7 @@ class AdminDashboardScreen extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text('${r['name']} (${r['tricycleId']})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
-                                    Text('Code: ${r['inviteCode'] ?? 'Active'} • Zone: ${r['zone']}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                                    Text('Code: ${r['inviteCode'] ?? 'Active'}  Zone: ${r['zone']}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
                                   ],
                                 ),
                               ),
@@ -4483,8 +4483,8 @@ class AdminDashboardScreen extends StatelessWidget {
             const SizedBox(height: 12),
             ...state.tricycles.map((tri) => ListTile(
                   leading: const CircleAvatar(backgroundColor: Color(0xFF0D2618), child: Icon(Icons.two_wheeler, color: Colors.white)),
-                  title: Text('${tri['id']} • ${tri['riderName']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('${tri['zone']} • Battery: ${tri['battery']}% • ${tri['speed']}'),
+                  title: Text('${tri['id']}  ${tri['riderName']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('${tri['zone']}  Battery: ${tri['battery']}%  ${tri['speed']}'),
                   onTap: () {
                     Navigator.pop(ctx);
                     state.adminReassignPickup(pickupId, tri['id'] as String, context);
@@ -4820,7 +4820,7 @@ class AdminFleetMapScreen extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${selectedTri['id']} • ${selectedTri['riderName']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0D2618))),
+                          Text('${selectedTri['id']}  ${selectedTri['riderName']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0D2618))),
                           Text('Current Zone: ${selectedTri['zone']}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                         ],
                       ),
@@ -4943,7 +4943,7 @@ class AdminSettlementScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Recipient: ${payout['riderName']} • ${payout['phone']}'),
+            Text('Recipient: ${payout['riderName']}  ${payout['phone']}'),
             const SizedBox(height: 6),
             Text('Amount to Release: ${payout['amount']} UGX', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF9C3D18))),
             const SizedBox(height: 12),
@@ -5040,8 +5040,8 @@ class AdminSettlementScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${tri['id']} • ${tri['riderName']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
-                          Text('${tri['zone']} • Pouch: $pouch UGX', style: TextStyle(fontSize: 11, color: pouch > 0 ? const Color(0xFF9C3D18) : Colors.grey, fontWeight: pouch > 0 ? FontWeight.bold : FontWeight.normal)),
+                          Text('${tri['id']}  ${tri['riderName']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
+                          Text('${tri['zone']}  Pouch: $pouch UGX', style: TextStyle(fontSize: 11, color: pouch > 0 ? const Color(0xFF9C3D18) : Colors.grey, fontWeight: pouch > 0 ? FontWeight.bold : FontWeight.normal)),
                         ],
                       ),
                     ),
@@ -5113,8 +5113,8 @@ class AdminSettlementScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('${po['riderName']} • ${po['amount']} UGX', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
-                            Text('${po['phone']} • ${po['date']} • ${po['status']}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                            Text('${po['riderName']}  ${po['amount']} UGX', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
+                            Text('${po['phone']}  ${po['date']}  ${po['status']}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
                             if (po['txRef'] != null)
                               Text('MoMo Ref: ${po['txRef']}', style: const TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
                           ],
@@ -5163,7 +5163,7 @@ class AdminSettlementScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('${rec['id']}: Received ${rec['amount']} UGX from ${rec['tricycleId']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0D2618))),
-                            Text('Reconciled by ${rec['reconciledBy']} • ${rec['date']}', style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                            Text('Reconciled by ${rec['reconciledBy']}  ${rec['date']}', style: const TextStyle(color: Colors.grey, fontSize: 10)),
                           ],
                         ),
                         const Icon(Icons.verified_user, color: Colors.green, size: 16),
@@ -5532,7 +5532,7 @@ class AdminReportsScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('${stf['name']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618))),
-                          Text('${stf['email']} • ${stf['phone'] ?? '+256 394 880 352'}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                          Text('${stf['email']}  ${stf['phone'] ?? '+256 394 880 352'}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
                         ],
                       ),
                     ),
@@ -5887,7 +5887,7 @@ class _BookingBottomSheetState extends State<_BookingBottomSheet> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: Text(
-                'Confirm & Request Pickup (${_paymentMethod == 'Eco-Credits (Free)' ? '0 UGX • 100 Credits' : '$price UGX'})',
+                'Confirm & Request Pickup (${_paymentMethod == 'Eco-Credits (Free)' ? '0 UGX  100 Credits' : '$price UGX'})',
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
               ),
             ),
@@ -6001,7 +6001,7 @@ class _LiveMapTrackerSheet extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('Rider: ${pickup!['assignedRiderName'] ?? 'Assigned Rider'} (${pickup!['assignedRiderId'] ?? 'EcoFleet'})', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
-                              const Text('1.4 km away • Estimated 8 mins ETA', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                              const Text('1.4 km away  Estimated 8 mins ETA', style: TextStyle(color: Colors.grey, fontSize: 12)),
                             ],
                           ),
                           ElevatedButton.icon(

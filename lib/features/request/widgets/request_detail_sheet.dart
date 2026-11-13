@@ -451,7 +451,7 @@ class RequestDetailSheet extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${request.sackCount} ${request.sackCount == 1 ? 'sack' : 'sacks'} • Instant Collection Mode',
+                      '${request.sackCount} ${request.sackCount == 1 ? 'sack' : 'sacks'}  Instant Collection Mode',
                       style: const TextStyle(fontSize: 11, color: Color(0xFF556958)),
                     ),
                   ],
@@ -489,7 +489,7 @@ class RequestDetailSheet extends StatelessWidget {
               Container(width: 1, height: 28, color: const Color(0xFFE0ECE2)),
               _buildMiniMetric(
                 label: 'Carbon Offset',
-                value: '$co2Saved kg CO₂',
+                value: '$co2Saved kg CO',
                 icon: Icons.eco_rounded,
                 accent: const Color(0xFF2E7D32),
               ),

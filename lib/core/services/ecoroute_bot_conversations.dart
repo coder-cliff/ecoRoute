@@ -1,4 +1,4 @@
-﻿import 'dart:math';
+import 'dart:math';
 
 /// WhatsApp-style Conversational Knowledge Base for ecoRoute Bot
 /// Contains 400+ natural, human, local Arua City responses without robotic AI preambles.
@@ -127,7 +127,7 @@ class EcoRouteBotConversations {
     "I'm doing great! Always excited to help residents keep their neighborhoods spotless.",
     "Everything is on track! What's the latest story from your neighborhood?",
     "Doing great! Just making sure our zero-cost tech is helping real people on the ground.",
-"I'm doing well! Hope you had some delicious local food today—maybe some fresh tilapia or groundnut stew?",
+"I'm doing well! Hope you had some delicious local food todaymaybe some fresh tilapia or groundnut stew?",
     "Doing fantastic! How are the kids and neighbors doing?",
 "All is well! Ready to dispatch a collection whenever you give the thumbs up",
     "I'm good! The tricycles are fully charged and ready for the hill routes.",
@@ -179,8 +179,8 @@ class EcoRouteBotConversations {
     "For households around Oli, our riders can give you extra woven sacks on pickup so you never run out.",
 
     // Arua Hill & Golf Course
-"Arua Hill & Golf Course area is covered every Friday morning! Cool breeze and clean streets ‍",
-    "Arua Hill compounds usually have garden trimmings—we take those in standard sacks for municipal composting.",
+"Arua Hill & Golf Course area is covered every Friday morning! Cool breeze and clean streets ",
+    "Arua Hill compounds usually have garden trimmingswe take those in standard sacks for municipal composting.",
     "Near Arua Hill Stadium? We have tricycles cruising through that corridor daily. Tap 'Request Pickup' anytime!",
 "Living on Arua Hill? Our riders have no problem climbing up the slopes with their electric-assisted tricycles",
     "Arua Hill residential pickups are 2,500 UGX per sack. Clean, prompt, and verified with digital receipts.",
@@ -249,10 +249,10 @@ class EcoRouteBotConversations {
 "If you ever feel useless, remember someone once tried to sweep the desert. Your sorting actually matters!",
     "Haha! That's a good one. You've got jokes! Are you this funny at home too?",
 "You keep the good vibes coming, and I'll keep the tricycles coming! Deal?",
-"A clean house is like a fresh haircut—everything just feels better!",
+"A clean house is like a fresh haircuteverything just feels better!",
 "Haha don't look at that overflowing bin in the kitchen... just tap'Request Pickup' and act like nothing happened!",
 "I love chatting with you! Way more fun than counting how many plastic bottles fit into a 100kg sack",
-"Why was the broom late for work? It over-swept! ⏰",
+"Why was the broom late for work? It over-swept! ",
 "Haha! Stay sharp like a razor, but please wrap your actual razors before putting them in the bag!",
 "What did the ocean say to the plastic bottle?'Nothing, it just waved goodbye!' Let's keep plastic in recycling",
 "You're awesome! If there was an award for coolest resident in Arua, you'd get my vote",
@@ -261,10 +261,10 @@ class EcoRouteBotConversations {
 "I'm programmed to be eco-friendly, but my humor is 100% organic and unfiltered!",
 "Never let anyone treat you like yesterday's trash... unless it's ecoRoute, because we treat trash like gold!",
     "Haha! Keep that bright energy going all day long.",
-"My daily workout routine: 100 route calculations, 50 dispatch pings, and laughing at user chats! ‍",
+"My daily workout routine: 100 route calculations, 50 dispatch pings, and laughing at user chats! ",
 "Why did the soda can get crushed? Because it couldn't handle the pressure!",
     "Haha you're too cool! Always welcome to drop a joke here whenever you take a break.",
-"Clean compound, clear mind, full wallet—that's the ecoRoute dream for every Arua home",
+"Clean compound, clear mind, full walletthat's the ecoRoute dream for every Arua home",
 "Did you hear about the recycling party? It was absolute trash, but everyone had fun!",
 "Haha high five from the cloud! Let's keep our town spotless.",
     "Life is short, don't spend your weekend arguing about who takes the rubbish to the skip! Let us do it.",
@@ -290,17 +290,17 @@ class EcoRouteBotConversations {
     "Need to cancel or change your pickup time? Just do it directly from the app before the rider is dispatched.",
     "Can you share how many bags you need cleared? I can give you an exact total right away.",
 "Our tricycles can carry up to 15 full sacks per trip! If you have a huge pile, we send two tricycles",
-    "All collections are on-demand—no locked monthly contracts needed. Pay only when you have waste!",
+    "All collections are on-demandno locked monthly contracts needed. Pay only when you have waste!",
     "Riders operate from Monday to Saturday, 6:30 AM to 6:00 PM across all divisions of Arua City.",
 "Sunday emergencies? For events or big gatherings, we have an on-call weekend rapid response team",
 "If it rains, our tricycles carry waterproof tarpaulins to keep your waste dry and contained",
     "Do you need bags provided in advance? Tell the rider on your next pickup and they'll drop off a pack of 5 sacks.",
-"To book: Select waste type -> Choose number of sacks -> Confirm GPS location -> Tap Book! Takes 10 seconds ⏱",
+"To book: Select waste type -> Choose number of sacks -> Confirm GPS location -> Tap Book! Takes 10 seconds ",
     "You can track your rider in real time on the live CartoDB map right inside the app!",
 "Got 5 or more sacks? That qualifies as a bulk household collection. Our rider will weigh them on-site with a portable scale",
     "Are the sacks ready at your gate? If yes, book now and a nearby rider in your zone will accept within 2 minutes.",
 "We notify you via push notification and SMS when the rider is 5 minutes away from your compound",
-    "Commercial businesses can book recurring pickups—daily, every two days, or weekly on designated mornings.",
+    "Commercial businesses can book recurring pickupsdaily, every two days, or weekly on designated mornings.",
     "Got party waste from the weekend? Don't leave it smelling in the yard. Book a Sunday clearance with us!",
     "Each standard woven sack holds about 50kg to 70kg of domestic waste. Please don't overfill past the tie line.",
 "Need a pickup at a shop in town? Enter your shop name or lockup number so our rider spots you easily",
@@ -314,7 +314,7 @@ class EcoRouteBotConversations {
 "When you book, you'll see your rider's name, phone number, and tricycle registration on the screen",
     "Want to hand over directly? The rider will give you a friendly call when they park outside your gate.",
     "No hidden transport charges! The sack fee covers collection, transport, and municipal sorting.",
-"Got extra cardboard boxes from deliveries? Flatten them down and tie them with string—we take them at normal sack rates",
+"Got extra cardboard boxes from deliveries? Flatten them down and tie them with stringwe take them at normal sack rates",
     "If you have garden waste like grass cuttings, pack them tight into a woven sack to save space.",
 "Our dispatch system automatically finds the closest rider to your coordinates to minimize waiting time",
 "Pickup completed? You can rate your rider and leave feedback to help us maintain top-tier service",
@@ -347,7 +347,7 @@ class EcoRouteBotConversations {
 "Cooking oil: Please don't pour used oil down the drain! Seal it in an old plastic bottle and hand it to our rider",
 "Yard waste (leaves, hedge trimmings, grass): Great for organic compost. Pack tightly into woven sacks",
     "Animal waste & pet litter: Bag securely in a double plastic liner and tie tightly before collection.",
-"Hazardous items: Paint cans, pesticides, car battery acid—please notify us before booking so we send special containers",
+"Hazardous items: Paint cans, pesticides, car battery acidplease notify us before booking so we send special containers",
     "Styrofoam packaging: Keep dry and bagged. While hard to recycle, we ensure it goes to safe municipal containment.",
 "Clothes and textiles: If wearable, donate them! If torn and useless, place in general household waste sacks",
 "Wood and timber scrap: Remove any protruding nails for safety before placing in bulky collection",
@@ -357,7 +357,7 @@ class EcoRouteBotConversations {
 "Plastic bottle caps: Leave them screwed onto the crushed bottles so they don't get lost during sorting",
     "Food packaging with heavy grease: Put in general waste, as food oils contaminate clean paper recycling.",
 "Aluminium foil: If clean, crumple it into a ball and put with recyclable metals",
-"Bulbs and fluorescent tubes: Contain trace mercury—wrap gently in cardboard and alert the rider upon handover",
+"Bulbs and fluorescent tubes: Contain trace mercurywrap gently in cardboard and alert the rider upon handover",
 "Ceramics and broken plates: Wrap securely and mark the sack'Fragile' so nobody gets injured",
 "Why shouldn't you burn plastic in Arua? Burning plastic releases toxic dioxins that cause asthma and lung issues!",
 "Zero-litter goal: By sorting your plastics with ecoRoute, you prevent Arua drainage channels from clogging during heavy rains",
@@ -366,7 +366,7 @@ class EcoRouteBotConversations {
 "Coffee and tea grounds: Excellent organic material. You can put them straight into your green compost sack",
 "Expired medicines: Return to your local pharmacy or health center for proper pharmaceutical incineration",
     "Hard plastic buckets and basins: Highly sought after by local recyclers! We collect them in any condition.",
-"Cigarette butts: Never throw them on the grass. Put in general domestic waste—they take 10+ years to degrade",
+"Cigarette butts: Never throw them on the grass. Put in general domestic wastethey take 10+ years to degrade",
 "Leather scraps and old shoes: Place in general domestic waste sacks",
 "Stationery, school books, newspapers: Clean scrap paper is bundled and sent to paper mills in Jinja",
 "Can we collect construction debris? Small rubble and tile scraps can be booked as bulky waste; large truckloads need a skip truck",
@@ -422,12 +422,12 @@ class EcoRouteBotConversations {
     "Need a monthly statement for your landlord or housing estate? We can email it to you in one click.",
     "Our rates are approved in coordination with Arua City Council to ensure fair and regulated pricing for all residents.",
     "Never pay anyone who isn't wearing an ecoRoute uniform and showing the app validation code.",
-    "You can split payment with your compound neighbors if you share a sack—just 1,250 UGX each!",
+    "You can split payment with your compound neighbors if you share a sackjust 1,250 UGX each!",
 "If your MoMo network is down, the rider can mark it'Pay Later' and you can clear it once your network recovers",
     "All prices are quoted in Uganda Shillings (UGX) inclusive of all applicable local service levies.",
 "Want to sponsor clean pickups for an elderly neighbor or local school? You can gift collections through the app",
     "Have a billing question or discrepancy? Our support team resolves all balance queries within 15 minutes.",
-    "Affordable, transparent, and always fair—that is the ecoRoute promise to Arua City!"
+    "Affordable, transparent, and always fairthat is the ecoRoute promise to Arua City!"
   ];
 
   // =========================================================================
@@ -435,7 +435,7 @@ class EcoRouteBotConversations {
   // =========================================================================
   static final List<String> dispatchAndRiders = [
 "Our collection tricycles operate across Arua City from 6:30 AM to 6:00 PM, Monday through Saturday",
-"Standard dispatch time: Once you request, a rider arrives at your gate in 15 to 30 minutes average ⏱",
+"Standard dispatch time: Once you request, a rider arrives at your gate in 15 to 30 minutes average ",
 "Live CartoDB map: Watch your assigned tricycle move towards your compound in real time on your screen",
 "Who is your rider? All ecoRoute riders are vetted, background-checked local Arua residents with verified credentials",
     "Rider safety: Our riders wear protective gloves, boots, high-vis vests, and carry digital scales and sanitizers.",
@@ -459,7 +459,7 @@ class EcoRouteBotConversations {
     "Can I schedule for a specific hour tomorrow? Yes! Pick 'Schedule Dispatch' and choose your preferred morning window.",
     "Rider courteousness: Our team is trained to be friendly, respectful, and quick. They leave your pickup spot clean!",
 "If there's ever a spillage while loading, the rider sweeps the area clean before departing your gate",
-    "Need help tying a heavy sack? Don't strain your back—the rider will secure the sack for you.",
+    "Need help tying a heavy sack? Don't strain your backthe rider will secure the sack for you.",
 "Track your collection history: Every past pickup, rider name, timestamp, and weight is logged under your account",
 "Rider ratings: You can rate your rider 1 to 5 stars. High-rated riders receive monthly service bonuses!",
     "Emergency street clearing: If a pile of waste is blocking an access road or shop entrance, report it for rapid priority clearing.",
@@ -469,8 +469,8 @@ class EcoRouteBotConversations {
     "Riders are equipped with rain ponchos and sack covers so your waste stays dry even during wet spells.",
 "Want to book for a commercial arcade with 10 shops? We assign a dedicated tricycle for your building",
     "Our dispatch team monitors route bottlenecks using satellite maps to re-route riders around market congestion.",
-"Riders love when sacks are tied and placed near the gate—it helps them serve 20+ homes per hour!",
-    "Need a pickup right now? Just check the map—there's almost certainly an ecoRoute tricycle within 1 kilometer of you.",
+"Riders love when sacks are tied and placed near the gateit helps them serve 20+ homes per hour!",
+    "Need a pickup right now? Just check the mapthere's almost certainly an ecoRoute tricycle within 1 kilometer of you.",
     "Forgot to give gate directions? Rider will call your registered phone number when they reach your landmark.",
 "Safety first: Our riders never handle loose medical sharps or unsealed chemicals. Please keep hazardous items flagged",
     "From dispatch to drop-off, your waste is handled professionally and sustainably. You're in good hands with ecoRoute!"
@@ -513,7 +513,7 @@ class EcoRouteBotConversations {
 "Have an event coming up (wedding, funeral, graduation, church crusade)? Book our dedicated event cleanup crew",
     "For technical issues with the map or GPS, toggle your phone's location permission and refresh the screen.",
     "We treat every resident like family. Don't hesitate to reach out for anything, big or small!",
-    "Hotline reminder: +256394880352 — we are always just a phone call or WhatsApp message away.",
+    "Hotline reminder: +256394880352  we are always just a phone call or WhatsApp message away.",
 "Thank you for being part of the ecoRoute movement. Together, we keep Arua clean, green, and healthy!"
   ];
 
