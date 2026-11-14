@@ -1275,7 +1275,7 @@ class EcoRouteApp extends StatelessWidget {
         final state = EcoRouteState.instance;
         return MaterialApp(
           navigatorKey: EcoRouteState.navigatorKey,
-          title: 'EcoRoute Antigravity',
+          title: 'ECO ROUTE',
           debugShowCheckedModeBanner: false,
           theme: AntigravityTheme.buildTheme(isDarkMode: state.isDarkMode),
           darkTheme: AntigravityTheme.buildTheme(isDarkMode: true),

@@ -2098,11 +2098,12 @@ class _ResponsiveResidentDashboardState
                     Icon(Icons.eco, color: Color(0xFF4CAF50), size: 28),
                     SizedBox(width: 10),
                     Text(
-                      'Antigravity',
+                      'ECO ROUTE',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ],
