@@ -17,6 +17,7 @@ class AuthService {
   static const String _invitedRidersKey = 'ecoroute_invited_riders_v1';
   static const String _remindersKey = 'ecoroute_reminders_enabled_v1';
   static const String supportEmail = 'ecoroute.waste@gmail.com';
+  static const String officialAdminEmail = 'ayikog@yahoo.com';
 
   SharedPreferences get preferences => _preferences;
 
@@ -67,6 +68,17 @@ class AuthService {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Creates a clean in-memory Guest resident user without any hardcoded mock credentials
+  AppUser createGuestUser() {
+    return const AppUser(
+      id: 'guest',
+      fullName: 'Guest Resident',
+      email: '',
+      phone: '',
+      role: AppRole.resident,
+    );
   }
 
   Future<void> _saveSession(AppUser user) async {
@@ -164,14 +176,21 @@ class AuthService {
             debugPrint('Firestore profile fetch notice: $e');
           }
 
-          // Role is stored and managed on Firestore, not hardcoded
-          var resolvedRole = parseRole(profile?['role'] as String?);
+          // Role is strictly ayikog@yahoo.com for Admin; all others are Rider or Resident
+          var resolvedRole = cleanEmail == officialAdminEmail
+              ? AppRole.admin
+              : parseRole(profile?['role'] as String?);
+          if (cleanEmail != officialAdminEmail && resolvedRole == AppRole.admin) {
+            resolvedRole = AppRole.resident;
+          }
 
           // If this is a newly authenticated user without a profile doc yet,
-          // check if they match municipal admin emails or invited rider records
+          // check if they match municipal admin email or invited rider records
           if (profile == null) {
             final riderInvite = getRiderInvite(cleanEmail);
-            resolvedRole = riderInvite != null ? AppRole.rider : AppRole.resident;
+            resolvedRole = cleanEmail == officialAdminEmail
+                ? AppRole.admin
+                : (riderInvite != null ? AppRole.rider : AppRole.resident);
 
             try {
               await profileRef.set({
@@ -222,12 +241,18 @@ class AuthService {
         final matches = (storedHash != null && storedHash == inputHash) ||
             (rawStoredPassword != null && rawStoredPassword == password);
         if (matches) {
+          var regRole = cleanEmail == officialAdminEmail
+              ? AppRole.admin
+              : parseRole(reg['role'] as String?);
+          if (cleanEmail != officialAdminEmail && regRole == AppRole.admin) {
+            regRole = AppRole.resident;
+          }
           final user = AppUser(
             id: reg['id'] as String,
             fullName: reg['fullName'] as String,
             email: reg['email'] as String,
             phone: (reg['phone'] as String?) ?? '',
-            role: parseRole(reg['role'] as String?),
+            role: regRole,
             address: reg['address'] as String?,
             photoUrl: reg['photoUrl'] as String?,
           );
@@ -277,8 +302,13 @@ class AuthService {
       throw StateError('Please enter a valid phone number.');
     }
 
-    // Auto-detect if user was invited by management as a Rider
+    // Auto-detect if user is the official Admin or was invited as a Rider
     var resolvedRole = role;
+    if (cleanEmail == officialAdminEmail) {
+      resolvedRole = AppRole.admin;
+    } else if (role == AppRole.admin) {
+      resolvedRole = AppRole.resident;
+    }
     final invite = getRiderInvite(inviteCode?.trim().isNotEmpty == true ? inviteCode!.trim() : cleanEmail);
     if (invite != null) {
       resolvedRole = AppRole.rider;

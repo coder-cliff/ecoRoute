@@ -186,7 +186,7 @@ class _ActiveTripSheetState extends State<ActiveTripSheet> {
         imageQuality: 85,
       );
       if (file == null) return;
-      final updated = _currentStop.copyWith(photoUrl: file.path);
+      final updated = _currentStop.copyWith(clearedPhotoUrl: file.path);
       if (widget.onUpdateCashReceived != null) {
         await widget.onUpdateCashReceived!(updated);
       } else {
@@ -640,16 +640,54 @@ class _ActiveTripSheetState extends State<ActiveTripSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Resident Reported Issue Photo (if any)
+                      if (current.photoUrl != null) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.report_problem_outlined, size: 16, color: Color(0xFFC62828)),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Resident Reported Issue Photo',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFC62828)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF3E0),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFFFE0B2)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.image_outlined, size: 16, color: Color(0xFFE65100)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Resident photo attached: ${current.photoUrl!}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFFE65100), fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
                       Row(
                         children: [
                           const Icon(Icons.camera_alt_outlined, size: 18, color: Color(0xFF2E7D32)),
                           const SizedBox(width: 8),
                           const Text(
-                            'Proof of Collection Photo',
+                            'Proof of Cleared Site (Driver Photo)',
                             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
                           ),
                           const Spacer(),
-                          if (current.photoUrl != null)
+                          if (current.clearedPhotoUrl != null)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
@@ -657,7 +695,7 @@ class _ActiveTripSheetState extends State<ActiveTripSheet> {
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: const Text(
-                                'Photo Attached',
+                                'Cleared Photo Attached',
                                 style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF2E7D32)),
                               ),
                             ),
@@ -665,9 +703,9 @@ class _ActiveTripSheetState extends State<ActiveTripSheet> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        current.photoUrl != null
-                            ? 'Visual proof captured on-site. Ready for depot weigh-in audit.'
-                            : 'Snap a photo of the loaded tricycle sacks at the gate for verified drop-off.',
+                        current.clearedPhotoUrl != null
+                            ? 'Site clearance photo captured. Ready to mark resolved and complete.'
+                            : 'Snap a photo of the cleared area to confirm the collection and complete.',
                         style: TextStyle(fontSize: 11, color: subtextColor),
                       ),
                       const SizedBox(height: 10),
@@ -677,7 +715,7 @@ class _ActiveTripSheetState extends State<ActiveTripSheet> {
                             child: OutlinedButton.icon(
                               onPressed: () => _captureProofPhoto(ImageSource.camera),
                               icon: const Icon(Icons.photo_camera_rounded, size: 16),
-                              label: Text(current.photoUrl != null ? 'Retake Photo' : 'Take Gate Photo'),
+                              label: Text(current.clearedPhotoUrl != null ? 'Retake Cleared Photo' : 'Take Cleared Site Photo'),
                               style: OutlinedButton.styleFrom(
                                 side: const BorderSide(color: Color(0xFF2E7D32)),
                                 foregroundColor: const Color(0xFF2E7D32),

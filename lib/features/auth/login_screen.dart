@@ -90,12 +90,9 @@ class _LoginScreenState extends State<LoginScreen> {
         // Fallback for isolated widget tests without auth service
         final emailLower = email.toLowerCase();
         final AppRole resolvedRole;
-        if (emailLower.contains('admin') ||
-            emailLower == 'saviordeogratius@yahoo.com' ||
-            emailLower == 'techcliff451@hotmail.com') {
+        if (emailLower == 'ayikog@yahoo.com') {
           resolvedRole = AppRole.admin;
-        } else if (emailLower.contains('rider') ||
-            emailLower == 'rider.juma@ecoroute.ug') {
+        } else if (emailLower.contains('rider')) {
           resolvedRole = AppRole.rider;
         } else {
           resolvedRole = AppRole.resident;
@@ -488,6 +485,32 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Explore as Guest
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: () {
+                            AppRouter.routeToRole(
+                              context,
+                              role: AppRole.guest,
+                              repository: widget.repository,
+                              authService: widget.authService,
+                              wasteApiService: widget.wasteApiService,
+                            );
+                          },
+                          icon: const Icon(Icons.explore_outlined, size: 18, color: Color(0xFF2E8B57)),
+                          label: const Text(
+                            'Explore as Guest (No Account Required)',
+                            style: TextStyle(
+                              fontFamily: 'Satoshi',
+                              fontSize: 13.5,
+                              color: Color(0xFF2E8B57),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 16),
                     ],

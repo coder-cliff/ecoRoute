@@ -157,6 +157,7 @@ class SharedPreferencesPickupRequestRepository
     'residentPhone': request.residentPhone,
     'residentId': request.residentId,
     'photoUrl': request.photoUrl,
+    'clearedPhotoUrl': request.clearedPhotoUrl,
     'isSynced': request.isSynced,
     'paymentMethod': request.paymentMethod,
     'cashReceivedByRider': request.cashReceivedByRider,
@@ -187,6 +188,7 @@ class SharedPreferencesPickupRequestRepository
     residentPhone: json['residentPhone'] as String? ?? '+256 772 000 001',
     residentId: json['residentId'] as String? ?? 'resident-1',
     photoUrl: json['photoUrl'] as String?,
+    clearedPhotoUrl: json['clearedPhotoUrl'] as String?,
     isSynced: (json['isSynced'] as bool?) ?? true,
     paymentMethod: json['paymentMethod'] as String? ?? 'unpaid',
     cashReceivedByRider: (json['cashReceivedByRider'] as bool?) ?? false,
@@ -219,11 +221,7 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
 
   Future<String> _getUserRole(firebase_auth.User user) async {
     final email = user.email?.toLowerCase().trim() ?? '';
-    if (email == 'saviordeogratius@yahoo.com' ||
-        email == 'techcliff451@hotmail.com' ||
-        email == 'saviordeogratius@gmail.com' ||
-        email == 'techcliff451@gmail.com' ||
-        email.contains('admin')) {
+    if (email == 'ayikog@yahoo.com') {
       return 'admin';
     }
 
@@ -394,6 +392,7 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
     'residentPhone': request.residentPhone,
     'residentId': request.residentId,
     'photoUrl': request.photoUrl,
+    'clearedPhotoUrl': request.clearedPhotoUrl,
     'paymentMethod': request.paymentMethod,
     'cashReceivedByRider': request.cashReceivedByRider,
     'receiptNumber': request.receiptNumber,
@@ -440,6 +439,7 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
       residentPhone: data['residentPhone'] as String? ?? '',
       residentId: data['residentId'] as String,
       photoUrl: data['photoUrl'] as String?,
+      clearedPhotoUrl: data['clearedPhotoUrl'] as String?,
       isSynced: true,
       paymentMethod: data['paymentMethod'] as String? ?? 'unpaid',
       cashReceivedByRider: (data['cashReceivedByRider'] as bool?) ?? false,

@@ -7,6 +7,7 @@ import '../../core/pickup_request_repository.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/router_service.dart';
 import '../../core/services/waste_api_service.dart';
+import '../../domain/enums/role.dart';
 
 /// Minimalist EcoRoute twin leaf logo matching design specifications
 class EcoRouteLeafLogo extends StatelessWidget {
@@ -92,12 +93,14 @@ class SplashScreen extends StatefulWidget {
     this.authService,
     this.wasteApiService,
     this.splashDuration = const Duration(milliseconds: 1500),
+    this.allowGuestLaunch = true,
   });
 
   final PickupRequestRepository repository;
   final AuthService? authService;
   final WasteApiService? wasteApiService;
   final Duration splashDuration;
+  final bool allowGuestLaunch;
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -134,6 +137,42 @@ class _SplashScreenState extends State<SplashScreen>
   void _checkAuthAndNavigate() {
     if (!mounted) return;
 
+    // 1. Inspect URL parameters / hash fragments for rider invitation token
+    String? inviteCode;
+    String? inviteEmail;
+    try {
+      final uri = Uri.base;
+      inviteCode = uri.queryParameters['invite'] ??
+          uri.queryParameters['code'] ??
+          uri.queryParameters['rider'];
+      inviteEmail = uri.queryParameters['email'];
+
+      if (uri.fragment.isNotEmpty && uri.fragment.contains('=')) {
+        try {
+          final fragUri = Uri.parse(
+            'https://dummy.ug/?${uri.fragment.replaceFirst('#', '').replaceFirst('/', '')}',
+          );
+          inviteCode ??= fragUri.queryParameters['invite'] ?? fragUri.queryParameters['code'];
+          inviteEmail ??= fragUri.queryParameters['email'];
+        } catch (_) {}
+      }
+    } catch (_) {}
+
+    final uri = Uri.base;
+    final isRiderSetup = uri.path.contains('rider-setup') || uri.fragment.contains('rider-setup');
+
+    if (((inviteCode != null && inviteCode.isNotEmpty) || isRiderSetup) && widget.authService != null) {
+      AppRouter.routeToRiderSetup(
+        context,
+        repository: widget.repository,
+        authService: widget.authService!,
+        wasteApiService: widget.wasteApiService,
+        inviteCode: inviteCode,
+        email: inviteEmail,
+      );
+      return;
+    }
+
     final user = widget.authService?.getCurrentUser();
     if (user != null) {
       // Authenticated user: automatic role-based routing
@@ -144,8 +183,17 @@ class _SplashScreenState extends State<SplashScreen>
         authService: widget.authService,
         wasteApiService: widget.wasteApiService,
       );
+    } else if (widget.allowGuestLaunch) {
+      // Unregistered visitor: seamlessly launch into default Guest account to explore features
+      AppRouter.routeToRole(
+        context,
+        role: AppRole.guest,
+        repository: widget.repository,
+        authService: widget.authService,
+        wasteApiService: widget.wasteApiService,
+      );
     } else {
-      // Unauthenticated: present clean Sign-In Portal
+      // Explicit login portal request
       AppRouter.routeToLogin(
         context,
         repository: widget.repository,

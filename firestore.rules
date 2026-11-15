@@ -11,13 +11,17 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.email == 'ayikog@yahoo.com';
+    }
+
     // Profiles collection (residents, riders, administrators)
     // Read is allowed publicly to enable username/phone to email resolution before sign-in
     match /profiles/{userId} {
       allow read: if true;
       allow create: if isAuthenticated();
       allow update: if isAuthenticated();
-      allow delete: if isAuthenticated() && isOwner(userId);
+      allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
     }
 
     // Collection pickup requests (created by residents, accepted by riders, verified by admins)
@@ -30,7 +34,7 @@ service cloud.firestore {
     // Read is allowed so riders can verify their invite code during registration
     match /invitedRiders/{riderEmail} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin() || (isAuthenticated() && request.auth.token.email == riderEmail);
     }
 
     // Legacy/auxiliary collections fallback

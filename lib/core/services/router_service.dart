@@ -10,8 +10,36 @@ import '../../features/home/home_screen.dart';
 import '../../features/rider/rider_task_hub.dart';
 import '../../features/admin/admin_dashboard.dart';
 
+import '../../features/rider/rider_setup_screen.dart';
+
 class AppRouter {
   AppRouter._();
+
+  static void routeToRiderSetup(
+    BuildContext context, {
+    required PickupRequestRepository repository,
+    required AuthService authService,
+    WasteApiService? wasteApiService,
+    String? inviteCode,
+    String? email,
+  }) {
+    Navigator.of(context).pushAndRemoveUntil(
+      PageRouteBuilder<void>(
+        pageBuilder: (context, animation, secondaryAnimation) => RiderSetupScreen(
+          repository: repository,
+          authService: authService,
+          wasteApiService: wasteApiService,
+          initialInviteCode: inviteCode,
+          initialEmail: email,
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
+      (route) => false,
+    );
+  }
 
   static Widget getScreenForRole({
     required AppRole role,
@@ -38,7 +66,7 @@ class AppRouter {
           repository: repository,
           authService: authService,
           wasteApiService: wasteApiService,
-          enforcedRole: AppRole.resident,
+          enforcedRole: role,
         );
     }
   }

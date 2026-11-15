@@ -152,8 +152,9 @@ class _SupportScreenState extends State<SupportScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.account_circle_outlined, color: EcoPalette.primaryDark),
-            onPressed: () {},
+            tooltip: 'Arua Operations Hotline',
+            icon: const Icon(Icons.support_agent_rounded, color: EcoPalette.primaryDark),
+            onPressed: () => _makeCall('+256 394 880 352'),
           ),
         ],
       ),

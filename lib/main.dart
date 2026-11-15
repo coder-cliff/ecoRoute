@@ -15,8 +15,12 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'core/pickup_request_repository.dart';
+import 'core/services/auth_service.dart';
 import 'core/services/pdf_report_service.dart';
 import 'core/services/rider_invite_service.dart';
+import 'domain/enums/role.dart';
+import 'features/rider/rider_setup_screen.dart';
 import 'firebase_options.dart';
 
 // =================================================================
@@ -59,9 +63,15 @@ class EcoRouteState extends ChangeNotifier {
 
   static const String _kStorageKey = 'ecoroute_app_state_v4';
   SharedPreferences? _prefs;
+  SharedPreferences? get preferences => _prefs;
+  AuthService? authService;
+  PickupRequestRepository? pickupRepo;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _firestoreSubscription;
 
   // Active Role and Profile
+  bool isGuest = false;
   String currentRole = 'resident'; // 'resident', 'rider', 'admin'
+  String get userRole => currentRole;
   String userName = 'Jane Agondua';
   String userUsername = 'jane_arua';
   String userEmail = 'resident.arua@ecoroute.ug';
@@ -184,9 +194,13 @@ class EcoRouteState extends ChangeNotifier {
   Future<void> init() async {
     try {
       _prefs = await SharedPreferences.getInstance();
+      authService = AuthService(_prefs!);
+      pickupRepo = SharedPreferencesPickupRequestRepository(_prefs!);
+
       final saved = _prefs?.getString(_kStorageKey);
       if (saved != null) {
         final map = jsonDecode(saved) as Map<String, dynamic>;
+        if (map['isGuest'] != null) isGuest = map['isGuest'] as bool;
         if (map['currentRole'] != null) currentRole = map['currentRole'] as String;
         if (map['userName'] != null) userName = map['userName'] as String;
         if (map['userUsername'] != null) userUsername = map['userUsername'] as String;
@@ -209,17 +223,130 @@ class EcoRouteState extends ChangeNotifier {
           riderTransactions = (map['riderTransactions'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
         }
       }
+
+      // Check Firebase auth state
+      User? fbUser;
+      if (Firebase.apps.isNotEmpty) {
+        try {
+          fbUser = FirebaseAuth.instance.currentUser;
+        } catch (_) {}
+      }
+
+      if (fbUser != null) {
+        isGuest = false;
+        userEmail = fbUser.email ?? userEmail;
+        userName = fbUser.displayName ?? userName;
+        if (userEmail.toLowerCase().trim() == 'ayikog@yahoo.com') {
+          currentRole = 'admin';
+        }
+      } else if (saved == null) {
+        // Fresh installation unauthenticated launch defaults directly to Guest Mode
+        isGuest = true;
+        userName = 'Guest User';
+        userUsername = 'guest_arua';
+        userEmail = 'guest@ecoroute.ug';
+        userPhone = '+256 394 880 352';
+        currentRole = 'resident';
+      }
     } catch (e) {
       debugPrint('State initialization notice: $e');
     }
+
+    // Subscribe to multi-device real-time Firestore synchronization
+    _listenToPickupRequestsStream();
+
     // Fetch live weather from Open-Meteo Arua
     fetchLiveWeather();
+    notifyListeners();
+  }
+
+  void _listenToPickupRequestsStream() {
+    if (Firebase.apps.isNotEmpty) {
+      try {
+        _firestoreSubscription?.cancel();
+        _firestoreSubscription = FirebaseFirestore.instance
+            .collection('pickupRequests')
+            .orderBy('submittedAt', descending: true)
+            .snapshots()
+            .listen((snapshot) {
+          _syncFromFirestoreSnapshot(snapshot.docs);
+        }, onError: (err) {
+          debugPrint('Firestore real-time sync stream error: $err');
+        });
+      } catch (e) {
+        debugPrint('Firestore sync stream init notice: $e');
+      }
+    }
+  }
+
+  void _syncFromFirestoreSnapshot(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    if (docs.isEmpty) return;
+    final List<Map<String, dynamic>> newResidentReqs = [];
+    final List<Map<String, dynamic>> newRiderTasks = [];
+
+    for (final doc in docs) {
+      final data = Map<String, dynamic>.from(doc.data());
+      data['id'] = data['id']?.toString() ?? doc.id;
+      final docId = data['id'] as String;
+
+      newRiderTasks.add(data);
+
+      final client = data['client'] as String? ?? '';
+      final residentId = data['residentId'] as String?;
+      final currentUid = Firebase.apps.isNotEmpty ? FirebaseAuth.instance.currentUser?.uid : null;
+      final isMine = (residentId != null && residentId == currentUid) ||
+          client == userName ||
+          isGuest ||
+          currentRole == 'resident';
+
+      if (isMine) {
+        final sacks = (data['sacks'] as num?)?.toInt() ?? 1;
+        final status = (data['status'] as String?) ?? 'Requested';
+        final isSettled = status == 'Settled' || status == 'Resolved';
+        newResidentReqs.add({
+          'id': 'Pickup #$docId',
+          'pickupId': docId,
+          'date': data['createdAt'] ?? 'Recently',
+          'size': data['wasteType'] != null ? '${data['wasteType']} ($sacks Sack${sacks > 1 ? 's' : ''})' : '$sacks Sack${sacks > 1 ? 's' : ''}',
+          'status': status,
+          'color': isSettled ? 0xFF0D2618 : 0xFF9C3D18,
+          'receiptSerial': data['receiptSerial'] ?? 'ECO-ARUA-$docId',
+          'address': data['address'] ?? 'Arua City',
+          'price': data['price'] ?? '${sacks * 2500} UGX',
+          'sacks': sacks,
+          'wasteType': data['wasteType'] ?? 'General',
+          'description': data['description'] ?? '',
+          'paymentMethod': data['paymentMethod'] ?? 'Cash on Collection',
+          'assignedRiderName': data['assignedRiderName'] ?? 'Pending Dispatch',
+          'verificationCode': data['verificationCode'] ?? '',
+          'photoUrl': data['photoUrl'] ?? data['photoEvidence'],
+          'clearedPhotoUrl': data['clearedPhotoUrl'],
+        });
+      }
+    }
+
+    if (newRiderTasks.isNotEmpty) {
+      riderTasks = newRiderTasks;
+    }
+    if (newResidentReqs.isNotEmpty) {
+      residentRequests = newResidentReqs;
+    }
+
+    if (activePickup != null) {
+      final activeId = activePickup!['id'];
+      final matching = riderTasks.firstWhere((t) => t['id'] == activeId, orElse: () => {});
+      if (matching.isNotEmpty) {
+        activePickup = Map<String, dynamic>.from(matching);
+      }
+    }
+
     notifyListeners();
   }
 
   Future<void> _saveState() async {
     try {
       final stateMap = {
+        'isGuest': isGuest,
         'currentRole': currentRole,
         'userName': userName,
         'userUsername': userUsername,
@@ -305,19 +432,21 @@ class EcoRouteState extends ChangeNotifier {
     _saveState();
     notifyListeners();
 
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid != null && Firebase.apps.isNotEmpty) {
-      try {
-        FirebaseFirestore.instance.collection('profiles').doc(uid).set({
-          'fullName': name,
-          'username': username.toLowerCase(),
-          'phone': phone,
-          'cell': cell,
-          'photoBase64': ?photoBase64,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      } catch (e) {
-        debugPrint('Firestore profile update notice: $e');
+    if (Firebase.apps.isNotEmpty) {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        try {
+          FirebaseFirestore.instance.collection('profiles').doc(uid).set({
+            'fullName': name,
+            'username': username.toLowerCase(),
+            'phone': phone,
+            'cell': cell,
+            'photoBase64': photoBase64 ?? userPhotoBase64,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        } catch (e) {
+          debugPrint('Firestore profile update notice: $e');
+        }
       }
     }
   }
@@ -334,6 +463,10 @@ class EcoRouteState extends ChangeNotifier {
       _saveState();
       notifyListeners();
     }
+  }
+
+  void refresh() {
+    notifyListeners();
   }
 
   Future<void> _syncPickupRequestToFirestore(Map<String, dynamic> requestData) async {
@@ -380,11 +513,15 @@ class EcoRouteState extends ChangeNotifier {
       'isInstant': isInstant,
       'paymentMethod': paymentMethod,
       'photoEvidence': null,
+      'photoUrl': null,
+      'clearedPhotoUrl': null,
       'riderRating': null,
       'receiptSerial': serial,
       'distance': '1.2 km',
       'eta': 'Pending Dispatch',
       'zone': address.split(',').first.trim(),
+      'submittedAt': DateTime.now().toIso8601String(),
+      'residentId': Firebase.apps.isNotEmpty ? FirebaseAuth.instance.currentUser?.uid : null,
     };
 
     activePickup = Map<String, dynamic>.from(order);
@@ -404,6 +541,8 @@ class EcoRouteState extends ChangeNotifier {
       'paymentMethod': paymentMethod,
       'assignedRiderName': 'Pending Admin Dispatch',
       'verificationCode': code,
+      'photoUrl': null,
+      'clearedPhotoUrl': null,
     });
 
     riderTasks.insert(0, Map<String, dynamic>.from(order));
@@ -498,6 +637,129 @@ class EcoRouteState extends ChangeNotifier {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Thank you! $stars-star rating and feedback submitted for ${activePickup?['assignedRiderName'] ?? 'Rider'}.')),
+    );
+  }
+
+  void reportIssue({
+    required String wasteType,
+    required String description,
+    required String address,
+    String? photoBase64,
+    bool notifyOnResolve = true,
+  }) {
+    final rng = Random();
+    final newId = '${rng.nextInt(90000) + 100000}';
+    final code = '${rng.nextInt(9000) + 1000}';
+    final nowTime = 'Today, ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}';
+    final serial = 'ECO-ARUA-$newId';
+
+    final order = {
+      'id': newId,
+      'client': userName,
+      'phone': userPhone,
+      'sacks': 1,
+      'wasteType': wasteType,
+      'description': description,
+      'address': address,
+      'pickupNotes': description,
+      'price': '0 UGX (Municipal Issue)',
+      'status': 'Requested',
+      'step': 0,
+      'verificationCode': code,
+      'assignedRiderId': null,
+      'assignedRiderName': 'Pending Admin Dispatch',
+      'createdAt': nowTime,
+      'isInstant': true,
+      'paymentMethod': 'Municipal Free Dispatch',
+      'photoEvidence': photoBase64,
+      'photoUrl': photoBase64,
+      'clearedPhotoUrl': null,
+      'receiptSerial': serial,
+      'distance': '0.8 km',
+      'eta': 'Pending Dispatch',
+      'zone': address.split(',').first.trim(),
+      'notifyOnResolve': notifyOnResolve,
+      'submittedAt': DateTime.now().toIso8601String(),
+      'residentId': Firebase.apps.isNotEmpty ? FirebaseAuth.instance.currentUser?.uid : null,
+    };
+
+    activePickup = Map<String, dynamic>.from(order);
+
+    residentRequests.insert(0, {
+      'id': 'Pickup #$newId',
+      'pickupId': newId,
+      'date': nowTime,
+      'size': wasteType,
+      'status': 'Requested',
+      'color': 0xFF9C3D18,
+      'receiptSerial': serial,
+      'address': address,
+      'price': '0 UGX',
+      'sacks': 1,
+      'wasteType': wasteType,
+      'description': description,
+      'paymentMethod': 'Municipal Free Dispatch',
+      'assignedRiderName': 'Pending Admin Dispatch',
+      'verificationCode': code,
+      'photoUrl': photoBase64,
+      'clearedPhotoUrl': null,
+    });
+
+    riderTasks.insert(0, Map<String, dynamic>.from(order));
+    selectedRiderTaskIndex = 0;
+
+    _syncPickupRequestToFirestore(order);
+    _saveState();
+    notifyListeners();
+  }
+
+  void riderResolveWithPhoto({
+    required String clearedPhotoBase64,
+    required BuildContext context,
+  }) {
+    if (riderTasks.isEmpty) return;
+    final activeTask = riderTasks[selectedRiderTaskIndex];
+    final sacks = (activeTask['sacks'] as num?)?.toInt() ?? 1;
+    final earn = sacks * 2500;
+
+    activeTask['status'] = 'Resolved';
+    activeTask['step'] = 3;
+    activeTask['clearedPhotoUrl'] = clearedPhotoBase64;
+    activeTask['resolvedAt'] = DateTime.now().toIso8601String();
+
+    if (activePickup != null && activePickup!['id'] == activeTask['id']) {
+      activePickup!['status'] = 'Resolved';
+      activePickup!['step'] = 3;
+      activePickup!['clearedPhotoUrl'] = clearedPhotoBase64;
+    }
+
+    for (final req in residentRequests) {
+      if (req['pickupId'] == activeTask['id']) {
+        req['status'] = 'Resolved';
+        req['color'] = 0xFF0D2618;
+        req['clearedPhotoUrl'] = clearedPhotoBase64;
+      }
+    }
+
+    riderLedgerBalance += earn;
+    riderTransactions.insert(0, {
+      'title': 'Pickup #${activeTask['id']} Resolved & Cleared',
+      'date': 'Just now',
+      'amount': '+$earn UGX',
+      'isPayout': false,
+    });
+
+    totalTonnes += (sacks * 0.05);
+
+    _syncPickupRequestToFirestore(activeTask);
+    _saveState();
+    notifyListeners();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Pickup #${activeTask['id']} marked as Resolved! Proof uploaded to Dispatch. +$earn UGX earned.'),
+        backgroundColor: const Color(0xFF0D2618),
+      ),
     );
   }
 
@@ -694,18 +956,21 @@ class EcoRouteState extends ChangeNotifier {
     final buffer = StringBuffer();
     buffer.writeln('Receipt Serial,Pickup ID,Date,Client,Address,Sacks,Waste Type,Price,Payment Method,Rider ID,Status');
     for (final task in riderTasks) {
+      final sacks = (task['sacks'] as num?)?.toInt() ?? 1;
+      final price = task['price']?.toString() ?? '${sacks * 2500} UGX';
+      final payment = task['paymentMethod'] ?? task['payment'] ?? 'Cash on Collection';
       buffer.writeln(
         '${task['receiptSerial'] ?? 'ECO-ARUA-${task['id']}'},'
         '${task['id']},'
         'Today,'
-        '"${task['client']}",'
-        '"${task['address']}",'
-        '${task['sacks']},'
-        '${task['wasteType']},'
-        '"${task['payment']}",'
-        'Cash/MoMo,'
+        '"${task['client'] ?? 'Resident'}",'
+        '"${task['address'] ?? 'Arua Municipality'}",'
+        '$sacks,'
+        '"${task['wasteType'] ?? 'General'}",'
+        '"$price",'
+        '"$payment",'
         '${task['assignedRiderId'] ?? 'TRIC-04'},'
-        '${task['status']}'
+        '${task['status'] ?? 'Requested'}'
       );
     }
     final bytes = utf8.encode(buffer.toString());
@@ -766,11 +1031,12 @@ void main() async {
   final state = EcoRouteState.instance;
   await state.init();
 
-  runApp(const EcoRouteApp());
+  runApp(const EcoRouteApp(allowGuestLaunch: true));
 }
 
 class EcoRouteApp extends StatelessWidget {
-  const EcoRouteApp({super.key});
+  final bool? allowGuestLaunch;
+  const EcoRouteApp({super.key, this.allowGuestLaunch});
 
   @override
   Widget build(BuildContext context) {
@@ -807,14 +1073,46 @@ class EcoRouteApp extends StatelessWidget {
           ),
           initialRoute: '/',
           routes: {
-            '/': (context) => const SplashScreen(),
+            '/': (context) => SplashScreen(allowGuestLaunch: allowGuestLaunch),
             '/login': (context) => const LoginScreen(),
             '/resident': (context) => const ResidentRootScreen(),
             '/rider': (context) => const RiderRootScreen(),
             '/admin': (context) => const AdminRootScreen(),
+            '/rider-setup': (context) => const RiderSetupRouteScreen(),
           },
         );
       },
+    );
+  }
+}
+
+class RiderSetupRouteScreen extends StatelessWidget {
+  const RiderSetupRouteScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final uri = Uri.base;
+    String? code = args?['code'] as String? ?? uri.queryParameters['code'] ?? uri.queryParameters['invite'];
+    String? email = args?['email'] as String? ?? uri.queryParameters['email'];
+
+    if ((code == null || email == null) && uri.fragment.isNotEmpty && uri.fragment.contains('=')) {
+      try {
+        final frag = uri.fragment.startsWith('/') ? uri.fragment.substring(1) : uri.fragment;
+        final fragUri = Uri.tryParse('https://ecoroute.ug/$frag');
+        if (fragUri != null) {
+          code ??= fragUri.queryParameters['code'] ?? fragUri.queryParameters['invite'];
+          email ??= fragUri.queryParameters['email'];
+        }
+      } catch (_) {}
+    }
+    final state = EcoRouteState.instance;
+
+    return RiderSetupScreen(
+      repository: state.pickupRepo ?? const MemoryPickupRequestRepository(),
+      authService: state.authService ?? AuthService(state.preferences!),
+      initialInviteCode: code,
+      initialEmail: email,
     );
   }
 }
@@ -823,7 +1121,8 @@ class EcoRouteApp extends StatelessWidget {
 // 3. SPLASH SCREEN
 // =================================================================
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  final bool? allowGuestLaunch;
+  const SplashScreen({super.key, this.allowGuestLaunch});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -832,6 +1131,7 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
+  Timer? _navTimer;
 
   @override
   void initState() {
@@ -840,8 +1140,65 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
     _controller.forward();
 
-    Timer(const Duration(milliseconds: 2200), () {
-      if (mounted) {
+    // Check Rider invite query token or hash route (?code= / ?invite= / #/rider-setup)
+    final uri = Uri.base;
+    String? inviteCode = uri.queryParameters['code'] ?? uri.queryParameters['invite'] ?? uri.queryParameters['rider'];
+    String? inviteEmail = uri.queryParameters['email'];
+
+    if (uri.fragment.isNotEmpty && uri.fragment.contains('=')) {
+      try {
+        final frag = uri.fragment.startsWith('/') ? uri.fragment.substring(1) : uri.fragment;
+        final fragUri = Uri.tryParse('https://ecoroute.ug/$frag');
+        if (fragUri != null) {
+          inviteCode ??= fragUri.queryParameters['code'] ?? fragUri.queryParameters['invite'] ?? fragUri.queryParameters['rider'];
+          inviteEmail ??= fragUri.queryParameters['email'];
+        }
+      } catch (_) {}
+    }
+    final isRiderSetup = uri.path.contains('rider-setup') || uri.fragment.contains('rider-setup');
+
+    _navTimer = Timer(const Duration(milliseconds: 2200), () {
+      if (!mounted) return;
+
+      if (inviteCode != null || isRiderSetup) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/rider-setup',
+          arguments: {
+            'code': inviteCode,
+            'email': inviteEmail,
+          },
+        );
+        return;
+      }
+
+      User? fbUser;
+      if (Firebase.apps.isNotEmpty) {
+        try {
+          fbUser = FirebaseAuth.instance.currentUser;
+        } catch (_) {}
+      }
+      final state = EcoRouteState.instance;
+      final authUser = state.authService?.getCurrentUser();
+
+      if (fbUser != null || authUser != null) {
+        final email = (fbUser?.email ?? authUser?.email ?? state.userEmail).toLowerCase().trim();
+        final role = authUser?.role.name ?? state.currentRole;
+        if (email == 'ayikog@yahoo.com' || role == 'admin') {
+          Navigator.pushReplacementNamed(context, '/admin');
+        } else if (role == 'rider' || email.contains('rider')) {
+          Navigator.pushReplacementNamed(context, '/rider');
+        } else {
+          Navigator.pushReplacementNamed(context, '/resident');
+        }
+        return;
+      }
+
+      final guestLaunch = widget.allowGuestLaunch ?? state.isGuest;
+      if (guestLaunch) {
+        state.isGuest = true;
+        Navigator.pushReplacementNamed(context, '/resident');
+      } else {
         Navigator.pushReplacementNamed(context, '/login');
       }
     });
@@ -849,6 +1206,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   void dispose() {
+    _navTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -1332,6 +1690,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: const TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ),
+              TextButton.icon(
+                onPressed: () {
+                  final state = EcoRouteState.instance;
+                  state.isGuest = true;
+                  Navigator.pushReplacementNamed(context, '/resident');
+                },
+                icon: const Icon(Icons.explore_outlined, size: 16, color: Color(0xFF0D2618)),
+                label: const Text(
+                  'Explore as Guest (No Account Required)',
+                  style: TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ),
               const SizedBox(height: 8),
               Center(
                 child: Row(
@@ -1774,8 +2144,19 @@ void showEcoRouteProfileSheet(BuildContext context) {
                 onPressed: () async {
                   Navigator.pop(ctx);
                   try {
-                    await FirebaseAuth.instance.signOut();
+                    if (Firebase.apps.isNotEmpty) {
+                      await FirebaseAuth.instance.signOut();
+                    }
                   } catch (_) {}
+                  try {
+                    await state.authService?.logout();
+                  } catch (_) {}
+                  state.isGuest = true;
+                  state.userName = 'Guest User';
+                  state.userUsername = 'guest_arua';
+                  state.userEmail = 'guest@ecoroute.ug';
+                  state.userPhone = '+256 394 880 352';
+                  state.currentRole = 'resident';
                   if (context.mounted) {
                     Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
                   }
@@ -1835,6 +2216,710 @@ class _SystemBroadcastBanner extends StatelessWidget {
 // =================================================================
 // 6. ROLE 1: RESIDENT DASHBOARD
 // =================================================================
+class _GuestInterceptDialog extends StatefulWidget {
+  final VoidCallback onAuthenticated;
+  const _GuestInterceptDialog({required this.onAuthenticated});
+
+  @override
+  State<_GuestInterceptDialog> createState() => _GuestInterceptDialogState();
+}
+
+class _GuestInterceptDialogState extends State<_GuestInterceptDialog> {
+  bool _isRegister = true;
+  final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _emailCtrl.dispose();
+    _passCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final email = _emailCtrl.text.trim();
+    final pass = _passCtrl.text.trim();
+    final name = _nameCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim();
+
+    if (email.isEmpty || pass.isEmpty || (_isRegister && name.isEmpty)) {
+      setState(() => _error = 'Please fill in all required credentials.');
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+
+    try {
+      final state = EcoRouteState.instance;
+      if (_isRegister) {
+        if (state.authService != null) {
+          final registered = await state.authService!.register(
+            fullName: name,
+            email: email,
+            phone: phone,
+            password: pass,
+            role: AppRole.resident,
+          );
+          state.setAuthenticatedUser(
+            role: 'resident',
+            name: registered.fullName,
+            email: registered.email,
+            phone: registered.phone,
+          );
+        } else {
+          state.setAuthenticatedUser(role: 'resident', name: name, email: email, phone: phone);
+        }
+      } else {
+        if (state.authService != null) {
+          final user = await state.authService!.login(email: email, password: pass);
+          if (user == null) {
+            if (mounted) {
+              setState(() {
+                _submitting = false;
+                _error = 'Invalid email or password. Please try again.';
+              });
+            }
+            return;
+          }
+          state.setAuthenticatedUser(
+            role: user.role.name,
+            name: user.fullName,
+            email: user.email,
+            phone: user.phone,
+          );
+        } else {
+          state.setAuthenticatedUser(
+            role: 'resident',
+            name: name.isNotEmpty ? name : 'Resident User',
+            email: email,
+            phone: phone,
+          );
+        }
+      }
+      state.isGuest = false;
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onAuthenticated();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+          _error = e.toString().replaceFirst('StateError: ', '').replaceFirst('Exception: ', '');
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: const [
+          Icon(Icons.lock_outline, color: Color(0xFF0D2618)),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Account Required to Dispatch',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0D2618)),
+            ),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Please create an account or sign in so municipal riders can reach your location and provide completion proof.',
+              style: TextStyle(fontSize: 12, color: Colors.black87),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => setState(() => _isRegister = true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isRegister ? const Color(0xFF0D2618) : Colors.grey[200],
+                      foregroundColor: _isRegister ? Colors.white : Colors.black87,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    child: const Text('Quick Register', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => setState(() => _isRegister = false),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: !_isRegister ? const Color(0xFF0D2618) : Colors.grey[200],
+                      foregroundColor: !_isRegister ? Colors.white : Colors.black87,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    child: const Text('Sign In', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            if (_error != null) ...[
+              Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 11)),
+              const SizedBox(height: 8),
+            ],
+            if (_isRegister) ...[
+              TextField(
+                controller: _nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Full Name',
+                  hintText: 'e.g. Jane Agondua',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _phoneCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  hintText: 'e.g. +256 772 123 456',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+            TextField(
+              controller: _emailCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Email Address',
+                hintText: 'e.g. resident@ecoroute.ug',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _passCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                hintText: 'Enter password',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _submitting ? null : _submit,
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+          child: _submitting
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : Text(_isRegister ? 'Register & Submit' : 'Sign In & Submit', style: const TextStyle(color: Colors.white)),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReportIssueBottomSheet extends StatefulWidget {
+  final Function(String wasteType, String description, String address, String? photoBase64, bool notify) onReportSubmitted;
+
+  const _ReportIssueBottomSheet({required this.onReportSubmitted});
+
+  @override
+  State<_ReportIssueBottomSheet> createState() => _ReportIssueBottomSheetState();
+}
+
+class _ReportIssueBottomSheetState extends State<_ReportIssueBottomSheet> {
+  String _selectedType = 'Litter';
+  final _descCtrl = TextEditingController();
+  String _selectedCell = 'Ediofe, Trading Center';
+  String? _photoBase64;
+  bool _notifyOnResolve = true;
+
+  final List<String> _wasteTypes = [
+    'Litter',
+    'Overfull Bin',
+    'Illegal Dumping',
+    'Organic Waste',
+    'Recyclables',
+    'Hazardous',
+  ];
+
+  final List<String> _aruaCells = [
+    'Ediofe, Trading Center',
+    'Arua Hill, Near Stadium',
+    'Onduparaka Center',
+    'Muni University Area',
+    'Tanganyika Cell',
+    'River Oli Division',
+  ];
+
+  @override
+  void dispose() {
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickPhoto() async {
+    try {
+      final picker = ImagePicker();
+      final image = await picker.pickImage(source: ImageSource.camera, maxWidth: 600, maxHeight: 600, imageQuality: 70);
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        setState(() => _photoBase64 = base64Encode(bytes));
+      }
+    } catch (e) {
+      debugPrint('Photo pick error: $e');
+    }
+  }
+
+  void _handleSubmit() {
+    final state = EcoRouteState.instance;
+    if (state.isGuest) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => _GuestInterceptDialog(
+          onAuthenticated: () {
+            widget.onReportSubmitted(
+              _selectedType,
+              _descCtrl.text.trim().isNotEmpty ? _descCtrl.text.trim() : 'Public issue reported by resident',
+              _selectedCell,
+              _photoBase64,
+              _notifyOnResolve,
+            );
+            Navigator.pop(context);
+          },
+        ),
+      );
+    } else {
+      widget.onReportSubmitted(
+        _selectedType,
+        _descCtrl.text.trim().isNotEmpty ? _descCtrl.text.trim() : 'Public issue reported by resident',
+        _selectedCell,
+        _photoBase64,
+        _notifyOnResolve,
+      );
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(
+        top: 20,
+        left: 20,
+        right: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: const [
+                    Icon(Icons.report_problem, color: Color(0xFF0D2618)),
+                    SizedBox(width: 8),
+                    Text('Report Issue', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                  ],
+                ),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Text('Select Waste Type', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1A3A28))),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: _wasteTypes.map((type) {
+                final isSel = _selectedType == type;
+                return ChoiceChip(
+                  label: Text(type),
+                  selected: isSel,
+                  selectedColor: const Color(0xFF0D2618),
+                  labelStyle: TextStyle(
+                    color: isSel ? Colors.white : const Color(0xFF0D2618),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                  onSelected: (val) {
+                    if (val) setState(() => _selectedType = type);
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+            const Text('Issue Description', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1A3A28))),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _descCtrl,
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText: 'e.g. Accumulation near school gate, overflowing public bin...',
+                hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
+                filled: true,
+                fillColor: const Color(0xFFE8ECE7),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text('Location Cell', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1A3A28))),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<String>(
+              initialValue: _selectedCell,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFFE8ECE7),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                prefixIcon: const Icon(Icons.location_on_outlined, color: Color(0xFF0D2618)),
+              ),
+              items: _aruaCells.map((cell) => DropdownMenuItem(value: cell, child: Text(cell, style: const TextStyle(fontSize: 13)))).toList(),
+              onChanged: (val) => setState(() => _selectedCell = val ?? _selectedCell),
+            ),
+            const SizedBox(height: 12),
+            const Text('Photo Evidence', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1A3A28))),
+            const SizedBox(height: 6),
+            if (_photoBase64 == null) ...[
+              OutlinedButton.icon(
+                onPressed: _pickPhoto,
+                icon: const Icon(Icons.camera_alt, color: Color(0xFF0D2618)),
+                label: const Text('Add Photo (Capture or Upload)', style: TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF0D2618)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ] else ...[
+              Stack(
+                alignment: Alignment.topRight,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.memory(
+                      base64Decode(_photoBase64!),
+                      height: 120,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: CircleAvatar(
+                      backgroundColor: Colors.black54,
+                      radius: 16,
+                      child: IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white, size: 16),
+                        onPressed: () => setState(() => _photoBase64 = null),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: _pickPhoto,
+                  icon: const Icon(Icons.refresh, size: 14),
+                  label: const Text('Retake Photo', style: TextStyle(fontSize: 11)),
+                ),
+              ),
+            ],
+            const SizedBox(height: 8),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _notifyOnResolve,
+              onChanged: (val) => setState(() => _notifyOnResolve = val ?? true),
+              title: const Text('Receive SMS / notification upon rider resolution', style: TextStyle(fontSize: 12)),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: _handleSubmit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0D2618),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('SUBMIT REPORT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ResidentRoutesScreen extends StatelessWidget {
+  final VoidCallback onOpenMap;
+  final VoidCallback onReportIssue;
+
+  const ResidentRoutesScreen({
+    super.key,
+    required this.onOpenMap,
+    required this.onReportIssue,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final routes = [
+      {'sector': 'Ediofe & Onduparaka Sector', 'days': 'Monday & Thursday', 'truck': 'TRIC-04', 'time': '8:00 AM - 12:00 PM'},
+      {'sector': 'Arua Hill & Stadium Sector', 'days': 'Tuesday & Friday', 'truck': 'TRIC-12', 'time': '8:00 AM - 1:00 PM'},
+      {'sector': 'Central Market Commercial Route', 'days': 'Daily Collection', 'truck': 'TRIC-18', 'time': '6:00 AM - 10:00 AM'},
+      {'sector': 'Tanganyika & River Oli Sector', 'days': 'Wednesday & Saturday', 'truck': 'TRIC-09', 'time': '9:00 AM - 2:00 PM'},
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Municipal Routes', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D2618),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Arua City Fleet Schedule', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 6),
+                const Text(
+                  'Motorized tricycles collect household and segregated recyclables along municipal corridors weekly.',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: onOpenMap,
+                  icon: const Icon(Icons.map, size: 16, color: Color(0xFF0D2618)),
+                  label: const Text('View Live Collection Map', style: TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Scheduled Corridors', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0D2618))),
+          const SizedBox(height: 8),
+          ...routes.map((r) => Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 2))],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(r['sector']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0D2618))),
+                      const SizedBox(height: 2),
+                      Text('${r['days']} • ${r['time']}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D2618).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(r['truck']!, style: const TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold, fontSize: 11)),
+                ),
+              ],
+            ),
+          )),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: onReportIssue,
+            icon: const Icon(Icons.report_problem, color: Color(0xFF0D2618)),
+            label: const Text('Report Waste Issue on Corridors', style: TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold)),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFF0D2618)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ResidentProfileTabScreen extends StatelessWidget {
+  const ResidentProfileTabScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = EcoRouteState.instance;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 2))],
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: const Color(0xFF0D2618),
+                  child: Text(
+                    state.userName.isNotEmpty ? state.userName[0].toUpperCase() : 'G',
+                    style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(state.userName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0D2618))),
+                          const SizedBox(width: 6),
+                          if (state.isGuest)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(color: const Color(0xFF9C3D18), borderRadius: BorderRadius.circular(8)),
+                              child: const Text('Guest', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(state.userEmail, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      Text(state.userPhone, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (state.isGuest) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF9C3D18).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF9C3D18).withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Guest Mode Active', style: TextStyle(color: Color(0xFF9C3D18), fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 4),
+                  const Text('Create an official account to save request histories and access municipal Eco-Credits.', style: TextStyle(fontSize: 11)),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pushNamed(context, '/login'),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+                    child: const Text('Create Account or Sign In', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Municipal Eco-Credits Balance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text('${state.ecoCredits} Credits', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          ListTile(
+            tileColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            leading: const Icon(Icons.support_agent, color: Color(0xFF0D2618)),
+            title: const Text('Operations Hotline (+256 394 880 352)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            onTap: () => launchEcoRouteCall(),
+          ),
+          const SizedBox(height: 8),
+          ListTile(
+            tileColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            leading: const Icon(Icons.chat, color: Colors.green),
+            title: const Text('WhatsApp Operations Desk', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            onTap: () => launchEcoRouteWhatsApp(),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton(
+            onPressed: () {
+              state.switchRole('resident', context);
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFF9C3D18)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            child: Text(
+              state.isGuest ? 'Sign In to Existing Account' : 'Sign Out',
+              style: const TextStyle(color: Color(0xFF9C3D18), fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class ResidentRootScreen extends StatefulWidget {
   const ResidentRootScreen({super.key});
 
@@ -1868,6 +2953,31 @@ class _ResidentRootScreenState extends State<ResidentRootScreen> {
     );
   }
 
+  void _openReportIssue() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _ReportIssueBottomSheet(
+        onReportSubmitted: (wasteType, description, address, photoBase64, notify) {
+          EcoRouteState.instance.reportIssue(
+            wasteType: wasteType,
+            description: description,
+            address: address,
+            photoBase64: photoBase64,
+            notifyOnResolve: notify,
+          );
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Issue reported for $address ($wasteType)! Dispatched to municipal riders.'),
+              backgroundColor: const Color(0xFF0D2618),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   void _openLiveMapTracker() {
     showModalBottomSheet(
       context: context,
@@ -1887,13 +2997,19 @@ class _ResidentRootScreenState extends State<ResidentRootScreen> {
       ResidentHomeScreen(
         pickup: state.activePickup,
         onBookPickup: _bookNewPickup,
+        onReportIssue: _openReportIssue,
         onOpenMap: _openLiveMapTracker,
+        onNavigateTab: (idx) => setState(() => _currentIndex = idx),
+      ),
+      ResidentRoutesScreen(
+        onOpenMap: _openLiveMapTracker,
+        onReportIssue: _openReportIssue,
       ),
       ResidentRequestsScreen(
         requests: state.residentRequests,
         onBookPickup: _bookNewPickup,
       ),
-      const ResidentSupportScreen(),
+      const ResidentProfileTabScreen(),
     ];
 
     return Scaffold(
@@ -1903,10 +3019,12 @@ class _ResidentRootScreenState extends State<ResidentRootScreen> {
         onTap: (index) => setState(() => _currentIndex = index),
         selectedItemColor: const Color(0xFF0D2618),
         unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.alt_route_outlined), activeIcon: Icon(Icons.alt_route), label: 'My Routes'),
           BottomNavigationBarItem(icon: Icon(Icons.receipt_long_outlined), activeIcon: Icon(Icons.receipt_long), label: 'Requests'),
-          BottomNavigationBarItem(icon: Icon(Icons.support_agent_outlined), activeIcon: Icon(Icons.support_agent), label: 'Support'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
@@ -1917,12 +3035,16 @@ class ResidentHomeScreen extends StatelessWidget {
   final Map<String, dynamic>? pickup;
   final VoidCallback onBookPickup;
   final VoidCallback onOpenMap;
+  final VoidCallback onReportIssue;
+  final Function(int tabIndex)? onNavigateTab;
 
   const ResidentHomeScreen({
     super.key,
     required this.pickup,
     required this.onBookPickup,
     required this.onOpenMap,
+    required this.onReportIssue,
+    this.onNavigateTab,
   });
 
   void _showRatingModal(BuildContext context) {
@@ -2077,27 +3199,189 @@ class ResidentHomeScreen extends StatelessWidget {
     final isSettled = pickup != null && (pickup!['step'] as int? ?? 0) == 3;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: const [
-            Icon(Icons.eco, color: Color(0xFF0D2618)),
-            SizedBox(width: 8),
-            Text('EcoRoute', style: TextStyle(fontWeight: FontWeight.bold)),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(color: Color(0xFF0D2618)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.eco, color: Colors.white, size: 28),
+                      SizedBox(width: 8),
+                      Text(
+                        'EcoRoute',
+                        style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Arua City • Sustainable Solid Waste',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      state.isGuest ? 'Guest Explorer' : '${state.userName} (${state.userRole.toUpperCase()})',
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home, color: Color(0xFF0D2618)),
+              title: const Text('Home'),
+              onTap: () {
+                Navigator.pop(context);
+                onNavigateTab?.call(0);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.receipt_long, color: Color(0xFF0D2618)),
+              title: const Text('My Reports'),
+              onTap: () {
+                Navigator.pop(context);
+                onNavigateTab?.call(2);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.map_outlined, color: Color(0xFF0D2618)),
+              title: const Text('Map'),
+              onTap: () {
+                Navigator.pop(context);
+                onOpenMap();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.notifications_none, color: Color(0xFF0D2618)),
+              title: const Text('Notifications'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('No unread notifications.')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_outline, color: Color(0xFF0D2618)),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                showEcoRouteProfileSheet(context);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.phone, color: Color(0xFF0D2618)),
+              title: const Text('Support Hotline (+256394880352)'),
+              onTap: () {
+                Navigator.pop(context);
+                launchEcoRouteCall();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.chat, color: Colors.green),
+              title: const Text('WhatsApp Dispatch'),
+              onTap: () {
+                Navigator.pop(context);
+                launchEcoRouteWhatsApp();
+              },
+            ),
           ],
         ),
+      ),
+      appBar: AppBar(
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu, color: Color(0xFF0D2618)),
+            tooltip: 'Navigation Menu',
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
+        ),
+        title: Container(
+          height: 38,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8ECE7),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: const Row(
+            children: [
+              Icon(Icons.search, size: 18, color: Colors.grey),
+              SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search your types',
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                    hintStyle: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
         actions: [
-          IconButton(
-            tooltip: 'Call Support (+256394880352)',
-            icon: const Icon(Icons.phone_outlined),
-            onPressed: () => launchEcoRouteCall(),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined, color: Color(0xFF0D2618)),
+                tooltip: 'Notifications',
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('2 active route updates in Arua Central.')),
+                  );
+                },
+              ),
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF9C3D18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Text('2', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
           ),
           IconButton(
             tooltip: 'My Profile',
-            icon: const Icon(Icons.account_circle_outlined),
+            icon: const Icon(Icons.account_circle_outlined, color: Color(0xFF0D2618)),
             onPressed: () => showEcoRouteProfileSheet(context),
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: onReportIssue,
+        backgroundColor: const Color(0xFF0D2618),
+        icon: const Icon(Icons.report_problem_outlined, color: Colors.white),
+        label: const Text(
+          'REPORT ISSUE',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.1,
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -2112,7 +3396,7 @@ class ResidentHomeScreen extends StatelessWidget {
                   children: [
                     const Text('Hello, Resident • Arua City', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
                     const SizedBox(height: 2),
-                    Text('${state.userCell} Service Area', style: const TextStyle(fontSize: 12, color: Color(0xFF1A3A28))),
+                    Text(state.isGuest ? 'Guest Explorer • Arua Municipality' : '${state.userCell} Service Area', style: const TextStyle(fontSize: 12, color: Color(0xFF1A3A28))),
                   ],
                 ),
                 Container(
@@ -2129,15 +3413,31 @@ class ResidentHomeScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: onBookPickup,
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text('Book a New Pickup', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0D2618),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: onBookPickup,
+                    icon: const Icon(Icons.add, color: Colors.white),
+                    label: const Text('Book a New Pickup', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0D2618),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ActionChip(
+                  avatar: const Icon(Icons.support_agent, size: 16, color: Color(0xFF0D2618)),
+                  label: const Text('Support', style: TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold, fontSize: 12)),
+                  backgroundColor: const Color(0xFFE8ECE7),
+                  side: BorderSide(color: const Color(0xFF0D2618).withValues(alpha: 0.2)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  onPressed: () => launchEcoRouteCall(),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
 
@@ -2386,6 +3686,7 @@ class ResidentHomeScreen extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 70),
           ],
         ),
       ),
@@ -2427,6 +3728,163 @@ class ResidentHomeScreen extends StatelessWidget {
   }
 }
 
+Widget buildSafeThumbnail(String? src, {double size = 64, BoxFit fit = BoxFit.cover}) {
+  if (src == null || src.isEmpty) {
+    return Container(
+      width: size,
+      height: size,
+      color: Colors.grey.shade200,
+      child: const Icon(Icons.image_outlined, color: Colors.grey, size: 24),
+    );
+  }
+  if (src.startsWith('http://') || src.startsWith('https://')) {
+    return Image.network(
+      src,
+      width: size,
+      height: size,
+      fit: fit,
+      errorBuilder: (context, error, stackTrace) => Container(
+        width: size,
+        height: size,
+        color: Colors.grey.shade200,
+        child: const Icon(Icons.broken_image, color: Colors.grey, size: 24),
+      ),
+    );
+  }
+  try {
+    final clean = src.contains(',') ? src.split(',').last : src;
+    final bytes = base64Decode(clean);
+    return Image.memory(
+      bytes,
+      width: size,
+      height: size,
+      fit: fit,
+      errorBuilder: (context, error, stackTrace) => Container(
+        width: size,
+        height: size,
+        color: Colors.grey.shade200,
+        child: const Icon(Icons.broken_image, color: Colors.grey, size: 24),
+      ),
+    );
+  } catch (_) {
+    return Container(
+      width: size,
+      height: size,
+      color: Colors.grey.shade200,
+      child: const Icon(Icons.broken_image, color: Colors.grey, size: 24),
+    );
+  }
+}
+
+void showDualPhotoDialog(BuildContext context, Map<String, dynamic> item) {
+  final isResolved = item['status'] == 'Resolved' || item['status'] == 'Settled';
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Row(
+        children: [
+          const Icon(Icons.verified, color: Color(0xFF0D2618), size: 22),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Clearance Verification • ${item['id'] ?? item['pickupId']}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0D2618)),
+            ),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Location: ${item['address'] ?? 'Arua Municipality'} • ${item['wasteType'] ?? item['size'] ?? 'Waste Pickup'}',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Before (Resident Reported Waste):',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF9C3D18)),
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                height: 140,
+                width: double.infinity,
+                child: buildSafeThumbnail(
+                  item['photoUrl'] as String? ?? item['photoEvidence'] as String?,
+                  size: 140,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'After (Municipal Clearance Proof):',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0D2618)),
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                height: 140,
+                width: double.infinity,
+                child: item['clearedPhotoUrl'] != null
+                    ? buildSafeThumbnail(item['clearedPhotoUrl'] as String?, size: 140)
+                    : Container(
+                        color: Colors.grey.shade100,
+                        alignment: Alignment.center,
+                        child: const Text('Clearance proof pending rider dispatch.', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isResolved
+                    ? Colors.green.withValues(alpha: 0.12)
+                    : Colors.amber.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isResolved ? Icons.check_circle : Icons.hourglass_top,
+                    color: isResolved ? Colors.green : Colors.amber[800],
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isResolved
+                          ? 'Verified & Cleared by Arua City Municipal Fleet'
+                          : 'Rider en route. Clearance verification pending.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isResolved ? Colors.green : Colors.amber[800],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        ElevatedButton(
+          onPressed: () => Navigator.pop(ctx),
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+          child: const Text('Close', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
+
 class ResidentRequestsScreen extends StatelessWidget {
   final List<Map<String, dynamic>> requests;
   final VoidCallback onBookPickup;
@@ -2441,7 +3899,7 @@ class ResidentRequestsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pickup Requests'),
+        title: const Text('Pickup Requests & Reports'),
         actions: [
           IconButton(
             tooltip: 'My Profile',
@@ -2472,6 +3930,9 @@ class ResidentRequestsScreen extends StatelessWidget {
               itemCount: requests.length,
               itemBuilder: (context, index) {
                 final req = requests[index];
+                final isResolved = req['status'] == 'Resolved' || req['status'] == 'Settled';
+                final hasPhotos = req['photoUrl'] != null || req['clearedPhotoUrl'] != null;
+
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
@@ -2480,38 +3941,121 @@ class ResidentRequestsScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(req['id'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0D2618))),
-                          const SizedBox(height: 4),
-                          Text('${req['date']} • ${req['size']}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                        ],
-                      ),
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Color(req['color'] as int).withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              req['status'] as String,
-                              style: TextStyle(color: Color(req['color'] as int), fontSize: 12, fontWeight: FontWeight.bold),
-                            ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(req['id'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0D2618))),
+                              const SizedBox(height: 4),
+                              Text('${req['date']} • ${req['size'] ?? req['wasteType'] ?? 'General Waste'}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.repeat, size: 18, color: Color(0xFF0D2618)),
-                            tooltip: 'Re-order this pickup',
-                            onPressed: onBookPickup,
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isResolved
+                                      ? Colors.green.withValues(alpha: 0.12)
+                                      : Color(req['color'] as int? ?? 0xFF9C3D18).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    if (isResolved) ...[
+                                      const Icon(Icons.check_circle, size: 12, color: Colors.green),
+                                      const SizedBox(width: 4),
+                                    ],
+                                    Text(
+                                      req['status'] as String,
+                                      style: TextStyle(
+                                        color: isResolved ? Colors.green : Color(req['color'] as int? ?? 0xFF9C3D18),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.repeat, size: 18, color: Color(0xFF0D2618)),
+                                tooltip: 'Re-order this pickup',
+                                onPressed: onBookPickup,
+                              ),
+                            ],
                           ),
                         ],
                       ),
+                      if (req['description'] != null && (req['description'] as String).isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Notes: "${req['description']}"',
+                          style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Color(0xFF1A3A28)),
+                        ),
+                      ],
+                      if (hasPhotos) ...[
+                        const Divider(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Verification Proof:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                            InkWell(
+                              onTap: () => showDualPhotoDialog(context, req),
+                              child: const Text('View Full Proof >', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF9C3D18))),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            if (req['photoUrl'] != null) ...[
+                              GestureDetector(
+                                onTap: () => showDualPhotoDialog(context, req),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Reported Issue', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                    const SizedBox(height: 4),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: buildSafeThumbnail(req['photoUrl'] as String?, size: 54),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                            ],
+                            if (req['clearedPhotoUrl'] != null) ...[
+                              GestureDetector(
+                                onTap: () => showDualPhotoDialog(context, req),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: const [
+                                        Icon(Icons.check_circle, size: 10, color: Colors.green),
+                                        SizedBox(width: 2),
+                                        Text('Cleared Proof', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: buildSafeThumbnail(req['clearedPhotoUrl'] as String?, size: 54),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 );
@@ -2895,22 +4439,23 @@ class RiderTasksScreen extends StatelessWidget {
 
   const RiderTasksScreen({super.key, required this.onNavigateToRoute});
 
-  Future<void> _snapPhotoEvidence(BuildContext context) async {
+  Future<void> _snapClearancePhoto(BuildContext context, Map<String, dynamic> activeTask) async {
     try {
       final picker = ImagePicker();
       final photo = await picker.pickImage(source: ImageSource.camera, maxWidth: 600, maxHeight: 600, imageQuality: 70);
       if (photo != null) {
         final bytes = await photo.readAsBytes();
         final base64String = base64Encode(bytes);
-        EcoRouteState.instance.attachPhotoEvidence(base64String);
+        activeTask['clearedPhotoUrl'] = base64String;
+        EcoRouteState.instance.refresh();
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Photo evidence captured & attached to pickup!')),
+            const SnackBar(content: Text('Clearance proof photo captured & attached! Ready to resolve.')),
           );
         }
       }
     } catch (e) {
-      debugPrint('Photo evidence capture error: $e');
+      debugPrint('Clearance photo capture error: $e');
     }
   }
 
@@ -3075,7 +4620,7 @@ class RiderTasksScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text('Payment', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                                Text(activeTask['payment'] as String, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                                Text((activeTask['paymentMethod'] ?? activeTask['payment'] ?? 'Cash on Collection').toString(), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
                               ],
                             ),
                           ),
@@ -3084,25 +4629,45 @@ class RiderTasksScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
 
-                    // Photo Evidence Status / Capture Button
-                    if (activeTask['photoEvidence'] != null) ...[
+                    // Resident Reported Evidence Thumbnail
+                    if (activeTask['photoUrl'] != null || activeTask['photoEvidence'] != null) ...[
+                      const Text('Resident Reported Area / Waste Evidence:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: buildSafeThumbnail(
+                          activeTask['photoUrl'] as String? ?? activeTask['photoEvidence'] as String?,
+                          size: 72,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    // Clearance Proof Photo Capture & Status
+                    if (activeTask['clearedPhotoUrl'] != null) ...[
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
                         child: Row(
-                          children: const [
-                            Icon(Icons.check_circle, color: Colors.green, size: 18),
-                            SizedBox(width: 8),
-                            Text('Photo Evidence Attached & Verified', style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold)),
+                          children: [
+                            const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text('Clearance Proof Attached & Verified', style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: buildSafeThumbnail(activeTask['clearedPhotoUrl'] as String?, size: 40),
+                            ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 12),
                     ] else ...[
                       OutlinedButton.icon(
-                        onPressed: () => _snapPhotoEvidence(context),
+                        onPressed: () => _snapClearancePhoto(context, activeTask),
                         icon: const Icon(Icons.camera_alt, color: Color(0xFF0D2618), size: 16),
-                        label: const Text('Snap Photo Evidence (Waste Sacks)', style: TextStyle(color: Color(0xFF0D2618), fontSize: 12, fontWeight: FontWeight.bold)),
+                        label: const Text('Snap Clearance Photo (Proof of Cleanup)', style: TextStyle(color: Color(0xFF0D2618), fontSize: 12, fontWeight: FontWeight.bold)),
                         style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 42)),
                       ),
                       const SizedBox(height: 12),
@@ -3161,15 +4726,43 @@ class RiderTasksScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     ElevatedButton.icon(
-                      onPressed: () => _openHandshakeDialog(context, activeTask),
+                      onPressed: () {
+                        if (activeTask['clearedPhotoUrl'] == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please snap clearance proof photo before resolving!'),
+                              backgroundColor: Color(0xFF9C3D18),
+                            ),
+                          );
+                          _snapClearancePhoto(context, activeTask);
+                          return;
+                        }
+                        EcoRouteState.instance.riderResolveWithPhoto(
+                          clearedPhotoBase64: activeTask['clearedPhotoUrl'] as String,
+                          context: context,
+                        );
+                      },
                       icon: const Icon(Icons.verified, size: 18, color: Colors.white),
                       label: Text(
-                        activeTask['status'] == 'Settled' ? 'Verified & Settled' : 'Verify Code & Mark Collected',
+                        activeTask['status'] == 'Resolved' ? 'Resolved & Cleared' : 'Mark as Resolved',
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: activeTask['status'] == 'Settled' ? Colors.green : const Color(0xFF9C3D18),
+                        backgroundColor: activeTask['status'] == 'Resolved' ? Colors.green : const Color(0xFF0D2618),
                         minimumSize: const Size(double.infinity, 52),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => _openHandshakeDialog(context, activeTask),
+                      icon: const Icon(Icons.pin, size: 16, color: Color(0xFF0D2618)),
+                      label: Text(
+                        activeTask['status'] == 'Settled' ? 'Handshake Verified & Settled' : 'Verify Resident Handshake Code',
+                        style: const TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 44),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
@@ -4557,8 +6150,21 @@ class _BookingBottomSheetState extends State<_BookingBottomSheet> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(context);
-                widget.onBook(_sacks, _wasteType, _selectedCell, _isInstant, _paymentMethod, _notesController.text.trim());
+                if (state.isGuest) {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (ctx) => _GuestInterceptDialog(
+                      onAuthenticated: () {
+                        Navigator.pop(context);
+                        widget.onBook(_sacks, _wasteType, _selectedCell, _isInstant, _paymentMethod, _notesController.text.trim());
+                      },
+                    ),
+                  );
+                } else {
+                  Navigator.pop(context);
+                  widget.onBook(_sacks, _wasteType, _selectedCell, _isInstant, _paymentMethod, _notesController.text.trim());
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0D2618),

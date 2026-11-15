@@ -6,6 +6,7 @@ import 'package:ecoroute/core/pickup_request_repository.dart';
 import 'package:ecoroute/core/services/auth_service.dart';
 import 'package:ecoroute/domain/enums/role.dart';
 import 'package:ecoroute/features/admin/admin_dashboard.dart';
+import 'package:ecoroute/features/auth/auth_sheet.dart';
 import 'package:ecoroute/features/auth/login_screen.dart';
 import 'package:ecoroute/features/home/home_screen.dart';
 import 'package:ecoroute/features/rider/rider_task_hub.dart';
@@ -23,8 +24,8 @@ void main() {
     authService = AuthService(prefs);
     repository = const MemoryPickupRequestRepository();
     await authService.register(
-      fullName: 'Savior Deo',
-      email: 'saviordeogratius@yahoo.com',
+      fullName: 'Municipal Administrator',
+      email: 'ayikog@yahoo.com',
       phone: '+256394880352',
       password: 'OfficialAdmin@2026',
       role: AppRole.admin,
@@ -52,7 +53,32 @@ void main() {
       expect(scaffold.backgroundColor, const Color(0xFFE8ECE7));
     });
 
-    testWidgets('Unauthenticated launch routes from Splash to LoginScreen', (
+    testWidgets('Unauthenticated launch routes from Splash to LoginScreen when allowGuestLaunch is false', (
+      tester,
+    ) async {
+      await authService.logout();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SplashScreen(
+            repository: repository,
+            authService: authService,
+            splashDuration: const Duration(milliseconds: 200),
+            allowGuestLaunch: false,
+          ),
+        ),
+      );
+
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(find.text('Sign In'), findsNWidgets(2));
+      expect(find.byKey(const ValueKey('login_email_input')), findsOneWidget);
+      expect(find.byKey(const ValueKey('login_password_input')), findsOneWidget);
+      expect(find.byKey(const ValueKey('login_submit_button')), findsOneWidget);
+    });
+
+    testWidgets('Unauthenticated launch with default allowGuestLaunch routes directly to HomeScreen in Guest mode without login prompt', (
       tester,
     ) async {
       await authService.logout();
@@ -69,11 +95,36 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pumpAndSettle();
 
-      expect(find.byType(LoginScreen), findsOneWidget);
-      expect(find.text('Sign In'), findsNWidgets(2));
-      expect(find.byKey(const ValueKey('login_email_input')), findsOneWidget);
-      expect(find.byKey(const ValueKey('login_password_input')), findsOneWidget);
-      expect(find.byKey(const ValueKey('login_submit_button')), findsOneWidget);
+      expect(find.byType(EcoRouteHomeScreen), findsOneWidget);
+      expect(find.text('Arua waste pickup'), findsOneWidget);
+      expect(find.byType(LoginScreen), findsNothing);
+    });
+
+    testWidgets('Guest on EcoRouteHomeScreen is intercepted when submitting pickup request', (
+      tester,
+    ) async {
+      await authService.logout();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: EcoRouteHomeScreen(
+            repository: repository,
+            authService: authService,
+            enforcedRole: AppRole.guest,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final orderButton = find.text('REPORT AN ISSUE');
+      expect(orderButton, findsOneWidget);
+      await tester.ensureVisible(orderButton);
+      await tester.pumpAndSettle();
+      await tester.tap(orderButton);
+      await tester.pumpAndSettle();
+
+      // Intercepted with AuthSheet
+      expect(find.byType(AuthSheet), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Login'), findsOneWidget);
     });
 
     testWidgets('Authenticated Resident session automatically routes to HomeScreen', (
@@ -141,7 +192,7 @@ void main() {
       tester,
     ) async {
       await authService.login(
-        email: 'saviordeogratius@yahoo.com',
+        email: 'ayikog@yahoo.com',
         password: 'OfficialAdmin@2026',
       );
 
@@ -175,7 +226,7 @@ void main() {
 
       await tester.enterText(
         find.byKey(const ValueKey('login_email_input')),
-        'saviordeogratius@yahoo.com',
+        'ayikog@yahoo.com',
       );
       await tester.enterText(
         find.byKey(const ValueKey('login_password_input')),
@@ -192,7 +243,7 @@ void main() {
       tester,
     ) async {
       await authService.login(
-        email: 'saviordeogratius@yahoo.com',
+        email: 'ayikog@yahoo.com',
         password: 'OfficialAdmin@2026',
       );
 

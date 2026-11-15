@@ -16,7 +16,7 @@ class RiderInviteService {
   /// Default Google Apps Script Web App endpoint.
   /// Can be overridden dynamically by the admin or persisted via SharedPreferences.
   static String scriptUrl =
-      'https://script.google.com/macros/s/AKfycbxKNbA7SVD0DTVoxZDttQL5sqhNj5IgpjSN9RKL9eXgBTm9NVgbNgVG0nG3I1qkeZjnQw/exec';
+      'https://script.google.com/macros/s/AKfycbzZPnlEwuhVeHyz2UXkIiY44s0B71qyf-TyhLbjaUgOoZqmIEZND98bYDuIvInnnhkNQQ/exec';
 
   /// Loads the persisted Google Apps Script URL if saved by the admin
   static Future<String> getEffectiveScriptUrl([SharedPreferences? prefs]) async {
@@ -37,6 +37,18 @@ class RiderInviteService {
       final p = prefs ?? await SharedPreferences.getInstance();
       await p.setString(_prefScriptUrlKey, scriptUrl);
     } catch (_) {}
+  }
+
+  /// Builds the authoritative rider activation link with query parameters
+  static String buildRiderInviteUrl({
+    required String inviteCode,
+    required String email,
+    String? tricycleId,
+  }) {
+    final cleanEmail = Uri.encodeComponent(email.trim().toLowerCase());
+    final cleanCode = Uri.encodeComponent(inviteCode.trim());
+    final tricParam = tricycleId != null ? '&tric=${Uri.encodeComponent(tricycleId.trim())}' : '';
+    return '$defaultAppUrl?invite=$cleanCode&email=$cleanEmail$tricParam';
   }
 
   /// Sends an official invitation email to the rider via Google Apps Script MailApp.

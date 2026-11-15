@@ -679,6 +679,57 @@ class _OrderPageState extends State<OrderPage> {
                         children: [
                           ChoiceChip(
                             avatar: Icon(
+                              Icons.delete_sweep_rounded,
+                              size: 16,
+                              color: _wasteType == WasteType.litter ? Colors.white : const Color(0xFF2E7D32),
+                            ),
+                            label: const Text('Litter'),
+                            selected: _wasteType == WasteType.litter,
+                            selectedColor: const Color(0xFF2E7D32),
+                            labelStyle: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: _wasteType == WasteType.litter ? Colors.white : const Color(0xFF1B5E20),
+                            ),
+                            onSelected: (_) => setState(() => _wasteType = WasteType.litter),
+                          ),
+                          const SizedBox(width: 6),
+                          ChoiceChip(
+                            avatar: Icon(
+                              Icons.delete_forever_rounded,
+                              size: 16,
+                              color: _wasteType == WasteType.overfullBin ? Colors.white : const Color(0xFF2E7D32),
+                            ),
+                            label: const Text('Overfull Bin'),
+                            selected: _wasteType == WasteType.overfullBin,
+                            selectedColor: const Color(0xFF2E7D32),
+                            labelStyle: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: _wasteType == WasteType.overfullBin ? Colors.white : const Color(0xFF1B5E20),
+                            ),
+                            onSelected: (_) => setState(() => _wasteType = WasteType.overfullBin),
+                          ),
+                          const SizedBox(width: 6),
+                          ChoiceChip(
+                            avatar: Icon(
+                              Icons.warning_amber_rounded,
+                              size: 16,
+                              color: _wasteType == WasteType.illegalDumping ? Colors.white : const Color(0xFF2E7D32),
+                            ),
+                            label: const Text('Illegal Dumping'),
+                            selected: _wasteType == WasteType.illegalDumping,
+                            selectedColor: const Color(0xFF2E7D32),
+                            labelStyle: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: _wasteType == WasteType.illegalDumping ? Colors.white : const Color(0xFF1B5E20),
+                            ),
+                            onSelected: (_) => setState(() => _wasteType = WasteType.illegalDumping),
+                          ),
+                          const SizedBox(width: 6),
+                          ChoiceChip(
+                            avatar: Icon(
                               Icons.home_rounded,
                               size: 16,
                               color: _wasteType == WasteType.household ? Colors.white : const Color(0xFF2E7D32),
@@ -717,7 +768,7 @@ class _OrderPageState extends State<OrderPage> {
                               size: 16,
                               color: _wasteType == WasteType.unknown ? Colors.white : const Color(0xFF2E7D32),
                             ),
-                            label: const Text('Bulky / Other (2k)'),
+                            label: const Text('Other (2k)'),
                             selected: _wasteType == WasteType.unknown,
                             selectedColor: const Color(0xFF2E7D32),
                             labelStyle: TextStyle(

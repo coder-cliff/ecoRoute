@@ -262,7 +262,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   void _loadUserSession() {
     if (widget.enforcedRole != null) {
       _role = widget.enforcedRole!;
-      _signedIn = true;
+      _signedIn = widget.enforcedRole != AppRole.guest;
     }
     if (widget.authService != null) {
       _remindersEnabled = widget.authService!.getRemindersEnabled();
@@ -271,6 +271,10 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         _signedIn = true;
         _role = widget.enforcedRole ?? user.role;
         _currentUser = user;
+      } else if (widget.enforcedRole == AppRole.guest) {
+        _signedIn = false;
+        _role = AppRole.guest;
+        _currentUser = null;
       }
     }
   }
@@ -1180,7 +1184,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         children: [
           _buildWelcome(),
           const SizedBox(height: 30),
-          if (_role == AppRole.resident) ...[
+          if (_role == AppRole.resident || _role == AppRole.guest) ...[
             ResidentHeroGreeting(
               user: _currentUser,
               activeRequestsCount: residentOrders.where((o) => o.status != RequestStatus.paid && o.status != RequestStatus.cancelled).length,
@@ -1253,7 +1257,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             ],
           ),
           const SizedBox(height: 28),
-          if (_role == AppRole.resident) _buildQuickActions(),
+          if (_role == AppRole.resident || _role == AppRole.guest) _buildQuickActions(),
           if (_role == AppRole.rider) ...[
             const SizedBox(height: 28),
             _buildRiderRoute(),
@@ -1272,7 +1276,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             onLocateGps: _checkGpsLocation,
           ),
 
-          if (_role == AppRole.resident) ...[
+          if (_role == AppRole.resident || _role == AppRole.guest) ...[
             const SizedBox(height: 28),
             ResidentEcoImpactCard(personalRequests: residentOrders),
             const SizedBox(height: 28),

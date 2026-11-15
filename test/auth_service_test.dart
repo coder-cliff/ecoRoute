@@ -21,7 +21,7 @@ void main() {
     test('registers and logs in admin accounts dynamically without hardcoded credentials', () async {
       final registered = await authService.register(
         fullName: 'Municipal Administrator',
-        email: 'admin.operations@ecoroute.ug',
+        email: 'ayikog@yahoo.com',
         password: 'SecureAdminPassword@2026',
         phone: '+256 394 880 352',
         role: AppRole.admin,
@@ -32,17 +32,17 @@ void main() {
       expect(registered.fullName, 'Municipal Administrator');
 
       final loggedIn = await authService.login(
-        email: 'admin.operations@ecoroute.ug',
+        email: 'ayikog@yahoo.com',
         password: 'SecureAdminPassword@2026',
       );
 
       expect(loggedIn, isNotNull);
       expect(loggedIn!.role, AppRole.admin);
-      expect(loggedIn.email, 'admin.operations@ecoroute.ug');
+      expect(loggedIn.email, 'ayikog@yahoo.com');
 
       // Verify persistent session
       final restored = authService.getCurrentUser();
-      expect(restored?.email, 'admin.operations@ecoroute.ug');
+      expect(restored?.email, 'ayikog@yahoo.com');
     });
 
     test('rejects incorrect credentials', () async {

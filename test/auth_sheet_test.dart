@@ -15,7 +15,7 @@ void main() {
     authService = AuthService(await SharedPreferences.getInstance());
     await authService.register(
       fullName: 'Savior Deo',
-      email: 'saviordeogratius@yahoo.com',
+      email: 'ayikog@yahoo.com',
       phone: '+256394880352',
       password: 'OfficialAdmin@2026',
       role: AppRole.admin,
@@ -59,7 +59,7 @@ void main() {
 
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Email address'),
-      'saviordeogratius@yahoo.com',
+      'ayikog@yahoo.com',
     );
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Password'),

@@ -230,11 +230,7 @@ class _AuthSheetState extends State<AuthSheet> {
       } else {
         // Fallback for tests when authService is not injected
         final emailLower = _email.text.trim().toLowerCase();
-        if (emailLower == 'saviordeogratius@yahoo.com' ||
-            emailLower == 'techcliff451@hotmail.com' ||
-            emailLower == 'saviordeogratius@gmail.com' ||
-            emailLower == 'techcliff451@gmail.com' ||
-            emailLower.contains('admin')) {
+        if (emailLower == 'ayikog@yahoo.com') {
           authenticatedRole = AppRole.admin;
         } else if (emailLower.contains('rider')) {
           authenticatedRole = AppRole.rider;

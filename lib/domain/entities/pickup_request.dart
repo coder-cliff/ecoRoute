@@ -20,6 +20,7 @@ class PickupRequest {
     this.residentPhone = '+256 772 000 001',
     this.residentId = 'resident-1',
     this.photoUrl,
+    this.clearedPhotoUrl,
     this.isSynced = true,
     this.paymentMethod = 'unpaid',
     this.cashReceivedByRider = false,
@@ -47,6 +48,7 @@ class PickupRequest {
   final String residentPhone;
   final String residentId;
   final String? photoUrl;
+  final String? clearedPhotoUrl;
   final bool isSynced;
   final String paymentMethod; // 'unpaid', 'cash', 'momo'
   final bool cashReceivedByRider;
@@ -78,6 +80,7 @@ class PickupRequest {
     String? residentPhone,
     String? residentId,
     String? photoUrl,
+    String? clearedPhotoUrl,
     bool? isSynced,
     String? paymentMethod,
     bool? cashReceivedByRider,
@@ -105,6 +108,7 @@ class PickupRequest {
       residentPhone: residentPhone ?? this.residentPhone,
       residentId: residentId ?? this.residentId,
       photoUrl: photoUrl ?? this.photoUrl,
+      clearedPhotoUrl: clearedPhotoUrl ?? this.clearedPhotoUrl,
       isSynced: isSynced ?? this.isSynced,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       cashReceivedByRider: cashReceivedByRider ?? this.cashReceivedByRider,
