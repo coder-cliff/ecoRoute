@@ -379,10 +379,11 @@ class AuthService {
 
     // Auto-detect if user was invited by management as a Rider or is Super Admin
     var resolvedRole = role;
+    Map<String, dynamic>? invite;
     if (AppConfig.isAdminEmail(cleanEmail)) {
       resolvedRole = AppRole.admin;
     } else {
-      final invite = getRiderInvite(inviteCode?.trim().isNotEmpty == true ? inviteCode!.trim() : cleanEmail);
+      invite = getRiderInvite(inviteCode?.trim().isNotEmpty == true ? inviteCode!.trim() : cleanEmail);
       if (invite != null) {
         resolvedRole = AppRole.rider;
       }
