@@ -1224,7 +1224,7 @@ class EcoRouteState extends ChangeNotifier {
         if (current != null) {
           final temp = current['temperature'];
           final wind = current['windspeed'];
-          weatherTemp = '$tempC';
+          weatherTemp = '${temp}C';
           weatherWind = '$wind km/h';
           weatherCondition = (temp as num) > 24 ? 'Warm / Dry' : 'Favorable';
           isWeatherLive = true;
