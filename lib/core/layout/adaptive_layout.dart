@@ -28,6 +28,26 @@ class ViewportBreakpoints {
       MediaQuery.sizeOf(context).width >= tabletMin;
 }
 
+/// AdaptiveLayout provides static helpers for responsive layout decisions.
+class AdaptiveLayout {
+  AdaptiveLayout._();
+
+  static bool isMobile(BuildContext ctx) => MediaQuery.sizeOf(ctx).width < 600;
+
+  static bool isTablet(BuildContext ctx) {
+    final w = MediaQuery.sizeOf(ctx).width;
+    return w >= 600 && w < 1024;
+  }
+
+  static bool isDesktop(BuildContext ctx) =>
+      MediaQuery.sizeOf(ctx).width >= 1024;
+
+  static double sidePadding(BuildContext ctx) {
+    final w = MediaQuery.sizeOf(ctx).width;
+    return w < 600 ? 16 : w < 1024 ? 24 : 40;
+  }
+}
+
 /// System Theme Matrix (Adaptive Dark/Light Logic)
 /// LIGHT MODE:
 ///   - Surface: #F8F9FA

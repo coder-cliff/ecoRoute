@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Tactile, field-safe slider widget to prevent accidental taps in vibrating environments
 class SlideToConfirmWidget extends StatefulWidget {

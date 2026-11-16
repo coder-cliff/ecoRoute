@@ -17,9 +17,13 @@ class EcoRouteTheme {
   static const darkBg = Color(0xFF12281B);
   static const darkSurface = Color(0xFF162E20);
 
+  // Dark theme specific colors (from spec)
+  static const darkScaffoldBg = Color(0xFF0F172A);
+  static const darkCardColor = Color(0xFF1E293B);
+
   static ThemeData build({Brightness brightness = Brightness.light}) {
     final isDark = brightness == Brightness.dark;
-    final bg = isDark ? darkBg : richJade;
+    final bg = isDark ? darkScaffoldBg : richJade;
     final primary = isDark ? Colors.white : primaryInk;
     final secondary = isDark ? const Color(0xFFC7E2D0) : secondaryInk;
 
@@ -32,10 +36,11 @@ class EcoRouteTheme {
         primary: primaryInk,
         secondary: terracottaAccent,
         brightness: brightness,
-        surface: bg,
+        surface: isDark ? darkScaffoldBg : richJade,
       ),
       scaffoldBackgroundColor: bg,
       canvasColor: bg,
+      cardColor: isDark ? darkCardColor : null,
       dividerColor: Colors.transparent,
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: bg,
@@ -93,30 +98,53 @@ class EcoRouteTheme {
         ),
       ),
       cardTheme: CardThemeData(
-        color: Colors.transparent,
         elevation: 0,
+        color: Colors.transparent,
         shadowColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           side: BorderSide.none,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 50),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark ? const Color(0xFF1D3B29) : const Color(0x1F0D2618),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
             color: isDark ? const Color(0xFF2E4633) : const Color(0x2E0D2618),
           ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFEF4444)),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFEF4444), width: 2),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
     );

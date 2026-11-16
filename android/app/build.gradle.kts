@@ -15,7 +15,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.ecoroute.ecoroute"
+        applicationId = "com.ecoroute.android"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

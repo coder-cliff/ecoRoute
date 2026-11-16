@@ -1282,7 +1282,7 @@ class EcoRouteApp extends StatelessWidget {
           themeMode: state.isDarkMode ? ThemeMode.dark : ThemeMode.light,
           initialRoute: '/',
           builder: (context, child) {
-            return InactivityTimeoutManager(
+            return InactivityTimeoutWidget(
               child: child ?? const SizedBox.shrink(),
             );
           },

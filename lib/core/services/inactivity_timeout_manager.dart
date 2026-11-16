@@ -1,17 +1,41 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../main.dart';
 
-/// Manages automatic inactivity timeouts for high-security roles.
+/// Singleton inactivity timeout service.
+/// Use [InactivityTimeoutManager.instance] to start, reset, or stop the timer.
+class InactivityTimeoutManager {
+  static final InactivityTimeoutManager instance = InactivityTimeoutManager._();
+  InactivityTimeoutManager._();
+
+  Timer? _timer;
+
+  /// Start the inactivity timer. Cancels any previously running timer.
+  void start(Duration duration, VoidCallback onTimeout) {
+    _timer?.cancel();
+    _timer = Timer(duration, onTimeout);
+  }
+
+  /// Reset (restart) the inactivity timer with the same duration and callback.
+  void reset(Duration duration, VoidCallback onTimeout) => start(duration, onTimeout);
+
+  /// Stop (cancel) the inactivity timer without triggering the callback.
+  void stop() {
+    _timer?.cancel();
+    _timer = null;
+  }
+}
+
+/// Widget wrapper that wraps the app and monitors user activity, triggering
+/// automatic session logout for high-security roles after a period of inactivity.
 ///
 /// Per specification:
 /// - Admin, Operations Manager, Route Supervisor, and Rider sessions automatically
 ///   expire after 10 minutes of user inactivity and return to the login screen.
-/// - Residents and Guests stay logged in permanently ("for good").
-class InactivityTimeoutManager extends StatefulWidget {
-  const InactivityTimeoutManager({
+/// - Residents and Guests stay logged in permanently.
+class InactivityTimeoutWidget extends StatefulWidget {
+  const InactivityTimeoutWidget({
     super.key,
     required this.child,
     this.timeoutDuration = const Duration(minutes: 10),
@@ -20,17 +44,17 @@ class InactivityTimeoutManager extends StatefulWidget {
   final Widget child;
   final Duration timeoutDuration;
 
-  /// Global static accessor to reset inactivity timer from anywhere
+  /// Global static accessor to reset inactivity timer from anywhere.
   static void recordActivity() {
-    _InactivityTimeoutManagerState._instance?._resetTimer();
+    _InactivityTimeoutWidgetState._instance?._resetTimer();
   }
 
   @override
-  State<InactivityTimeoutManager> createState() => _InactivityTimeoutManagerState();
+  State<InactivityTimeoutWidget> createState() => _InactivityTimeoutWidgetState();
 }
 
-class _InactivityTimeoutManagerState extends State<InactivityTimeoutManager> {
-  static _InactivityTimeoutManagerState? _instance;
+class _InactivityTimeoutWidgetState extends State<InactivityTimeoutWidget> {
+  static _InactivityTimeoutWidgetState? _instance;
   Timer? _periodicCheckTimer;
   DateTime _lastActivityTime = DateTime.now();
   final FocusNode _focusNode = FocusNode();
@@ -56,7 +80,6 @@ class _InactivityTimeoutManagerState extends State<InactivityTimeoutManager> {
   void _checkInactivity() {
     final state = EcoRouteState.instance;
 
-    // Only apply strict timeout to Admin tier and Riders
     final role = state.currentRole.toLowerCase();
     final isSecuredRole = state.isAdminTier ||
         role == 'rider' ||
@@ -67,7 +90,6 @@ class _InactivityTimeoutManagerState extends State<InactivityTimeoutManager> {
         role == 'operationsmanager';
 
     if (!isSecuredRole) {
-      // Residents and Guests stay logged in permanently
       return;
     }
 
@@ -81,16 +103,13 @@ class _InactivityTimeoutManagerState extends State<InactivityTimeoutManager> {
     _resetTimer();
     final navContext = EcoRouteState.navigatorKey.currentContext ?? context;
 
-    // Reset session in state
     EcoRouteState.instance.signOut();
 
-    // Navigate to Login screen
     EcoRouteState.navigatorKey.currentState?.pushNamedAndRemoveUntil(
       '/login',
       (route) => false,
     );
 
-    // Show warning notification
     if (navContext.mounted) {
       ScaffoldMessenger.of(navContext).showSnackBar(
         const SnackBar(

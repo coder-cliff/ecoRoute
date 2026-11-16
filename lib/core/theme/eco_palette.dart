@@ -33,4 +33,18 @@ class EcoPalette {
 
   /// Subtle chip background
   static const Color chipBackground = Color(0xFFF0F4F1);
+
+  // Semantic status colors
+  static const Color success = Color(0xFF16A34A);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color error = Color(0xFFEF4444);
+  static const Color info = Color(0xFF3B82F6);
+
+  // Surface tokens
+  static const Color surfaceLight = Color(0xFFF8FAFC);
+  static const Color surfaceDark = Color(0xFF0F172A);
+
+  // Border tokens
+  static const Color borderLight = Color(0xFFE2E8F0);
+  static const Color borderDark = Color(0xFF334155);
 }
