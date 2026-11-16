@@ -231,7 +231,6 @@ class EcoRouteState extends ChangeNotifier {
             saved.contains('Drileba Emmanuel') ||
             saved.contains('Atiku Samuel') ||
             saved.contains('Buga Denis') ||
-            saved.contains('Ayiko Gift') ||
             saved.contains('TRIC-04')) {
           await _prefs?.remove(_kStorageKey);
         } else {
@@ -1701,32 +1700,46 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
     } else {
-      final user = await authService.login(email: identifier, password: password);
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      if (user == null) {
+      try {
+        final user = await authService.login(email: identifier, password: password);
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        if (user == null) {
+          final errorMsg = authService.lastAuthError ??
+              'Invalid credentials. Please enter a valid registered email and password.';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMsg),
+              backgroundColor: const Color(0xFF991B1B),
+            ),
+          );
+          return;
+        }
+        EcoRouteState.instance.setAuthenticatedUser(
+          role: user.role.name,
+          name: user.fullName,
+          email: user.email,
+          phone: user.phone,
+        );
+        if (user.role.isAdminTier) {
+          Navigator.pushNamedAndRemoveUntil(context, '/admin', (route) => false);
+        } else if (user.role == AppRole.rider) {
+          Navigator.pushNamedAndRemoveUntil(context, '/rider', (route) => false);
+        } else {
+          Navigator.pushNamedAndRemoveUntil(context, '/resident', (route) => false);
+        }
+        return;
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Invalid credentials. Please enter a valid registered email and password.'),
-            backgroundColor: Color(0xFF991B1B),
+          SnackBar(
+            content: Text(e.toString().replaceAll("StateError: ", "")),
+            backgroundColor: const Color(0xFF991B1B),
           ),
         );
         return;
       }
-      EcoRouteState.instance.setAuthenticatedUser(
-        role: user.role.name,
-        name: user.fullName,
-        email: user.email,
-        phone: user.phone,
-      );
-      if (user.role.isAdminTier) {
-        Navigator.pushNamedAndRemoveUntil(context, '/admin', (route) => false);
-      } else if (user.role == AppRole.rider) {
-        Navigator.pushNamedAndRemoveUntil(context, '/rider', (route) => false);
-      } else {
-        Navigator.pushNamedAndRemoveUntil(context, '/resident', (route) => false);
-      }
-      return;
     }
   }
 

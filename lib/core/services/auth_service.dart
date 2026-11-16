@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/entities/app_user.dart';
 import '../../domain/enums/role.dart';
+import '../../app/config/app_config.dart';
 import 'email_notification_service.dart';
 export '../../domain/enums/role.dart';
 
@@ -19,6 +20,8 @@ class AuthService {
   static const String _invitedRidersKey = 'ecoroute_invited_riders_v1';
   static const String _remindersKey = 'ecoroute_reminders_enabled_v1';
   static const String supportEmail = 'ecoroute.waste@gmail.com';
+
+  String? lastAuthError;
 
   SharedPreferences get preferences => _preferences;
 
@@ -135,22 +138,48 @@ class AuthService {
     return user.emailVerified;
   }
 
+  /// Maps Firebase Authentication error codes to friendly, actionable messages
+  static String mapFirebaseAuthError(firebase_auth.FirebaseAuthException e, String email) {
+    return switch (e.code) {
+      'operation-not-allowed' =>
+        'Email/Password sign-in is disabled in your Firebase project. Please enable Email/Password provider in the Firebase Console (Authentication > Sign-in method).',
+      'user-not-found' =>
+        'No account found with $email. Please create an account or verify your email.',
+      'wrong-password' =>
+        'Incorrect password for $email. Please check your password or reset it.',
+      'invalid-credential' =>
+        'Invalid credentials. If you have not created an account yet, please sign up.',
+      'network-request-failed' =>
+        'Network error connecting to Firebase. Please check your internet connection.',
+      'too-many-requests' =>
+        'Too many failed attempts. Login temporarily disabled by Firebase. Please try again later.',
+      'invalid-email' =>
+        'The email address is badly formatted.',
+      'user-disabled' =>
+        'This user account has been disabled in Firebase.',
+      _ => e.message ?? 'Authentication error (${e.code})',
+    };
+  }
+
   Future<AppUser?> login({
     required String email,
     required String password,
   }) async {
     final cleanEmail = email.trim().toLowerCase();
+    lastAuthError = null;
 
     // Check rate-limiting / lockout
     final lockout = _lockoutUntil[cleanEmail];
     if (lockout != null && DateTime.now().isBefore(lockout)) {
       final secondsLeft = lockout.difference(DateTime.now()).inSeconds;
-      throw StateError(
-        'Too many failed login attempts. Please wait ${secondsLeft > 0 ? secondsLeft : 1}s before trying again.',
-      );
+      final msg =
+          'Too many failed login attempts. Please wait ${secondsLeft > 0 ? secondsLeft : 1}s before trying again.';
+      lastAuthError = msg;
+      throw StateError(msg);
     }
 
     final inputHash = hashPassword(password);
+    final isAdmin = AppConfig.isAdminEmail(cleanEmail);
 
     // 1. Primary: Firebase Authentication (when cloud services are active)
     final firebaseAuth = _firebaseAuth;
@@ -172,25 +201,28 @@ class AuthService {
             debugPrint('Firestore profile fetch notice: $e');
           }
 
-          // Role is stored and managed on Firestore, not hardcoded
-          var resolvedRole = parseRole(profile?['role'] as String?);
+          var resolvedRole = isAdmin ? AppRole.admin : parseRole(profile?['role'] as String?);
 
           // If this is a newly authenticated user without a profile doc yet,
-          // check if they match municipal admin emails or invited rider records
-          if (profile == null) {
+          // or designated admin without an admin doc, ensure role is properly set
+          if (profile == null || (isAdmin && profile['role'] != 'admin')) {
             final riderInvite = getRiderInvite(cleanEmail);
-            resolvedRole = riderInvite != null ? AppRole.rider : AppRole.resident;
+            if (!isAdmin) {
+              resolvedRole = riderInvite != null ? AppRole.rider : AppRole.resident;
+            }
 
             try {
               await profileRef.set({
                 'id': firebaseUser.uid,
-                'fullName': firebaseUser.displayName ?? cleanEmail.split('@').first,
+                'fullName': isAdmin
+                    ? 'Ayiko Gift'
+                    : (firebaseUser.displayName ?? cleanEmail.split('@').first),
                 'email': cleanEmail,
-                'phone': firebaseUser.phoneNumber ?? '',
+                'phone': firebaseUser.phoneNumber ?? (isAdmin ? '+256 394 880 352' : ''),
                 'role': resolvedRole.name,
                 'createdAt': FieldValue.serverTimestamp(),
                 'updatedAt': FieldValue.serverTimestamp(),
-              });
+              }, SetOptions(merge: true));
             } catch (e) {
               debugPrint('Firestore profile initial sync notice: $e');
             }
@@ -199,12 +231,13 @@ class AuthService {
           final user = AppUser(
             id: firebaseUser.uid,
             fullName: (profile?['fullName'] as String?) ??
-                firebaseUser.displayName ??
-                cleanEmail.split('@').first,
+                (isAdmin
+                    ? 'Ayiko Gift'
+                    : (firebaseUser.displayName ?? cleanEmail.split('@').first)),
             email: cleanEmail,
             phone: (profile?['phone'] as String?) ??
                 firebaseUser.phoneNumber ??
-                '',
+                (isAdmin ? '+256 394 880 352' : ''),
             role: resolvedRole,
             address: profile?['address'] as String?,
             photoUrl: (profile?['photoUrl'] as String?) ?? firebaseUser.photoURL,
@@ -214,12 +247,54 @@ class AuthService {
           await _saveSession(user);
           return user;
         }
-      } on firebase_auth.FirebaseAuthException catch (_) {
+      } on firebase_auth.FirebaseAuthException catch (e) {
+        // If this is the designated admin account and no account exists in Firebase yet, auto-bootstrap it!
+        if (isAdmin && (e.code == 'user-not-found' || e.code == 'invalid-credential')) {
+          try {
+            final newCred = await firebaseAuth.createUserWithEmailAndPassword(
+              email: cleanEmail,
+              password: password,
+            );
+            final newFbUser = newCred.user;
+            if (newFbUser != null) {
+              try {
+                await firestore.collection('profiles').doc(newFbUser.uid).set({
+                  'id': newFbUser.uid,
+                  'fullName': 'Ayiko Gift',
+                  'email': cleanEmail,
+                  'phone': '+256 394 880 352',
+                  'role': AppRole.admin.name,
+                  'createdAt': FieldValue.serverTimestamp(),
+                  'updatedAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
+              } catch (_) {}
+
+              final adminUser = AppUser(
+                id: newFbUser.uid,
+                fullName: 'Ayiko Gift',
+                email: cleanEmail,
+                phone: '+256 394 880 352',
+                role: AppRole.admin,
+              );
+              _failedAttempts.remove(cleanEmail);
+              _lockoutUntil.remove(cleanEmail);
+              _saveToLocalRegisteredUsers(adminUser, password);
+              await _saveSession(adminUser);
+              return adminUser;
+            }
+          } catch (createErr) {
+            debugPrint('Admin auto-bootstrap notice: $createErr');
+          }
+        }
+
         _recordFailedLogin(cleanEmail);
+        lastAuthError = mapFirebaseAuthError(e, cleanEmail);
+        if (e.code == 'operation-not-allowed') {
+          throw StateError(lastAuthError!);
+        }
         return null;
       }
     }
-
 
     // Local registered users verification (used for offline or mock tests)
     final registered = _getRegisteredUsers();
@@ -230,12 +305,13 @@ class AuthService {
         final matches = (storedHash != null && storedHash == inputHash) ||
             (rawStoredPassword != null && rawStoredPassword == password);
         if (matches) {
+          final userRole = isAdmin ? AppRole.admin : parseRole(reg['role'] as String?);
           final user = AppUser(
             id: reg['id'] as String,
             fullName: reg['fullName'] as String,
             email: reg['email'] as String,
-            phone: (reg['phone'] as String?) ?? '',
-            role: parseRole(reg['role'] as String?),
+            phone: (reg['phone'] as String?) ?? (isAdmin ? '+256 394 880 352' : ''),
+            role: userRole,
             address: reg['address'] as String?,
             photoUrl: reg['photoUrl'] as String?,
           );
@@ -245,6 +321,22 @@ class AuthService {
           return user;
         }
       }
+    }
+
+    // If designated admin account and no local demo user exists, auto-bootstrap local admin
+    if (isAdmin) {
+      final adminUser = AppUser(
+        id: 'admin-ayiko-${DateTime.now().millisecondsSinceEpoch}',
+        fullName: 'Ayiko Gift',
+        email: cleanEmail,
+        phone: '+256 394 880 352',
+        role: AppRole.admin,
+      );
+      _failedAttempts.remove(cleanEmail);
+      _lockoutUntil.remove(cleanEmail);
+      _saveToLocalRegisteredUsers(adminUser, password);
+      await _saveSession(adminUser);
+      return adminUser;
     }
 
     _recordFailedLogin(cleanEmail);
@@ -285,11 +377,15 @@ class AuthService {
       throw StateError('Please enter a valid phone number.');
     }
 
-    // Auto-detect if user was invited by management as a Rider
+    // Auto-detect if user was invited by management as a Rider or is Super Admin
     var resolvedRole = role;
-    final invite = getRiderInvite(inviteCode?.trim().isNotEmpty == true ? inviteCode!.trim() : cleanEmail);
-    if (invite != null) {
-      resolvedRole = AppRole.rider;
+    if (AppConfig.isAdminEmail(cleanEmail)) {
+      resolvedRole = AppRole.admin;
+    } else {
+      final invite = getRiderInvite(inviteCode?.trim().isNotEmpty == true ? inviteCode!.trim() : cleanEmail);
+      if (invite != null) {
+        resolvedRole = AppRole.rider;
+      }
     }
 
     final firebaseAuth = _firebaseAuth;
@@ -347,6 +443,11 @@ class AuthService {
         await _saveSession(user);
         return user;
       } on firebase_auth.FirebaseAuthException catch (e) {
+        if (e.code == 'operation-not-allowed') {
+          throw StateError(
+            'Email/Password sign-up is disabled in Firebase Console. Please enable Email/Password provider in the Firebase Console (Authentication > Sign-in method).',
+          );
+        }
         if (e.code == 'email-already-in-use') {
           throw StateError('This email is already registered. Please login.');
         }
@@ -712,7 +813,6 @@ class AuthService {
                 !name.contains('drileba') &&
                 !name.contains('atiku') &&
                 !name.contains('buga') &&
-                !name.contains('ayiko') &&
                 !email.contains('demo');
           })
           .toList();
@@ -983,7 +1083,6 @@ class AuthService {
                 !email.contains('saviordeogratius') &&
                 !email.contains('techcliff') &&
                 !name.contains('jane') &&
-                !name.contains('ayiko') &&
                 !name.contains('acan') &&
                 !name.contains('kato') &&
                 !name.contains('okello');

@@ -15,7 +15,19 @@ class AppConfig {
   };
 
   // Administrative
-  static const String adminEmail = 'ecoroute.arua@gmail.com';
+  static const String adminEmail = 'ayikog@yahoo.com';
+  static const List<String> adminEmails = [
+    'ayikog@yahoo.com',
+    'ecoroute.waste@gmail.com',
+    'ecoroute.arua@gmail.com',
+  ];
+
+  static bool isAdminEmail(String? email) {
+    if (email == null) return false;
+    final clean = email.trim().toLowerCase();
+    return clean == adminEmail.toLowerCase() ||
+        adminEmails.any((e) => e.toLowerCase() == clean);
+  }
   static const String appVersion = '1.0.0';
   static const String aruaCityName = 'Arua City, Uganda';
   static const double aruaLat = 3.0243;

@@ -76,7 +76,8 @@ class _LoginScreenState extends State<LoginScreen> {
         if (user == null) {
           setState(() {
             _isSubmitting = false;
-            _errorMessage = 'Invalid email or password. Please try again.';
+            _errorMessage = authService.lastAuthError ??
+                'Invalid email or password. Please try again.';
           });
           return;
         }

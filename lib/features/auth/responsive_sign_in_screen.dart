@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/layout/adaptive_layout.dart';
 import '../../core/services/auth_service.dart';
+import '../../app/config/app_config.dart';
 import '../../domain/entities/app_user.dart';
 import '../../domain/enums/role.dart';
 import '../../main.dart';
@@ -204,28 +205,33 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
         setState(() => _errorMessage = e.toString().replaceAll('StateError: ', ''));
       }
     } else {
-      final user = await authService.login(email: email, password: password);
-      if (!mounted) return;
-      if (user == null) {
-        setState(() => _errorMessage = 'Invalid email or password. Please verify your credentials or create an account.');
-        return;
-      }
+      try {
+        final user = await authService.login(email: email, password: password);
+        if (!mounted) return;
+        if (user == null) {
+          final errorMsg = authService.lastAuthError ??
+              'Invalid email or password. Please verify your credentials or create an account.';
+          setState(() => _errorMessage = errorMsg);
+          return;
+        }
 
-      EcoRouteState.instance.setAuthenticatedUser(
-        role: user.role.name,
-        name: user.fullName,
-        email: user.email,
-        phone: user.phone,
-      );
+        EcoRouteState.instance.setAuthenticatedUser(
+          role: user.role.name,
+          name: user.fullName,
+          email: user.email,
+          phone: user.phone,
+        );
 
-      if (user.role == AppRole.admin ||
-          user.role == AppRole.routeSupervisor ||
-          user.role == AppRole.operationsManager) {
-        Navigator.pushNamedAndRemoveUntil(context, '/admin', (r) => false);
-      } else if (user.role == AppRole.rider) {
-        Navigator.pushNamedAndRemoveUntil(context, '/rider', (r) => false);
-      } else {
-        Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
+        if (user.role.isAdminTier) {
+          Navigator.pushNamedAndRemoveUntil(context, '/admin', (r) => false);
+        } else if (user.role == AppRole.rider) {
+          Navigator.pushNamedAndRemoveUntil(context, '/rider', (r) => false);
+        } else {
+          Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
+        }
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _errorMessage = e.toString().replaceAll('StateError: ', ''));
       }
     }
   }
@@ -254,22 +260,23 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
           final cleanEmail = fbUser.email!.trim().toLowerCase();
           final uid = fbUser.uid;
 
-          String resolvedRole = 'resident';
-          String resolvedName = fbUser.displayName ?? cleanEmail.split('@').first;
-          String resolvedPhone = fbUser.phoneNumber ?? '';
+          final isAdmin = AppConfig.isAdminEmail(cleanEmail);
+          String resolvedRole = isAdmin ? 'admin' : 'resident';
+          String resolvedName = fbUser.displayName ?? (isAdmin ? 'Ayiko Gift' : cleanEmail.split('@').first);
+          String resolvedPhone = fbUser.phoneNumber ?? (isAdmin ? '+256 394 880 352' : '');
 
           try {
             final doc = await FirebaseFirestore.instance.collection('profiles').doc(uid).get();
             if (doc.exists && doc.data() != null) {
               final data = doc.data()!;
-              resolvedRole = (data['role'] as String?)?.toLowerCase() ?? 'resident';
+              resolvedRole = isAdmin ? 'admin' : ((data['role'] as String?)?.toLowerCase() ?? 'resident');
               resolvedName = (data['fullName'] as String?) ?? resolvedName;
               resolvedPhone = (data['phone'] as String?) ?? resolvedPhone;
             } else {
               final prefs = EcoRouteState.instance.prefs ?? await SharedPreferences.getInstance();
               final auth = AuthService(prefs);
               final invite = auth.getRiderInvite(cleanEmail);
-              if (invite != null) {
+              if (!isAdmin && invite != null) {
                 resolvedRole = 'rider';
               }
               await FirebaseFirestore.instance.collection('profiles').doc(uid).set({
@@ -423,9 +430,10 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
       final email = emailCtrl.text.trim().toLowerCase();
       setState(() => _isLoading = true);
 
-      String resolvedRole = 'resident';
-      String resolvedName = email.split('@').first;
-      String resolvedPhone = '';
+      final isAdmin = AppConfig.isAdminEmail(email);
+      String resolvedRole = isAdmin ? 'admin' : 'resident';
+      String resolvedName = isAdmin ? 'Ayiko Gift' : email.split('@').first;
+      String resolvedPhone = isAdmin ? '+256 394 880 352' : '';
       String? photoUrl;
       bool foundInDb = false;
 
@@ -439,9 +447,9 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
               .get();
           if (query.docs.isNotEmpty) {
             final data = query.docs.first.data();
-            resolvedRole = (data['role'] as String?)?.toLowerCase().trim() ?? 'resident';
+            resolvedRole = isAdmin ? 'admin' : ((data['role'] as String?)?.toLowerCase().trim() ?? 'resident');
             resolvedName = (data['fullName'] as String?) ?? resolvedName;
-            resolvedPhone = (data['phone'] as String?) ?? '';
+            resolvedPhone = (data['phone'] as String?) ?? resolvedPhone;
             photoUrl = data['photoUrl'] as String?;
             foundInDb = true;
           }
@@ -481,9 +489,9 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
         final newUser = await auth.register(
           fullName: resolvedName,
           email: email,
-          phone: '+256 700 000 000',
+          phone: resolvedPhone.isNotEmpty ? resolvedPhone : '+256 394 880 352',
           password: 'GoogleSSO_${DateTime.now().millisecondsSinceEpoch}',
-          role: AppRole.resident,
+          role: isAdmin ? AppRole.admin : AppRole.resident,
         );
         resolvedRole = newUser.role.name;
         resolvedName = newUser.fullName;
