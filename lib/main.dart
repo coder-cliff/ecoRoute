@@ -1291,14 +1291,14 @@ class EcoRouteApp extends StatelessWidget {
             '/resident': (context) => const ResponsiveResidentDashboard(),
             '/rider': (context) {
               final state = EcoRouteState.instance;
-              if (state.currentRole != 'rider' && !state.isAdminTier) {
+              if (state.userEmail.isEmpty || (state.currentRole != 'rider' && !state.isAdminTier)) {
                 return const ResponsiveSignInScreen();
               }
               return const ResponsiveRiderDashboard();
             },
             '/admin': (context) {
               final state = EcoRouteState.instance;
-              if (!state.isAdminTier) {
+              if (state.userEmail.isEmpty || !state.isAdminTier) {
                 return const ResponsiveSignInScreen();
               }
               return const ResponsiveAdminDashboard();
@@ -1495,13 +1495,29 @@ class _LoginScreenState extends State<LoginScreen> {
                 }
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Password reset instructions sent to $targetEmail. Please check your inbox.')),
+                    SnackBar(
+                      content: Text('Password reset instructions sent to $targetEmail. Please check your inbox.'),
+                      backgroundColor: const Color(0xFF1B3828),
+                    ),
+                  );
+                }
+              } on FirebaseAuthException catch (e) {
+                if (mounted) {
+                  final msg = AuthService.mapFirebaseAuthError(e, targetEmail);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(msg),
+                      backgroundColor: const Color(0xFFC62828),
+                    ),
                   );
                 }
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Could not send reset email: $e')),
+                    SnackBar(
+                      content: Text('Could not send reset email: $e'),
+                      backgroundColor: const Color(0xFFC62828),
+                    ),
                   );
                 }
               }

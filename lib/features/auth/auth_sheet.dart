@@ -145,9 +145,9 @@ class _AuthSheetState extends State<AuthSheet> {
     }
 
     try {
-      if (widget.authService != null) {
-        await widget.authService!.sendPasswordResetEmail(email);
-      }
+      final auth = widget.authService ??
+          AuthService(await SharedPreferences.getInstance());
+      await auth.sendPasswordResetEmail(email);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -157,9 +157,10 @@ class _AuthSheetState extends State<AuthSheet> {
       );
     } catch (e) {
       if (!mounted) return;
+      final msg = e is AuthException ? e.message : 'Could not send reset email: $e';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not send reset email: $e'),
+          content: Text(msg),
           backgroundColor: const Color(0xFFC62828),
         ),
       );

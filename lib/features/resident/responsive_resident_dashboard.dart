@@ -2528,15 +2528,26 @@ class _ResponsiveResidentDashboardState
     Color cardColor,
     Color accentGreen,
   ) {
+    final completedRequests = state.residentRequests.where((r) {
+      final s = (r['status']?.toString().toLowerCase() ?? '');
+      return s == 'completed' || s == 'collected' || s == 'paid';
+    }).toList();
+    final totalSacks = state.residentRequests.fold<int>(0, (sum, r) {
+      final val = r['sacks'];
+      return sum + (val is int ? val : (int.tryParse(val?.toString() ?? '') ?? 1));
+    });
+    final estimatedPlasticKg = (totalSacks * 8.5).toStringAsFixed(1);
+    final compostYieldKg = (totalSacks * 14.0).toStringAsFixed(1);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('RESIDENTIAL DIVERSION & ENVIRONMENTAL IMPACT',
+          Text('MY RESIDENTIAL DIVERSION & ENVIRONMENTAL IMPACT',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor)),
           const SizedBox(height: 4),
-          Text('Key sustainability performance indicators tracked across Arua municipality',
+          Text('Personal sustainability performance indicators from your collection history',
               style: TextStyle(fontSize: 12, color: subtextColor)),
           const SizedBox(height: 20),
           Row(
@@ -2554,9 +2565,9 @@ class _ResponsiveResidentDashboardState
                     children: [
                       Text('Estimated Plastic Diverted', style: TextStyle(fontSize: 12, color: subtextColor)),
                       const SizedBox(height: 8),
-                      Text('184.5 kg', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: accentGreen)),
+                      Text('$estimatedPlasticKg kg', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: accentGreen)),
                       const SizedBox(height: 4),
-                      Text('+18% from last month', style: TextStyle(fontSize: 11, color: accentGreen)),
+                      Text('${completedRequests.length} completed collections', style: TextStyle(fontSize: 11, color: accentGreen)),
                     ],
                   ),
                 ),
@@ -2575,9 +2586,9 @@ class _ResponsiveResidentDashboardState
                     children: [
                       Text('Organic Compost Yield', style: TextStyle(fontSize: 12, color: subtextColor)),
                       const SizedBox(height: 8),
-                      Text('320.0 kg', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: const Color(0xFFF57C00))),
+                      Text('$compostYieldKg kg', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: const Color(0xFFF57C00))),
                       const SizedBox(height: 4),
-                      Text('Transferred to local farms', style: TextStyle(fontSize: 11, color: subtextColor)),
+                      Text('Estimated from organic separation', style: TextStyle(fontSize: 11, color: subtextColor)),
                     ],
                   ),
                 ),
@@ -3077,7 +3088,7 @@ class _ResponsiveResidentDashboardState
                       );
                     },
                     icon: const Icon(Icons.electric_moped, size: 18),
-                    label: Text('Confirm & Dispatch Tricycle ($total UGX)'),
+                    label: Text('Confirm Pickup Request ($total UGX)'),
                     style: FilledButton.styleFrom(
                       backgroundColor: accentGreen,
                       padding: const EdgeInsets.symmetric(vertical: 14),

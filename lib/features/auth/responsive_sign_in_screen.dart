@@ -15,7 +15,9 @@ import '../../main.dart';
 /// Responsive Cross-Platform Sign-In Screen
 /// Matches Architectural Wireframe & Blueprint (iPhone 15 Pro, iPad Pro, Studio Display)
 class ResponsiveSignInScreen extends StatefulWidget {
-  const ResponsiveSignInScreen({super.key});
+  const ResponsiveSignInScreen({super.key, this.authService});
+
+  final AuthService? authService;
 
   @override
   State<ResponsiveSignInScreen> createState() => _ResponsiveSignInScreenState();
@@ -451,80 +453,108 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
 
   void _showForgotPasswordDialog() {
     final resetEmailCtrl = TextEditingController(text: _emailController.text);
+    bool isSubmitting = false;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Reset Password'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Enter your email address and we will send a password reset link:',
-              style: TextStyle(fontSize: 13),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: resetEmailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Email Address',
-                border: OutlineInputBorder(),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Reset Password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Enter your email address and we will send a password reset link:',
+                style: TextStyle(fontSize: 13),
               ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const ValueKey('reset_email_input'),
+                controller: resetEmailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email Address',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              key: const ValueKey('reset_password_submit_button'),
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      final em = resetEmailCtrl.text.trim();
+                      if (em.isEmpty || !AuthService.emailRegex.hasMatch(em)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please enter a valid email address.'),
+                            backgroundColor: Color(0xFFC62828),
+                          ),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => isSubmitting = true);
+                      try {
+                        final auth = widget.authService ??
+                            AuthService(
+                              EcoRouteState.instance.prefs ??
+                                  await SharedPreferences.getInstance(),
+                            );
+                        await auth.sendPasswordResetEmail(em);
+
+                        if (ctx.mounted) {
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Password reset instructions sent to $em. Please check your inbox.',
+                              ),
+                              backgroundColor: const Color(0xFF2E7D32),
+                            ),
+                          );
+                        }
+                      } on AuthException catch (e) {
+                        if (ctx.mounted) {
+                          setDialogState(() => isSubmitting = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.message),
+                              backgroundColor: const Color(0xFFC62828),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          setDialogState(() => isSubmitting = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to send reset email: $e'),
+                              backgroundColor: const Color(0xFFC62828),
+                            ),
+                          );
+                        }
+                      }
+                    },
+              child: isSubmitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Send Link'),
             ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () async {
-              final em = resetEmailCtrl.text.trim();
-              if (em.isEmpty || !AuthService.emailRegex.hasMatch(em)) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please enter a valid email address.'),
-                    backgroundColor: Color(0xFFC62828),
-                  ),
-                );
-                return;
-              }
-
-              try {
-                final prefs = EcoRouteState.instance.prefs ?? await SharedPreferences.getInstance();
-                final authService = AuthService(prefs);
-                await authService.sendPasswordResetEmail(em);
-
-                if (ctx.mounted) {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Password reset instructions sent to $em'),
-                      backgroundColor: const Color(0xFF2E7D32),
-                    ),
-                  );
-                }
-              } on AuthException catch (e) {
-                if (ctx.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(e.message),
-                      backgroundColor: const Color(0xFFC62828),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (ctx.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Failed to send reset email: $e'),
-                      backgroundColor: const Color(0xFFC62828),
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Send Link'),
-          ),
-        ],
       ),
     );
   }
@@ -922,6 +952,7 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
                 ],
               ),
               TextButton(
+                key: const ValueKey('responsive_forgot_password_button'),
                 onPressed: _showForgotPasswordDialog,
                 child: Text(
                   'Forgot Password?',

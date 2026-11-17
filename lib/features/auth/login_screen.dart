@@ -143,9 +143,9 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      if (widget.authService != null) {
-        await widget.authService!.sendPasswordResetEmail(email);
-      }
+      final auth = widget.authService ??
+          AuthService(await SharedPreferences.getInstance());
+      await auth.sendPasswordResetEmail(email);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

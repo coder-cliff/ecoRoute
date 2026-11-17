@@ -19,16 +19,31 @@ class AppRouter {
     AuthService? authService,
     WasteApiService? wasteApiService,
   }) {
+    final user = authService?.currentUser;
     switch (role) {
       case AppRole.admin:
       case AppRole.operationsManager:
       case AppRole.routeSupervisor:
+        if (user == null || !user.role.isAdminTier) {
+          return LoginScreen(
+            repository: repository,
+            authService: authService,
+            wasteApiService: wasteApiService,
+          );
+        }
         return AdminDashboard(
           repository: repository,
           authService: authService,
           wasteApiService: wasteApiService,
         );
       case AppRole.rider:
+        if (user == null || (user.role != AppRole.rider && !user.role.isAdminTier)) {
+          return LoginScreen(
+            repository: repository,
+            authService: authService,
+            wasteApiService: wasteApiService,
+          );
+        }
         return RiderTaskHub(
           repository: repository,
           authService: authService,

@@ -849,66 +849,68 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
             const SizedBox(height: 16),
           ],
 
-          // Environmental & Operation Impact
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE2EAE1)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.eco_rounded, color: Color(0xFF2E7D32), size: 18),
-                    SizedBox(width: 6),
-                    Text(
-                      'Environmental & Lifecycle Impact',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF183B20),
+          if (role == AppRole.resident) ...[
+            // Environmental & Operation Impact
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE2EAE1)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.eco_rounded, color: Color(0xFF2E7D32), size: 18),
+                      SizedBox(width: 6),
+                      Text(
+                        'Environmental & Lifecycle Impact',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF183B20),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildMetricCol('Pickups', '$totalRequests', Icons.local_shipping_outlined),
-                    Container(width: 1, height: 32, color: const Color(0xFFE2EAE1)),
-                    _buildMetricCol('Sacks', '$totalSacks', Icons.shopping_bag_outlined),
-                    Container(width: 1, height: 32, color: const Color(0xFFE2EAE1)),
-                    _buildMetricCol('CO Avoided', '$totalCo2 kg', Icons.cloud_done_outlined, const Color(0xFF2E7D32)),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildMetricCol('Pickups', '$totalRequests', Icons.local_shipping_outlined),
+                      Container(width: 1, height: 32, color: const Color(0xFFE2EAE1)),
+                      _buildMetricCol('Sacks', '$totalSacks', Icons.shopping_bag_outlined),
+                      Container(width: 1, height: 32, color: const Color(0xFFE2EAE1)),
+                      _buildMetricCol('CO Avoided', '$totalCo2 kg', Icons.cloud_done_outlined, const Color(0xFF2E7D32)),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // Request Stats
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE2EAE1)),
+            // Request Stats
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE2EAE1)),
+              ),
+              child: Column(
+                children: [
+                  _buildMetricRow('Open requests', '$openCount', const Color(0xFFE65100)),
+                  const Divider(height: 20),
+                  _buildMetricRow('Collected', '$collectedCount', const Color(0xFF0288D1)),
+                  const Divider(height: 20),
+                  _buildMetricRow('Paid & Settled', '$paidCount', const Color(0xFF2E7D32)),
+                ],
+              ),
             ),
-            child: Column(
-              children: [
-                _buildMetricRow('Open requests', '$openCount', const Color(0xFFE65100)),
-                const Divider(height: 20),
-                _buildMetricRow('Collected', '$collectedCount', const Color(0xFF0288D1)),
-                const Divider(height: 20),
-                _buildMetricRow('Paid & Settled', '$paidCount', const Color(0xFF2E7D32)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
+          ],
 
           // Group 1: Preferences & Service
           _buildSettingsSection(
