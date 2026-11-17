@@ -1170,17 +1170,6 @@ class _ResponsiveResidentDashboardState
                       ),
                       const Divider(height: 1, indent: 56),
                       _buildAccountTile(
-                        icon: Icons.tune_outlined,
-                        title: 'Fleet Settings',
-                        textColor: textColor,
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Fleet Settings: Electric Tricycles assigned to Arua Central.')),
-                          );
-                        },
-                      ),
-                      const Divider(height: 1, indent: 56),
-                      _buildAccountTile(
                         icon: Icons.settings_outlined,
                         title: 'App Preferences',
                         textColor: textColor,

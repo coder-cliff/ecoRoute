@@ -83,114 +83,23 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
     });
 
     try {
-      if (Firebase.apps.isNotEmpty) {
-        if (_isSignUp) {
-          final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-            email: email,
-            password: password,
-          );
-          final uid = cred.user?.uid;
-          final name = _fullNameController.text.trim().isNotEmpty
-              ? _fullNameController.text.trim()
-              : email.split('@').first;
+      final prefs = EcoRouteState.instance.prefs ?? await SharedPreferences.getInstance();
+      final authService = AuthService(prefs);
 
-          if (uid != null) {
-            await FirebaseFirestore.instance.collection('profiles').doc(uid).set({
-              'id': uid,
-              'fullName': name,
-              'email': email.toLowerCase(),
-              'phone': _phoneController.text.trim(),
-              'role': 'resident',
-              'createdAt': FieldValue.serverTimestamp(),
-            }, SetOptions(merge: true));
-          }
+      if (_isSignUp) {
+        final name = _fullNameController.text.trim().isNotEmpty
+            ? _fullNameController.text.trim()
+            : email.split('@').first;
+        final phone = _phoneController.text.trim().isNotEmpty
+            ? _phoneController.text.trim()
+            : (AppConfig.isAdminEmail(email) ? '+256 394 880 352' : '+256 700 000 000');
 
-          if (!mounted) return;
-          EcoRouteState.instance.setAuthenticatedUser(
-            role: 'resident',
-            name: name,
-            email: email,
-            phone: _phoneController.text.trim(),
-          );
-          Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
-          return;
-        } else {
-          final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-            email: email,
-            password: password,
-          );
-          final uid = cred.user?.uid;
-          String resolvedRole = 'resident';
-          String resolvedName = email.split('@').first;
-          String resolvedPhone = '';
-
-          if (uid != null) {
-            final doc = await FirebaseFirestore.instance.collection('profiles').doc(uid).get();
-            if (doc.exists && doc.data() != null) {
-              final data = doc.data()!;
-              resolvedRole = (data['role'] as String?)?.toLowerCase().trim() ?? 'resident';
-              resolvedName = (data['fullName'] as String?) ?? resolvedName;
-              resolvedPhone = (data['phone'] as String?) ?? '';
-            }
-          }
-
-          if (!mounted) return;
-          EcoRouteState.instance.setAuthenticatedUser(
-            role: resolvedRole,
-            name: resolvedName,
-            email: email,
-            phone: resolvedPhone,
-          );
-
-          if (resolvedRole == 'admin' || resolvedRole == 'manager' || resolvedRole == 'supervisor') {
-            Navigator.pushNamedAndRemoveUntil(context, '/admin', (r) => false);
-          } else if (resolvedRole == 'rider') {
-            Navigator.pushNamedAndRemoveUntil(context, '/rider', (r) => false);
-          } else {
-            Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
-          }
-          return;
-        }
-      } else {
-        // Zero-Cost Local Authentication via AuthService (Authentic - No Demo Bypasses)
-        await _authenticateLocally(email, password);
-        return;
-      }
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      if (e.code == 'network-request-failed' ||
-          e.code == 'api-key-not-valid' ||
-          e.code == 'invalid-api-key' ||
-          e.code == 'app-not-authorized') {
-        await _authenticateLocally(email, password);
-        return;
-      }
-      setState(() => _errorMessage = e.message ?? 'Authentication error');
-    } catch (_) {
-      if (!mounted) return;
-      await _authenticateLocally(email, password);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _authenticateLocally(String email, String password) async {
-    final prefs = EcoRouteState.instance.prefs ?? await SharedPreferences.getInstance();
-    final authService = AuthService(prefs);
-
-    if (_isSignUp) {
-      final name = _fullNameController.text.trim().isNotEmpty
-          ? _fullNameController.text.trim()
-          : email.split('@').first;
-      final phone = _phoneController.text.trim();
-
-      try {
         final user = await authService.register(
           fullName: name,
           email: email,
           phone: phone,
           password: password,
-          role: AppRole.resident,
+          role: AppConfig.isAdminEmail(email) ? AppRole.admin : AppRole.resident,
         );
         if (!mounted) return;
         EcoRouteState.instance.setAuthenticatedUser(
@@ -199,13 +108,14 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
           email: user.email,
           phone: user.phone,
         );
-        Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
-      } catch (e) {
-        if (!mounted) return;
-        setState(() => _errorMessage = e.toString().replaceAll('StateError: ', ''));
-      }
-    } else {
-      try {
+        if (user.role.isAdminTier) {
+          Navigator.pushNamedAndRemoveUntil(context, '/admin', (r) => false);
+        } else if (user.role == AppRole.rider) {
+          Navigator.pushNamedAndRemoveUntil(context, '/rider', (r) => false);
+        } else {
+          Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
+        }
+      } else {
         final user = await authService.login(email: email, password: password);
         if (!mounted) return;
         if (user == null) {
@@ -229,10 +139,15 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
         } else {
           Navigator.pushNamedAndRemoveUntil(context, '/resident', (r) => false);
         }
-      } catch (e) {
-        if (!mounted) return;
-        setState(() => _errorMessage = e.toString().replaceAll('StateError: ', ''));
       }
+    } catch (e) {
+      if (!mounted) return;
+      final cleanMsg = e.toString().replaceAll('StateError: ', '').replaceAll('Exception: ', '').trim();
+      setState(() => _errorMessage = cleanMsg.isNotEmpty && cleanMsg != 'Error'
+          ? cleanMsg
+          : 'Authentication error. Please verify your credentials.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
