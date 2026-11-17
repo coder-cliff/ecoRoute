@@ -127,7 +127,7 @@ void main() {
 
       // Positively assert resident action cards
       expect(find.text('My Profile'), findsOneWidget);
-      expect(find.text('Request Pickup'), findsOneWidget);
+      expect(find.text('Take rubbish photo'), findsOneWidget);
 
       // Negatively assert misplaced role switching and admin fleet tools
       expect(find.text('Account & role'), findsNothing);

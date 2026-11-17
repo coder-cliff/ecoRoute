@@ -1116,13 +1116,13 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
     // Resident scoped orders for personalized tracking & impact
     final residentOrders = _role == AppRole.resident
-        ? _orders.where((o) =>
-            _currentUser == null ||
-            o.residentId == _currentUser!.id ||
-            o.residentPhone == _currentUser!.phone ||
-            o.residentName == _currentUser!.fullName ||
-            o.residentId == 'resident-1'
-          ).toList()
+        ? (_currentUser == null
+            ? <PickupRequest>[]
+            : _orders.where((o) =>
+                o.residentId == _currentUser!.id ||
+                o.residentPhone == _currentUser!.phone ||
+                o.residentName == _currentUser!.fullName
+              ).toList())
         : _orders;
 
     final residentRequested = residentOrders.where((o) => o.status == RequestStatus.requested).length;
@@ -2332,13 +2332,13 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
     // Filter requests for residents: residents only see requests from their own account
     final scopedOrders = _role == AppRole.resident
-        ? _orders.where((o) =>
-            _currentUser == null ||
-            o.residentId == _currentUser!.id ||
-            o.residentPhone == _currentUser!.phone ||
-            o.residentName == _currentUser!.fullName ||
-            o.residentId == 'resident-1'
-          ).toList()
+        ? (_currentUser == null
+            ? <PickupRequest>[]
+            : _orders.where((o) =>
+                o.residentId == _currentUser!.id ||
+                o.residentPhone == _currentUser!.phone ||
+                o.residentName == _currentUser!.fullName
+              ).toList())
         : _orders;
 
     if (_loadingOrders) {
@@ -2764,13 +2764,13 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             currentUser: _currentUser,
             role: _role,
             orders: _role == AppRole.resident
-                ? _orders.where((o) =>
-                    _currentUser == null ||
-                    o.residentId == _currentUser!.id ||
-                    o.residentPhone == _currentUser!.phone ||
-                    o.residentName == _currentUser!.fullName ||
-                    o.residentId == 'resident-1'
-                  ).toList()
+                ? (_currentUser == null
+                    ? <PickupRequest>[]
+                    : _orders.where((o) =>
+                        o.residentId == _currentUser!.id ||
+                        o.residentPhone == _currentUser!.phone ||
+                        o.residentName == _currentUser!.fullName
+                      ).toList())
                 : _orders,
             repository: widget.repository,
             authService: widget.authService,
