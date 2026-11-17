@@ -262,7 +262,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
   void _loadUserSession() {
     if (widget.enforcedRole != null) {
       _role = widget.enforcedRole!;
-      _signedIn = true;
+      _signedIn = widget.enforcedRole != AppRole.resident;
     }
     if (widget.authService != null) {
       _remindersEnabled = widget.authService!.getRemindersEnabled();
@@ -271,6 +271,16 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         _signedIn = true;
         _role = widget.enforcedRole ?? user.role;
         _currentUser = user;
+      } else {
+        _currentUser = null;
+        if (_role == AppRole.resident) {
+          _signedIn = false;
+        }
+      }
+    } else {
+      _currentUser = null;
+      if (_role == AppRole.resident) {
+        _signedIn = false;
       }
     }
   }
@@ -1120,8 +1130,8 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             ? <PickupRequest>[]
             : _orders.where((o) =>
                 o.residentId == _currentUser!.id ||
-                o.residentPhone == _currentUser!.phone ||
-                o.residentName == _currentUser!.fullName
+                (o.residentPhone != null && o.residentPhone == _currentUser!.phone) ||
+                (o.residentName != null && o.residentName == _currentUser!.fullName)
               ).toList())
         : _orders;
 
@@ -2336,8 +2346,8 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
             ? <PickupRequest>[]
             : _orders.where((o) =>
                 o.residentId == _currentUser!.id ||
-                o.residentPhone == _currentUser!.phone ||
-                o.residentName == _currentUser!.fullName
+                (o.residentPhone != null && o.residentPhone == _currentUser!.phone) ||
+                (o.residentName != null && o.residentName == _currentUser!.fullName)
               ).toList())
         : _orders;
 
@@ -2768,8 +2778,8 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                     ? <PickupRequest>[]
                     : _orders.where((o) =>
                         o.residentId == _currentUser!.id ||
-                        o.residentPhone == _currentUser!.phone ||
-                        o.residentName == _currentUser!.fullName
+                        (o.residentPhone != null && o.residentPhone == _currentUser!.phone) ||
+                        (o.residentName != null && o.residentName == _currentUser!.fullName)
                       ).toList())
                 : _orders,
             repository: widget.repository,

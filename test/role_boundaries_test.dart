@@ -206,13 +206,23 @@ void main() {
     testWidgets('Resident orders list includes cancellation button on requested pickups', (
       tester,
     ) async {
+      final user = await authService.register(
+        fullName: 'Jane Resident',
+        email: 'jane.resident@example.ug',
+        phone: '+256772333444',
+        password: 'Password@123',
+        role: AppRole.resident,
+      );
+
       final request = PickupRequest(
         id: 'order-boundary-2',
         wasteType: WasteType.household,
         description: 'Rhino camp road pickup',
         submittedAt: DateTime.now(),
         status: RequestStatus.requested,
-        residentId: 'resident-1',
+        residentId: user.id,
+        residentName: user.fullName,
+        residentPhone: user.phone,
         address: 'Rhino Camp Rd',
       );
       final repo = _MockRepo([request]);
@@ -234,6 +244,42 @@ void main() {
 
       // Resident CAN cancel their pending request
       expect(find.byTooltip('Cancel Request'), findsOneWidget);
+    });
+
+    testWidgets('Unauthenticated resident view blocks guest from seeing private orders in orders tab', (
+      tester,
+    ) async {
+      final request = PickupRequest(
+        id: 'order-boundary-guest-leak',
+        wasteType: WasteType.household,
+        description: 'Private municipal order',
+        submittedAt: DateTime.now(),
+        status: RequestStatus.requested,
+        residentId: 'resident-other',
+        residentName: 'Other Resident',
+        residentPhone: '+256779999999',
+        address: 'Private Residence 10',
+      );
+      final repo = _MockRepo([request]);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: EcoRouteHomeScreen(
+            repository: repo,
+            authService: authService,
+            enforcedRole: AppRole.resident,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Navigate to Orders tab
+      await tester.tap(find.byIcon(Icons.receipt_long_outlined));
+      await tester.pumpAndSettle();
+
+      // Should show sign in barrier and protect private order from leaking
+      expect(find.text('Sign In to View Orders'), findsOneWidget);
+      expect(find.text('Private municipal order'), findsNothing);
     });
 
     testWidgets('ProfileSettingsView excludes resident eco impact & reminders for rider role', (
