@@ -11,6 +11,7 @@ class RiderInviteService {
   const RiderInviteService._();
 
   static const String defaultAppUrl = 'https://coder-cliff.github.io/ecoRoute/';
+  static const String defaultApkUrl = 'https://github.com/coder-cliff/ecoRoute/releases/latest/download/app-release.apk';
   static const String _prefScriptUrlKey = 'ecoroute_google_apps_script_url_v1';
 
   /// Default Google Apps Script Web App endpoint.
@@ -39,7 +40,7 @@ class RiderInviteService {
     } catch (_) {}
   }
 
-  /// Builds the authoritative rider activation link with query parameters
+  /// Builds the authoritative rider 1-click activation link (Option 1)
   static String buildRiderInviteUrl({
     required String inviteCode,
     required String email,
@@ -48,8 +49,12 @@ class RiderInviteService {
     final cleanEmail = Uri.encodeComponent(email.trim().toLowerCase());
     final cleanCode = Uri.encodeComponent(inviteCode.trim());
     final tricParam = tricycleId != null ? '&tric=${Uri.encodeComponent(tricycleId.trim())}' : '';
-    return '$defaultAppUrl?invite=$cleanCode&email=$cleanEmail$tricParam';
+    // Format hash routing with fallback query params for seamless 1-click magic link routing
+    return '$defaultAppUrl#/rider-setup?invite=$cleanCode&email=$cleanEmail$tricParam';
   }
+
+  /// Direct Android APK download URL
+  static String buildApkDownloadUrl() => defaultApkUrl;
 
   /// Sends an official invitation email to the rider via Google Apps Script MailApp.
   /// Uses text/plain to avoid CORS preflight issues on Flutter Web.
@@ -59,12 +64,17 @@ class RiderInviteService {
     String? inviteLink,
     String? inviteCode,
     String? tricycleId,
+    String? apkLink,
     String? customScriptUrl,
     http.Client? httpClient,
   }) async {
     final client = httpClient ?? http.Client();
     final targetUrl = customScriptUrl ?? await getEffectiveScriptUrl();
-    final effectiveInviteLink = inviteLink ?? defaultAppUrl;
+    final effectiveInviteLink = inviteLink ??
+        (inviteCode != null
+            ? buildRiderInviteUrl(inviteCode: inviteCode, email: riderEmail, tricycleId: tricycleId)
+            : defaultAppUrl);
+    final effectiveApkLink = apkLink ?? defaultApkUrl;
 
     // Detect if targetUrl is still the placeholder
     if (targetUrl.contains('AKfycbyEcoRouteRiderInviteGateway') ||
@@ -81,8 +91,9 @@ class RiderInviteService {
           'email': riderEmail.trim().toLowerCase(),
           'name': riderName.trim(),
           'inviteLink': effectiveInviteLink,
-          'inviteCode': ?inviteCode,
-          'tricycleId': ?tricycleId,
+          'apkLink': effectiveApkLink,
+          'inviteCode': inviteCode,
+          'tricycleId': tricycleId,
           'subject': 'EcoRoute Arua: Official Rider Authorization & Tricycle Assignment',
           'senderName': 'EcoRoute Fleet Operations (Arua City Council)',
         }),
@@ -129,8 +140,11 @@ Your Authorization Details:
 - Authorization Token: ${inviteCode ?? 'Authorized'}
 - Operations Hotline: +256 394 880 352
 
-Your live dispatch portal is ready at:
+1-Click Portal Activation (Option 1):
 $inviteLink
+
+Install Official Android App (APK):
+$defaultApkUrl
 
 Collection operations reminder:
 1. Ensure your tricycle cargo bay is securely fastened before transit.

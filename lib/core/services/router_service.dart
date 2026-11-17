@@ -11,6 +11,7 @@ import '../../features/rider/rider_task_hub.dart';
 import '../../features/admin/admin_dashboard.dart';
 
 import '../../features/rider/rider_setup_screen.dart';
+import '../../main.dart' show EcoRouteState;
 
 class AppRouter {
   AppRouter._();
@@ -18,16 +19,24 @@ class AppRouter {
   static void routeToRiderSetup(
     BuildContext context, {
     required PickupRequestRepository repository,
-    required AuthService authService,
+    AuthService? authService,
     WasteApiService? wasteApiService,
     String? inviteCode,
     String? email,
   }) {
+    final effectiveAuthService = authService ??
+        (EcoRouteState.instance.preferences != null
+            ? AuthService(EcoRouteState.instance.preferences!)
+            : null);
+    if (effectiveAuthService == null) {
+      debugPrint('Warning: AuthService not initialized for RiderSetup.');
+      return;
+    }
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder<void>(
         pageBuilder: (context, animation, secondaryAnimation) => RiderSetupScreen(
           repository: repository,
-          authService: authService,
+          authService: effectiveAuthService,
           wasteApiService: wasteApiService,
           initialInviteCode: inviteCode,
           initialEmail: email,

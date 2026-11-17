@@ -7,6 +7,7 @@ import '../../core/services/waste_api_service.dart';
 import '../../core/theme/eco_palette.dart';
 import '../../domain/enums/role.dart';
 import '../auth/splash_screen.dart';
+import '../common/widgets/smart_install_banner.dart';
 
 /// Dedicated Onboarding and Account Setup Terminal for Authorized Collection Riders
 class RiderSetupScreen extends StatefulWidget {
@@ -49,8 +50,28 @@ class _RiderSetupScreenState extends State<RiderSetupScreen> {
   @override
   void initState() {
     super.initState();
-    _codeController.text = widget.initialInviteCode ?? '';
-    _emailController.text = widget.initialEmail ?? '';
+    String? code = widget.initialInviteCode;
+    String? email = widget.initialEmail;
+
+    if (code == null || code.isEmpty) {
+      final uri = Uri.base;
+      code = uri.queryParameters['invite'] ?? uri.queryParameters['code'];
+      email ??= uri.queryParameters['email'];
+
+      if ((code == null || email == null) && uri.fragment.isNotEmpty) {
+        try {
+          final frag = uri.fragment.startsWith('/') ? uri.fragment.substring(1) : uri.fragment;
+          final fragUri = Uri.tryParse('https://ecoroute.ug/$frag');
+          if (fragUri != null) {
+            code ??= fragUri.queryParameters['invite'] ?? fragUri.queryParameters['code'];
+            email ??= fragUri.queryParameters['email'];
+          }
+        } catch (_) {}
+      }
+    }
+
+    _codeController.text = code ?? '';
+    _emailController.text = email ?? '';
     _verifyInviteToken();
   }
 
@@ -197,9 +218,13 @@ class _RiderSetupScreenState extends State<RiderSetupScreen> {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-          child: Form(
+        child: Column(
+          children: [
+            const SmartInstallBanner(),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -489,6 +514,9 @@ class _RiderSetupScreenState extends State<RiderSetupScreen> {
           ),
         ),
       ),
-    );
+    ],
+  ),
+),
+);
   }
 }

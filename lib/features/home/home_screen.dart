@@ -24,6 +24,7 @@ import '../admin/widgets/admin_settings_view.dart';
 import '../admin/widgets/analytics_breakdown.dart';
 import '../admin/widgets/approval_item_tile.dart';
 import '../auth/auth_sheet.dart';
+import '../common/widgets/smart_install_banner.dart';
 import '../database/waste_database_sheet.dart';
 import '../payment/momo_payment_dialog.dart';
 import '../profile/widgets/profile_settings_view.dart';
@@ -1053,7 +1054,12 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                 const SizedBox(width: 8),
               ],
             ),
-            body: bodyContent,
+            body: Column(
+              children: [
+                const SmartInstallBanner(),
+                Expanded(child: bodyContent),
+              ],
+            ),
             bottomNavigationBar: isWideScreen
                 ? null
                 : NavigationBar(

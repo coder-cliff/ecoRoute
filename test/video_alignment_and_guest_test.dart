@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ecoroute/core/pickup_request_repository.dart';
+import 'package:ecoroute/core/services/app_install_service.dart';
 import 'package:ecoroute/core/services/auth_service.dart';
 import 'package:ecoroute/core/services/rider_invite_service.dart';
+import 'package:ecoroute/features/common/widgets/smart_install_banner.dart';
+import 'package:ecoroute/features/rider/rider_setup_screen.dart';
 import 'package:ecoroute/main.dart';
 
 void main() {
@@ -168,6 +172,61 @@ void main() {
       expect(payment, 'Cash on Collection');
       expect(task['receiptSerial'], 'ECO-ARUA-9901');
       expect(task['status'], 'Resolved');
+    });
+
+    test('RiderInviteService builds APK download URL pointing to official GitHub release', () {
+      final apkUrl = RiderInviteService.buildApkDownloadUrl();
+      expect(apkUrl, contains('releases/latest/download/app-release.apk'));
+    });
+
+    test('AppInstallService persists banner dismissal into SharedPreferences', () async {
+      final service = AppInstallService.instance;
+      await service.dismissBanner(prefs);
+      expect(service.isDismissed, isTrue);
+
+      final shouldShow = await service.shouldShowInstallBanner(prefs);
+      expect(shouldShow, isFalse);
+    });
+
+    testWidgets('SmartInstallBanner renders install CTAs and responds to dismiss', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SmartInstallBanner(forceShow: true),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Install App'), findsWidgets);
+      expect(find.text('Download APK'), findsWidgets);
+      expect(find.text('Install the EcoRoute Application'), findsWidgets);
+
+      // Tap dismiss button
+      await tester.tap(find.byTooltip('Dismiss').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Install the EcoRoute Application'), findsNothing);
+    });
+
+    testWidgets('RiderSetupScreen renders authorization form with prefilled invite token', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RiderSetupScreen(
+            repository: MemoryPickupRequestRepository(),
+            authService: authService,
+            initialInviteCode: 'RDR-TEST-99',
+            initialEmail: 'rider99@ecoroute.ug',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('MUNICIPAL RIDER AUTHORIZATION'), findsOneWidget);
+      expect(find.text('Set Up Rider Terminal'), findsOneWidget);
+      expect(find.text('Activate Dispatch Terminal'), findsOneWidget);
+      expect(find.text('RDR-TEST-99'), findsOneWidget);
+      expect(find.text('rider99@ecoroute.ug'), findsOneWidget);
     });
   });
 }

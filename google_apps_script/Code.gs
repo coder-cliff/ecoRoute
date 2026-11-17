@@ -16,6 +16,7 @@ function doPost(e) {
     const riderEmail = (data.email || '').trim().toLowerCase();
     const riderName = (data.name || 'Rider').trim();
     const inviteLink = data.inviteLink || 'https://coder-cliff.github.io/ecoRoute/';
+    const apkLink = data.apkLink || 'https://github.com/coder-cliff/ecoRoute/releases/latest/download/app-release.apk';
     const inviteCode = data.inviteCode || 'RIDER-' + Math.floor(100000 + Math.random() * 900000);
     const tricycleId = data.tricycleId || 'TRIC-04 (Ediofe Depot)';
     const senderName = 'EcoRoute Fleet Operations (Arua City Council)';
@@ -35,8 +36,11 @@ Your Authorization Details:
 - Authorization Token: ${inviteCode}
 - Operations Hotline: +256 394 880 352
 
-To activate your account and start your collection route, open your live portal:
+1-Click Portal Activation (Option 1):
 ${inviteLink}
+
+Install Official Android App (APK):
+${apkLink}
 
 Collection Operations Protocol:
 1. Ensure your tricycle cargo bay is securely fastened before starting your shift.
@@ -125,19 +129,22 @@ Official Dispatch: ecoroute.waste@gmail.com`;
                 </tr>
               </table>
 
-              <!-- Call to Action Button -->
+              <!-- Primary & Secondary Call to Action Buttons -->
               <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
                 <tr>
                   <td align="center">
-                    <a href="${inviteLink}" target="_blank" style="background-color: #0d2618; color: #ffffff; display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 700; text-decoration: none; border-radius: 12px; box-shadow: 0 3px 6px rgba(13, 38, 24, 0.2);">
-                      Activate Dispatch Terminal &rarr;
+                    <a href="${inviteLink}" target="_blank" style="background-color: #0d2618; color: #ffffff; display: block; max-width: 280px; padding: 14px 24px; font-size: 14px; font-weight: 700; text-decoration: none; border-radius: 12px; box-shadow: 0 3px 6px rgba(13, 38, 24, 0.2); text-align: center; margin-bottom: 12px;">
+                      1-Click Portal Activation &rarr;
+                    </a>
+                    <a href="${apkLink}" target="_blank" style="background-color: #f0f5f1; color: #0d2618; display: block; max-width: 280px; padding: 11px 24px; font-size: 13px; font-weight: 600; text-decoration: none; border-radius: 12px; border: 1.5px solid #2d553c; text-align: center;">
+                      &#x1F4F1; Install Android App (APK)
                     </a>
                   </td>
                 </tr>
               </table>
 
               <p style="color: #5d6e62; font-size: 12px; line-height: 1.5; margin: 0 0 16px 0; text-align: center;">
-                Direct URL: <a href="${inviteLink}" style="color: #0d2618; word-break: break-all;">${inviteLink}</a>
+                Activation Link: <a href="${inviteLink}" style="color: #0d2618; word-break: break-all;">${inviteLink}</a>
               </p>
 
               <!-- Municipal Protocol -->

@@ -20,6 +20,7 @@ import 'core/services/auth_service.dart';
 import 'core/services/pdf_report_service.dart';
 import 'core/services/rider_invite_service.dart';
 import 'domain/enums/role.dart';
+import 'features/common/widgets/smart_install_banner.dart';
 import 'features/rider/rider_setup_screen.dart';
 import 'firebase_options.dart';
 
@@ -3013,7 +3014,12 @@ class _ResidentRootScreenState extends State<ResidentRootScreen> {
     ];
 
     return Scaffold(
-      body: screens[_currentIndex],
+      body: Column(
+        children: [
+          const SmartInstallBanner(),
+          Expanded(child: screens[_currentIndex]),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
@@ -4418,7 +4424,12 @@ class _RiderRootScreenState extends State<RiderRootScreen> {
     ];
 
     return Scaffold(
-      body: screens[_currentIndex],
+      body: Column(
+        children: [
+          const SmartInstallBanner(),
+          Expanded(child: screens[_currentIndex]),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
@@ -5153,7 +5164,12 @@ class _AdminRootScreenState extends State<AdminRootScreen> {
     ];
 
     return Scaffold(
-      body: screens[_currentIndex],
+      body: Column(
+        children: [
+          const SmartInstallBanner(),
+          Expanded(child: screens[_currentIndex]),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),

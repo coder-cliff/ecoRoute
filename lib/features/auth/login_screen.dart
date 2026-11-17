@@ -512,6 +512,33 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 10),
+
+                      // Authorized Rider Activation Link
+                      Center(
+                        child: TextButton.icon(
+                          key: const ValueKey('login_rider_activation_button'),
+                          onPressed: () {
+                            AppRouter.routeToRiderSetup(
+                              context,
+                              repository: widget.repository,
+                              authService: widget.authService,
+                              wasteApiService: widget.wasteApiService,
+                            );
+                          },
+                          icon: const Icon(Icons.two_wheeler_rounded, size: 18, color: Color(0xFF1B3828)),
+                          label: const Text(
+                            'Invited Rider? Enter Authorization Code',
+                            style: TextStyle(
+                              fontFamily: 'Satoshi',
+                              fontSize: 13.5,
+                              color: Color(0xFF1B3828),
+                              fontWeight: FontWeight.w700,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 16),
                     ],
                   ),

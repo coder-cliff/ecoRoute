@@ -39,6 +39,27 @@
       font-family: 'Satoshi', sans-serif;
     }
   </style>
+  <script>
+    window.deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      window.deferredInstallPrompt = e;
+      window.dispatchEvent(new CustomEvent('ecoroute-install-available'));
+    });
+    window.triggerPwaInstall = async function() {
+      if (window.deferredInstallPrompt) {
+        window.deferredInstallPrompt.prompt();
+        var choice = await window.deferredInstallPrompt.userChoice;
+        window.deferredInstallPrompt = null;
+        return choice.outcome === 'accepted';
+      }
+      return false;
+    };
+    window.isAppInstalled = function() {
+      return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || 
+             (window.navigator && window.navigator.standalone === true);
+    };
+  </script>
 </head>
 <body>
   <!--
