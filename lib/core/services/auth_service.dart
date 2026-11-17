@@ -12,8 +12,25 @@ import '../../app/config/app_config.dart';
 import 'email_notification_service.dart';
 export '../../domain/enums/role.dart';
 
+/// Authentication exception carrying user-facing mapped error messages
+class AuthException implements Exception {
+  final String message;
+  const AuthException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 class AuthService {
-  AuthService(this._preferences, {this._firebaseAuth, this._firestore});
+  AuthService(
+    this._preferences, {
+    this._firebaseAuth,
+    this._firestore,
+    this.passwordResetHandler,
+  });
+
+  static final RegExp emailRegex =
+      RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
 
   static const String _sessionKey = 'ecoroute_current_user_v1';
   static const String _usersKey = 'ecoroute_registered_users_v1';
@@ -22,6 +39,7 @@ class AuthService {
   static const String supportEmail = 'ecoroute.waste@gmail.com';
 
   String? lastAuthError;
+  Future<void> Function(String email)? passwordResetHandler;
 
   SharedPreferences get preferences => _preferences;
 
@@ -80,6 +98,8 @@ class AuthService {
     }
   }
 
+  AppUser? get currentUser => getCurrentUser();
+
   Future<void> _saveSession(AppUser user) async {
     final data = {
       'id': user.id,
@@ -114,12 +134,34 @@ class AuthService {
     return false;
   }
 
-  /// Sends a password reset email via Firebase Auth
+  /// Sends a password reset email via Firebase Auth or test delegate
   Future<void> sendPasswordResetEmail(String email) async {
     final cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail.isEmpty || !emailRegex.hasMatch(cleanEmail)) {
+      throw const AuthException('Please enter a valid email address.');
+    }
+
+    if (passwordResetHandler != null) {
+      await passwordResetHandler!(cleanEmail);
+      return;
+    }
+
     final auth = _firebaseAuth;
     if (auth != null) {
-      await auth.sendPasswordResetEmail(email: cleanEmail);
+      try {
+        await auth.sendPasswordResetEmail(email: cleanEmail);
+      } on firebase_auth.FirebaseAuthException catch (e) {
+        throw AuthException(mapFirebaseAuthError(e, cleanEmail));
+      } catch (e) {
+        throw AuthException('Failed to send password reset email: $e');
+      }
+    } else {
+      // Offline fallback: verify whether user is registered or an admin email
+      if (!isEmailRegistered(cleanEmail) && !AppConfig.isAdminEmail(cleanEmail)) {
+        throw AuthException(
+          'No account found with $cleanEmail. Please create an account or verify your email.',
+        );
+      }
     }
   }
 
@@ -416,6 +458,8 @@ class AuthService {
       invite = getRiderInvite(inviteCode?.trim().isNotEmpty == true ? inviteCode!.trim() : cleanEmail);
       if (invite != null) {
         resolvedRole = AppRole.rider;
+      } else {
+        resolvedRole = AppRole.resident;
       }
     }
 

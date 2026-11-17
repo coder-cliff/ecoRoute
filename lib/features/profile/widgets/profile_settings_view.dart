@@ -915,24 +915,26 @@ class _ProfileSettingsViewState extends State<ProfileSettingsView> {
             title: 'Service & Notifications',
             icon: Icons.tune_rounded,
             items: [
-              _buildSettingTile(
-                icon: Icons.notifications_active_outlined,
-                title: 'Pickup schedule reminders',
-                subtitle: _reminderPolicy.shouldSendReminder(
-                  successfulRequests: paidCount,
-                  remindersEnabled: widget.remindersEnabled,
-                )
-                    ? 'Active: Free onboarding reminder policy enabled.'
-                    : 'Reminders inactive or onboarding threshold met.',
-                trailing: Switch(
-                  value: widget.remindersEnabled,
-                  onChanged: (val) {
-                    widget.onRemindersToggled?.call(val);
-                    widget.authService?.setRemindersEnabled(val);
-                  },
+              if (role == AppRole.resident) ...[
+                _buildSettingTile(
+                  icon: Icons.notifications_active_outlined,
+                  title: 'Pickup schedule reminders',
+                  subtitle: _reminderPolicy.shouldSendReminder(
+                    successfulRequests: paidCount,
+                    remindersEnabled: widget.remindersEnabled,
+                  )
+                      ? 'Active: Free onboarding reminder policy enabled.'
+                      : 'Reminders inactive or onboarding threshold met.',
+                  trailing: Switch(
+                    value: widget.remindersEnabled,
+                    onChanged: (val) {
+                      widget.onRemindersToggled?.call(val);
+                      widget.authService?.setRemindersEnabled(val);
+                    },
+                  ),
                 ),
-              ),
-              const Divider(height: 1),
+                const Divider(height: 1),
+              ],
               _buildSettingTile(
                 icon: Icons.language_rounded,
                 title: 'App Language',

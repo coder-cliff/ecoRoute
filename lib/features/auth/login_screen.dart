@@ -157,9 +157,10 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+      final msg = e is AuthException ? e.message : 'Could not send reset email: $e';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not send reset email: $e'),
+          content: Text(msg),
           backgroundColor: const Color(0xFFC62828),
         ),
       );

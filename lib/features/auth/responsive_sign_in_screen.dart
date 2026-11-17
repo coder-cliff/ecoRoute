@@ -478,21 +478,47 @@ class _ResponsiveSignInScreenState extends State<ResponsiveSignInScreen> {
           FilledButton(
             onPressed: () async {
               final em = resetEmailCtrl.text.trim();
-              if (em.isNotEmpty && Firebase.apps.isNotEmpty) {
-                try {
-                  await FirebaseAuth.instance.sendPasswordResetEmail(email: em);
-                  if (ctx.mounted) {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Password reset instructions sent to $em')),
-                    );
-                  }
-                } catch (e) {
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: $e')),
-                    );
-                  }
+              if (em.isEmpty || !AuthService.emailRegex.hasMatch(em)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter a valid email address.'),
+                    backgroundColor: Color(0xFFC62828),
+                  ),
+                );
+                return;
+              }
+
+              try {
+                final prefs = EcoRouteState.instance.prefs ?? await SharedPreferences.getInstance();
+                final authService = AuthService(prefs);
+                await authService.sendPasswordResetEmail(em);
+
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Password reset instructions sent to $em'),
+                      backgroundColor: const Color(0xFF2E7D32),
+                    ),
+                  );
+                }
+              } on AuthException catch (e) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(e.message),
+                      backgroundColor: const Color(0xFFC62828),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to send reset email: $e'),
+                      backgroundColor: const Color(0xFFC62828),
+                    ),
+                  );
                 }
               }
             },

@@ -20,6 +20,8 @@ class AppConfig {
     'ayikog@yahoo.com',
     'ecoroute.waste@gmail.com',
     'ecoroute.arua@gmail.com',
+    'saviordeogratius@yahoo.com',
+    'admin.operations@ecoroute.ug',
   ];
 
   static bool isAdminEmail(String? email) {

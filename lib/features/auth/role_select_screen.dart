@@ -32,6 +32,31 @@ class _RoleSelectScreenState extends State<RoleSelectScreen> {
 
   void _handleContinue() {
     HapticFeedback.mediumImpact();
+    final user = widget.authService?.currentUser;
+    if (_selectedRole == AppRole.admin) {
+      if (user == null || !user.role.isAdminTier) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Admin access requires verified authentication. Please sign in.'),
+            backgroundColor: Color(0xFFC62828),
+          ),
+        );
+        _navigateToLogin();
+        return;
+      }
+    } else if (_selectedRole == AppRole.rider) {
+      if (user == null || (user.role != AppRole.rider && !user.role.isAdminTier)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Rider dispatch access requires authorized credentials. Please sign in.'),
+            backgroundColor: Color(0xFFC62828),
+          ),
+        );
+        _navigateToLogin();
+        return;
+      }
+    }
+
     AppRouter.routeToRole(
       context,
       role: _selectedRole,

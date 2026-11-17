@@ -1289,8 +1289,20 @@ class EcoRouteApp extends StatelessWidget {
             '/': (context) => const SplashScreen(),
             '/login': (context) => const ResponsiveSignInScreen(),
             '/resident': (context) => const ResponsiveResidentDashboard(),
-            '/rider': (context) => const ResponsiveRiderDashboard(),
-            '/admin': (context) => const ResponsiveAdminDashboard(),
+            '/rider': (context) {
+              final state = EcoRouteState.instance;
+              if (state.currentRole != 'rider' && !state.isAdminTier) {
+                return const ResponsiveSignInScreen();
+              }
+              return const ResponsiveRiderDashboard();
+            },
+            '/admin': (context) {
+              final state = EcoRouteState.instance;
+              if (!state.isAdminTier) {
+                return const ResponsiveSignInScreen();
+              }
+              return const ResponsiveAdminDashboard();
+            },
             '/rider-onboard': (context) => const RiderInviteAcceptanceScreen(),
             '/rider-activate': (context) => const RiderInviteAcceptanceScreen(),
           },

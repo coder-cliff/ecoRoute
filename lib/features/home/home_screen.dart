@@ -1114,6 +1114,25 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     );
     final paidCount = _countStatus(RequestStatus.paid);
 
+    // Resident scoped orders for personalized tracking & impact
+    final residentOrders = _role == AppRole.resident
+        ? _orders.where((o) =>
+            _currentUser == null ||
+            o.residentId == _currentUser!.id ||
+            o.residentPhone == _currentUser!.phone ||
+            o.residentName == _currentUser!.fullName ||
+            o.residentId == 'resident-1'
+          ).toList()
+        : _orders;
+
+    final residentRequested = residentOrders.where((o) => o.status == RequestStatus.requested).length;
+    final residentCollected = residentOrders.where((o) => o.status == RequestStatus.collected).length;
+    final residentPaid = residentOrders.where((o) => o.status == RequestStatus.paid).length;
+
+    final riderCash = _currentUser != null
+        ? _orders.where((o) => o.cashReceivedByRider && (o.riderId == _currentUser!.id || o.assignedRiderId == _currentUser!.id || o.assignedRiderName == _currentUser!.fullName)).fold<int>(0, (sum, o) => sum + o.priceUgx)
+        : _orders.where((o) => o.cashReceivedByRider).fold<int>(0, (sum, o) => sum + o.priceUgx);
+
     final stats = switch (_role) {
       AppRole.rider => [
         _MetricCard(
@@ -1129,7 +1148,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         _MetricCard(label: 'Completed', value: '$paidCount', hint: 'verified'),
         _MetricCard(
           label: 'Pocket Cash',
-          value: formatUgx(_orders.where((o) => o.cashReceivedByRider).fold<int>(0, (sum, o) => sum + o.priceUgx)),
+          value: formatUgx(riderCash),
           hint: 'held in hand',
         ),
       ],
@@ -1147,26 +1166,15 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         _MetricCard(label: 'Paid', value: '$paidCount', hint: 'verified'),
       ],
       _ => [
-        _MetricCard(label: 'Open', value: '$requestedCount', hint: 'requests'),
+        _MetricCard(label: 'Open', value: '$residentRequested', hint: 'requests'),
         _MetricCard(
           label: 'Collected',
-          value: '$collectedCount',
+          value: '$residentCollected',
           hint: 'ready',
         ),
-        _MetricCard(label: 'Paid', value: '$paidCount', hint: 'settled'),
+        _MetricCard(label: 'Paid', value: '$residentPaid', hint: 'settled'),
       ],
     };
-
-    // Resident scoped orders for personalized tracking & impact
-    final residentOrders = _role == AppRole.resident
-        ? _orders.where((o) =>
-            _currentUser == null ||
-            o.residentId == _currentUser!.id ||
-            o.residentPhone == _currentUser!.phone ||
-            o.residentName == _currentUser!.fullName ||
-            o.residentId == 'resident-1'
-          ).toList()
-        : _orders;
 
     final activeResidentOrder = residentOrders.cast<PickupRequest?>().firstWhere(
       (o) => o != null && o.status != RequestStatus.paid && o.status != RequestStatus.cancelled,
@@ -1266,7 +1274,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
 
           // Interactive Arua Map View
           InteractiveAruaMapPanel(
-            requestsCount: _orders.length,
+            requestsCount: _role == AppRole.resident ? residentOrders.length : _orders.length,
             locationResult: _lastGpsResult,
             isLocating: _locatingGps,
             onLocateGps: _checkGpsLocation,
@@ -2128,11 +2136,11 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
         onTap: _showWasteDatabase,
       ),
       _QuickActionCard(
-        icon: Icons.manage_accounts_outlined,
-        title: 'Account & role',
-        subtitle: 'Account settings',
+        icon: Icons.person_outline,
+        title: 'My Profile',
+        subtitle: 'Personal profile & settings',
         accent: const Color(0xFF1B5E20),
-        onTap: _showAuth,
+        onTap: () => setState(() => _tab = 2),
       ),
     ];
 
@@ -2383,31 +2391,35 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'No collection orders yet',
-                style: TextStyle(
+              Text(
+                _role == AppRole.rider ? 'No assigned collection stops' : 'No collection orders yet',
+                style: const TextStyle(
                   fontSize: 19,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF183B20),
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Book an instant waste pickup and local tricycle riders will be dispatched.',
+              Text(
+                _role == AppRole.rider
+                    ? 'No assigned collection stops. New pickup tasks will appear when dispatched by Municipal HQ.'
+                    : 'Book an instant waste pickup and local tricycle riders will be dispatched.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: Color(0xFF647568)),
+                style: const TextStyle(fontSize: 13, color: Color(0xFF647568)),
               ),
-              const SizedBox(height: 18),
-              FilledButton.icon(
-                onPressed: _openOrder,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E7D32),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              if (_role == AppRole.resident) ...[
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: _openOrder,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF2E7D32),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  icon: const Icon(Icons.add_rounded, size: 20),
+                  label: const Text('Request Instant Pickup'),
                 ),
-                icon: const Icon(Icons.add_rounded, size: 20),
-                label: const Text('Request Instant Pickup'),
-              ),
+              ],
             ],
           ),
         ),
@@ -2536,7 +2548,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                     HapticFeedback.lightImpact();
                     await Future.wait([
                       _loadOrders(),
-                      _loadRiders(),
+                      if (_role == AppRole.admin) _loadRiders(),
                     ]);
                   },
                   child: ListView.builder(
@@ -2715,8 +2727,9 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                                               label: const Text('Pay MoMo'),
                                               onPressed: () => _openMoMoPayment(order),
                                             ),
-                                          if (order.status ==
-                                              RequestStatus.requested)
+                                          if (_role == AppRole.resident &&
+                                              order.status ==
+                                                  RequestStatus.requested)
                                             IconButton(
                                               icon: const Icon(
                                                 Icons.delete_outline_rounded,

@@ -29,6 +29,9 @@ class PickupRequest {
     this.businessName,
     this.tinNumber,
     this.serviceTier,
+    this.riderId,
+    this.assignedRiderId,
+    this.assignedRiderName,
   });
 
   final String id;
@@ -56,6 +59,9 @@ class PickupRequest {
   final String? businessName;
   final String? tinNumber;
   final String? serviceTier;
+  final String? riderId;
+  final String? assignedRiderId;
+  final String? assignedRiderName;
 
   bool get isPaidInCash => paymentMethod == 'cash' && cashReceivedByRider;
   bool get isPaidInMoMo => paymentMethod == 'momo';
@@ -87,6 +93,9 @@ class PickupRequest {
     String? businessName,
     String? tinNumber,
     String? serviceTier,
+    String? riderId,
+    String? assignedRiderId,
+    String? assignedRiderName,
   }) {
     return PickupRequest(
       id: id ?? this.id,
@@ -114,6 +123,9 @@ class PickupRequest {
       businessName: businessName ?? this.businessName,
       tinNumber: tinNumber ?? this.tinNumber,
       serviceTier: serviceTier ?? this.serviceTier,
+      riderId: riderId ?? this.riderId,
+      assignedRiderId: assignedRiderId ?? this.assignedRiderId,
+      assignedRiderName: assignedRiderName ?? this.assignedRiderName,
     );
   }
 }
