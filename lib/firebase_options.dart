@@ -15,19 +15,19 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAS_mpVMPe5ug8tW32bpuvyTfq7hjainhA',
-    appId: '1:412809123352:web:af337060362283f3a3156d',
-    messagingSenderId: '412809123352',
-    projectId: 'ecoroute-b3405',
-    authDomain: 'ecoroute-b3405.firebaseapp.com',
-    storageBucket: 'ecoroute-b3405.firebasestorage.app',
+    apiKey: 'AIzaSyAOR0PVIsQZergiHFT38-OqMSsZaZvuuH4',
+    appId: '1:947341991096:web:5f5f159a0c6dcc0f08e84d',
+    messagingSenderId: '947341991096',
+    projectId: 'ecoroute-58d2d',
+    authDomain: 'ecoroute-58d2d.firebaseapp.com',
+    storageBucket: 'ecoroute-58d2d.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDqa9hJs4vuESU3aLQrs80rQihAGMtXF-4',
-    appId: '1:412809123352:android:73fb50540e9fa5c0a3156d',
-    messagingSenderId: '412809123352',
-    projectId: 'ecoroute-b3405',
-    storageBucket: 'ecoroute-b3405.firebasestorage.app',
+    apiKey: 'AIzaSyAOR0PVIsQZergiHFT38-OqMSsZaZvuuH4',
+    appId: '1:947341991096:android:5f5f159a0c6dcc0f08e84d',
+    messagingSenderId: '947341991096',
+    projectId: 'ecoroute-58d2d',
+    storageBucket: 'ecoroute-58d2d.firebasestorage.app',
   );
 }
