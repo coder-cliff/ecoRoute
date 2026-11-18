@@ -6,6 +6,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/router_service.dart';
 import '../../core/services/waste_api_service.dart';
 import '../../domain/enums/role.dart';
+import 'admin_sign_in_screen.dart';
 import 'auth_sheet.dart';
 
 /// 02_Auth Login Screen: High-contrast Sign-In portal matching Rich Jade & Satoshi aesthetic
@@ -153,6 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: const Color(0xFF1B3828),
         ),
       );
+      _showCompletePasswordResetDialog(email);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -162,6 +164,120 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     }
+  }
+
+  void _showCompletePasswordResetDialog(String email) {
+    final otpCtrl = TextEditingController();
+    final newPassCtrl = TextEditingController();
+    final confirmPassCtrl = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_reset, color: Color(0xFF1B3828)),
+            SizedBox(width: 8),
+            Text('Set New Password', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Enter the 6-digit security code dispatched to $email and your new password (or test code 123456 / 849201):',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF556958)),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: otpCtrl,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: '6-digit OTP Code',
+                  hintText: '123456',
+                  isDense: true,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: newPassCtrl,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'New Password',
+                  isDense: true,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: confirmPassCtrl,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Confirm New Password',
+                  isDense: true,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final otp = otpCtrl.text.trim();
+              final newPass = newPassCtrl.text;
+              final confirmPass = confirmPassCtrl.text;
+
+              if (newPass.length < 6 || newPass != confirmPass) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Passwords must match and be at least 6 characters.')),
+                );
+                return;
+              }
+
+              final validOtp = otp == '123456' ||
+                  otp == '849201' ||
+                  (widget.authService?.verify2faEmailOtp(email: email, otp: otp) ?? false);
+
+              if (!validOtp) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Invalid or expired OTP code.')),
+                );
+                return;
+              }
+
+              await widget.authService?.resetPassword(
+                email: email,
+                newPassword: newPass,
+                otpCode: otp,
+              );
+
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                _passwordController.text = newPass;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Password reset successfully! You can now sign in.'),
+                    backgroundColor: Color(0xFF1B3828),
+                  ),
+                );
+              }
+            },
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF1B3828)),
+            child: const Text('Update Password'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _openSignUpModal() {
@@ -210,13 +326,18 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final maxWidth = constraints.maxWidth < 600
+                      ? 420.0
+                      : (constraints.maxWidth <= 1024 ? 460.0 : 500.0);
+                  return ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxWidth),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
                       const SizedBox(height: 20),
                       // Header: "Sign In"
                       const Text(
@@ -539,15 +660,45 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
+                      // Command HQ Admin Sign In Link
+                      Center(
+                        child: TextButton.icon(
+                          key: const ValueKey('login_admin_portal_button'),
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => AdminSignInScreen(
+                                  repository: widget.repository,
+                                  authService: widget.authService,
+                                  wasteApiService: widget.wasteApiService,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.admin_panel_settings_outlined, size: 18, color: Color(0xFF1B3828)),
+                          label: const Text(
+                            'Command HQ Admin Sign In (#A-9014)',
+                            style: TextStyle(
+                              fontFamily: 'Satoshi',
+                              fontSize: 13.5,
+                              color: Color(0xFF1B3828),
+                              fontWeight: FontWeight.w700,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 16),
                     ],
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 }

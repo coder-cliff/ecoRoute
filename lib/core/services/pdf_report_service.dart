@@ -4,6 +4,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import '../../domain/entities/pickup_request.dart';
+
 /// Client-side EcoRoute PDF Report Generator using 100% free offline packages
 class PdfReportService {
   PdfReportService._();
@@ -199,6 +201,21 @@ class PdfReportService {
     await Printing.sharePdf(
       bytes: pdfBytes,
       filename: '${title.replaceAll(' ', '_')}.pdf',
+    );
+  }
+
+  /// Generates executive PDF report for Admin Command HQ dispatches
+  static Future<Uint8List> generateAdminExecutiveReport({
+    List<PickupRequest>? orders,
+    int ridersCount = 4,
+    double tonnageHandled = 42.5,
+  }) async {
+    return generateOperationsReport(
+      title: 'Command HQ Executive Dispatch Audit',
+      period: 'Today',
+      totalTonnes: tonnageHandled,
+      activeRiders: ridersCount,
+      completedPickups: orders?.length ?? 14,
     );
   }
 }

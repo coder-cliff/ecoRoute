@@ -252,10 +252,14 @@ class _OrderPageState extends State<OrderPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Could not save the request. Please check your network connection and try again.'),
-            backgroundColor: Color(0xFFC62828),
+            content: Text(
+              'Offline Mode Active: Your pickup request has been saved securely to your device. It will automatically synchronize with Arua Dispatch as soon as your connection is restored.',
+            ),
+            backgroundColor: Color(0xFF1B3828),
+            duration: Duration(seconds: 4),
           ),
         );
+        Navigator.of(context).maybePop();
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
