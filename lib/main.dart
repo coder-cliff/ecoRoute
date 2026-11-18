@@ -55,6 +55,118 @@ Future<void> launchEcoRouteWhatsApp({String message = 'Hello EcoRoute Operations
 }
 
 // =================================================================
+// DEDICATED PER-ACCOUNT DP & JUMIA UG GUEST AVATAR BUILDER
+// =================================================================
+Widget buildSafeUserAvatar({
+  required BuildContext context,
+  required String? photoBase64,
+  required String name,
+  required bool isGuest,
+  double radius = 24,
+  VoidCallback? onCameraTap,
+  VoidCallback? onTap,
+}) {
+  Widget avatarContent;
+
+  if (isGuest) {
+    // Jumia UG style clean neutral guest avatar
+    avatarContent = CircleAvatar(
+      radius: radius,
+      backgroundColor: const Color(0xFFE8ECE7),
+      child: Icon(
+        Icons.person_outline,
+        size: radius * 1.15,
+        color: const Color(0xFF0D2618),
+      ),
+    );
+  } else if (photoBase64 != null && photoBase64.trim().isNotEmpty) {
+    final cleanPhoto = photoBase64.trim();
+    try {
+      Widget imageWidget;
+      if (cleanPhoto.startsWith('http://') || cleanPhoto.startsWith('https://')) {
+        imageWidget = Image.network(
+          cleanPhoto,
+          width: radius * 2,
+          height: radius * 2,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildInitialAvatar(name, radius),
+        );
+      } else {
+        final rawBase64 = cleanPhoto.contains(',') ? cleanPhoto.split(',').last.trim() : cleanPhoto;
+        final bytes = base64Decode(rawBase64);
+        imageWidget = Image.memory(
+          bytes,
+          width: radius * 2,
+          height: radius * 2,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildInitialAvatar(name, radius),
+        );
+      }
+      avatarContent = CircleAvatar(
+        radius: radius,
+        backgroundColor: const Color(0xFF0D2618),
+        child: ClipOval(child: imageWidget),
+      );
+    } catch (_) {
+      avatarContent = _buildInitialAvatar(name, radius);
+    }
+  } else {
+    avatarContent = _buildInitialAvatar(name, radius);
+  }
+
+  if (onCameraTap != null) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        avatarContent,
+        Positioned(
+          bottom: 0,
+          right: 0,
+          child: InkWell(
+            onTap: onCameraTap,
+            child: Container(
+              padding: EdgeInsets.all(max(4.0, radius * 0.15)),
+              decoration: const BoxDecoration(
+                color: Color(0xFF9C3D18),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.camera_alt, size: max(12.0, radius * 0.45), color: Colors.white),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  if (onTap != null) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(radius),
+      child: avatarContent,
+    );
+  }
+
+  return avatarContent;
+}
+
+Widget _buildInitialAvatar(String name, double radius) {
+  final cleanName = name.trim();
+  final initial = cleanName.isNotEmpty ? cleanName[0].toUpperCase() : 'E';
+  return CircleAvatar(
+    radius: radius,
+    backgroundColor: const Color(0xFF0D2618),
+    child: Text(
+      initial,
+      style: TextStyle(
+        fontSize: radius * 0.85,
+        color: Colors.white,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  );
+}
+
+// =================================================================
 // 1. CENTRALIZED REACTIVE STATE CONTROLLER (EcoRouteState)
 // =================================================================
 class EcoRouteState extends ChangeNotifier {
@@ -237,17 +349,22 @@ class EcoRouteState extends ChangeNotifier {
         isGuest = false;
         userEmail = fbUser.email ?? userEmail;
         userName = fbUser.displayName ?? userName;
+        userPhotoBase64 = getDpForAccount(userEmail) ?? fbUser.photoURL ?? userPhotoBase64;
         if (userEmail.toLowerCase().trim() == 'ayikog@yahoo.com') {
           currentRole = 'admin';
         }
-      } else if (saved == null) {
+      } else if (saved == null || isGuest) {
         // Fresh installation unauthenticated launch defaults directly to Guest Mode
         isGuest = true;
         userName = 'Guest User';
         userUsername = 'guest_arua';
         userEmail = 'guest@ecoroute.ug';
         userPhone = '+256 394 880 352';
+        userCell = 'Ediofe, Trading Center';
         currentRole = 'resident';
+        userPhotoBase64 = null;
+      } else {
+        userPhotoBase64 = getDpForAccount(userEmail) ?? userPhotoBase64;
       }
     } catch (e) {
       debugPrint('State initialization notice: $e');
@@ -345,8 +462,41 @@ class EcoRouteState extends ChangeNotifier {
     notifyListeners();
   }
 
+  static String userPhotoPrefKey(String email) =>
+      'ecoroute_user_dp_${email.trim().toLowerCase()}';
+
+  /// Retrieves the dedicated DP for a specific user account so accounts never share pictures
+  String? getDpForAccount(String email) {
+    final clean = email.trim().toLowerCase();
+    if (clean.isEmpty || clean == 'guest@ecoroute.ug') return null;
+    final saved = _prefs?.getString(userPhotoPrefKey(clean));
+    if (saved != null && saved.isNotEmpty) return saved;
+    return authService?.getPhotoForUser(clean);
+  }
+
+  /// Persists a dedicated DP strictly for a specific user account
+  Future<void> setDpForAccount(String email, String? photoBase64) async {
+    final clean = email.trim().toLowerCase();
+    if (clean.isEmpty || clean == 'guest@ecoroute.ug') return;
+    final key = userPhotoPrefKey(clean);
+    if (photoBase64 == null || photoBase64.isEmpty) {
+      await _prefs?.remove(key);
+    } else {
+      await _prefs?.setString(key, photoBase64);
+    }
+    try {
+      await authService?.savePhotoForUser(clean, photoBase64);
+    } catch (_) {}
+  }
+
   Future<void> _saveState() async {
     try {
+      final effectivePhoto = isGuest ? null : userPhotoBase64;
+      if (!isGuest && userEmail.isNotEmpty && userEmail != 'guest@ecoroute.ug') {
+        if (effectivePhoto != null && effectivePhoto.isNotEmpty) {
+          await _prefs?.setString(userPhotoPrefKey(userEmail), effectivePhoto);
+        }
+      }
       final stateMap = {
         'isGuest': isGuest,
         'currentRole': currentRole,
@@ -355,7 +505,7 @@ class EcoRouteState extends ChangeNotifier {
         'userEmail': userEmail,
         'userPhone': userPhone,
         'userCell': userCell,
-        'userPhotoBase64': userPhotoBase64,
+        'userPhotoBase64': effectivePhoto,
         'ecoCredits': ecoCredits,
         'riderLedgerBalance': riderLedgerBalance,
         'totalTonnes': totalTonnes,
@@ -387,6 +537,7 @@ class EcoRouteState extends ChangeNotifier {
       userUsername = 'admin_arua';
       userEmail = 'admin@ecoroute.ug';
     }
+    userPhotoBase64 = getDpForAccount(userEmail);
     _saveState();
     notifyListeners();
 
@@ -408,15 +559,47 @@ class EcoRouteState extends ChangeNotifier {
     String? cell,
     String? photoBase64,
   }) {
+    isGuest = false;
     currentRole = role;
     userName = name;
     userEmail = email;
     userPhone = phone;
     if (username != null && username.isNotEmpty) userUsername = username;
     if (cell != null && cell.isNotEmpty) userCell = cell;
-    if (photoBase64 != null) userPhotoBase64 = photoBase64;
+
+    // Load account-specific DP so each account has its own isolated DP
+    final accountDp = photoBase64 ?? getDpForAccount(email);
+    userPhotoBase64 = accountDp;
+    if (photoBase64 != null) {
+      setDpForAccount(email, photoBase64);
+    }
+
     _saveState();
     notifyListeners();
+  }
+
+  Future<void> logout([BuildContext? context]) async {
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        await FirebaseAuth.instance.signOut();
+      }
+    } catch (_) {}
+    try {
+      await authService?.logout();
+    } catch (_) {}
+    isGuest = true;
+    currentRole = 'resident';
+    userName = 'Guest User';
+    userUsername = 'guest_arua';
+    userEmail = 'guest@ecoroute.ug';
+    userPhone = '+256 394 880 352';
+    userCell = 'Ediofe, Trading Center';
+    userPhotoBase64 = null; // Strictly wiped so guest and subsequent accounts never see another user's DP!
+    await _saveState();
+    notifyListeners();
+    if (context != null && context.mounted) {
+      Navigator.pushNamedAndRemoveUntil(context, '/resident', (route) => false);
+    }
   }
 
   void updateProfile({
@@ -430,7 +613,10 @@ class EcoRouteState extends ChangeNotifier {
     userUsername = username;
     userPhone = phone;
     userCell = cell;
-    if (photoBase64 != null) userPhotoBase64 = photoBase64;
+    if (photoBase64 != null) {
+      userPhotoBase64 = photoBase64.isNotEmpty ? photoBase64 : null;
+      setDpForAccount(userEmail, userPhotoBase64);
+    }
     _saveState();
     notifyListeners();
 
@@ -1702,11 +1888,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () {
                   final state = EcoRouteState.instance;
                   state.isGuest = true;
+                  state.userPhotoBase64 = null;
+                  state.userName = 'Guest User';
+                  state.userUsername = 'guest_arua';
+                  state.userEmail = 'guest@ecoroute.ug';
+                  state.userPhone = '+256 394 880 352';
+                  state.currentRole = 'resident';
                   Navigator.pushReplacementNamed(context, '/resident');
                 },
                 icon: const Icon(Icons.explore_outlined, size: 16, color: Color(0xFF0D2618)),
                 label: const Text(
-                  'Explore as Guest (No Account Required)',
+                  'Explore as Guest (No Account Required • Jumia Style)',
                   style: TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ),
@@ -1790,6 +1982,26 @@ void showEcoRouteProfileSheet(BuildContext context) {
                 pickProfilePhoto(ImageSource.gallery, ctx);
               },
             ),
+            if (state.userPhotoBase64 != null && state.userPhotoBase64!.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                title: const Text('Remove Profile Photo', style: TextStyle(color: Colors.redAccent)),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  state.updateProfile(
+                    name: nameCtrl.text.trim(),
+                    username: usernameCtrl.text.trim(),
+                    phone: phoneCtrl.text.trim(),
+                    cell: cellCtrl.text.trim(),
+                    photoBase64: '',
+                  );
+                  state.setDpForAccount(state.userEmail, null);
+                  state.userPhotoBase64 = null;
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Profile photo removed.')));
+                  }
+                },
+              ),
           ],
         ),
       ),
@@ -1985,38 +2197,13 @@ void showEcoRouteProfileSheet(BuildContext context) {
             ),
             const SizedBox(height: 12),
             Center(
-              child: Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: const Color(0xFF0D2618),
-                    child: state.userPhotoBase64 != null
-                        ? ClipOval(
-                            child: Image.memory(
-                              base64Decode(state.userPhotoBase64!),
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : Text(
-                            state.userName.isNotEmpty ? state.userName[0].toUpperCase() : 'E',
-                            style: const TextStyle(fontSize: 32, color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: InkWell(
-                      onTap: () => showPhotoSourceSheet(ctx),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(color: Color(0xFF9C3D18), shape: BoxShape.circle),
-                        child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
-                      ),
-                    ),
-                  )
-                ],
+              child: buildSafeUserAvatar(
+                context: ctx,
+                photoBase64: state.userPhotoBase64,
+                name: state.userName,
+                isGuest: state.isGuest,
+                radius: 40,
+                onCameraTap: state.isGuest ? null : () => showPhotoSourceSheet(ctx),
               ),
             ),
             const SizedBox(height: 16),
@@ -2282,6 +2469,7 @@ class _GuestInterceptDialogState extends State<_GuestInterceptDialog> {
             name: registered.fullName,
             email: registered.email,
             phone: registered.phone,
+            photoBase64: registered.photoUrl,
           );
         } else {
           state.setAuthenticatedUser(role: 'resident', name: name, email: email, phone: phone);
@@ -2303,6 +2491,7 @@ class _GuestInterceptDialogState extends State<_GuestInterceptDialog> {
             name: user.fullName,
             email: user.email,
             phone: user.phone,
+            photoBase64: user.photoUrl,
           );
         } else {
           state.setAuthenticatedUser(
@@ -2334,11 +2523,11 @@ class _GuestInterceptDialogState extends State<_GuestInterceptDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Row(
         children: const [
-          Icon(Icons.lock_outline, color: Color(0xFF0D2618)),
+          Icon(Icons.shopping_bag_outlined, color: Color(0xFF0D2618)),
           SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Account Required to Dispatch',
+              'Confirm Collection Booking',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0D2618)),
             ),
           ),
@@ -2349,8 +2538,28 @@ class _GuestInterceptDialogState extends State<_GuestInterceptDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8ECE7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: const [
+                  Icon(Icons.info_outline, size: 18, color: Color(0xFF0D2618)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Just like Jumia, you can quickly enter your contact info or sign in to finalize pickup dispatch and receive real-time rider tracking.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF1A3A28)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const Text(
-              'Please create an account or sign in so municipal riders can reach your location and provide completion proof.',
+              'Sign in to your account or register your household so municipal riders can reach your premises and issue digital receipts.',
               style: TextStyle(fontSize: 12, color: Colors.black87),
             ),
             const SizedBox(height: 14),
@@ -2808,6 +3017,7 @@ class ResidentProfileTabScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // 1. TOP HEADER / ACCOUNT CARD
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -2817,13 +3027,20 @@ class ResidentProfileTabScreen extends StatelessWidget {
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: const Color(0xFF0D2618),
-                  child: Text(
-                    state.userName.isNotEmpty ? state.userName[0].toUpperCase() : 'G',
-                    style: const TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
+                buildSafeUserAvatar(
+                  context: context,
+                  photoBase64: state.userPhotoBase64,
+                  name: state.userName,
+                  isGuest: state.isGuest,
+                  radius: 30,
+                  onCameraTap: state.isGuest ? null : () => showEcoRouteProfileSheet(context),
+                  onTap: () {
+                    if (state.isGuest) {
+                      Navigator.pushNamed(context, '/login');
+                    } else {
+                      showEcoRouteProfileSheet(context);
+                    }
+                  },
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -2832,51 +3049,124 @@ class ResidentProfileTabScreen extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Text(state.userName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0D2618))),
-                          const SizedBox(width: 6),
-                          if (state.isGuest)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(color: const Color(0xFF9C3D18), borderRadius: BorderRadius.circular(8)),
-                              child: const Text('Guest', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                          Flexible(
+                            child: Text(
+                              state.isGuest ? 'Welcome to EcoRoute' : state.userName,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0D2618)),
+                              overflow: TextOverflow.ellipsis,
                             ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: state.isGuest ? const Color(0xFF9C3D18) : const Color(0xFF0D2618),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              state.isGuest ? 'Guest' : state.userRole.toUpperCase(),
+                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(state.userEmail, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                      Text(state.userPhone, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      const SizedBox(height: 3),
+                      Text(
+                        state.isGuest
+                            ? 'Enter your account to access pickups, receipts, and Eco-Credits'
+                            : state.userEmail,
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                      if (!state.isGuest) ...[
+                        const SizedBox(height: 2),
+                        Text(state.userPhone, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      ],
                     ],
                   ),
                 ),
               ],
             ),
           ),
+
+          // 2. JUMIA UG STYLE GUEST ACTIONS & BENEFITS
           if (state.isGuest) ...[
             const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF9C3D18).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF9C3D18).withValues(alpha: 0.3)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF0D2618).withValues(alpha: 0.1)),
+                boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 4, offset: Offset(0, 2))],
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('Guest Mode Active', style: TextStyle(color: Color(0xFF9C3D18), fontWeight: FontWeight.bold, fontSize: 13)),
-                  const SizedBox(height: 4),
-                  const Text('Create an official account to save request histories and access municipal Eco-Credits.', style: TextStyle(fontSize: 11)),
+                  Row(
+                    children: const [
+                      Icon(Icons.stars, color: Color(0xFF9C3D18), size: 22),
+                      SizedBox(width: 8),
+                      Text(
+                        'Unlock Full Resident Privileges',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0D2618)),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pushNamed(context, '/login'),
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
-                    child: const Text('Create Account or Sign In', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  const Text('• 150 Municipal Eco-Credits welcome bonus', style: TextStyle(fontSize: 12, color: Color(0xFF1A3A28))),
+                  const SizedBox(height: 4),
+                  const Text('• Save default pickup addresses & digital receipts', style: TextStyle(fontSize: 12, color: Color(0xFF1A3A28))),
+                  const SizedBox(height: 4),
+                  const Text('• Real-time SMS & WhatsApp dispatch tracking', style: TextStyle(fontSize: 12, color: Color(0xFF1A3A28))),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.pushNamed(context, '/login'),
+                          icon: const Icon(Icons.login, size: 16, color: Colors.white),
+                          label: const Text('Sign In', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0D2618),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.pushNamed(context, '/login'),
+                          icon: const Icon(Icons.person_add_alt_1_outlined, size: 16, color: Color(0xFF0D2618)),
+                          label: const Text('Register', style: TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold, fontSize: 13)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFF0D2618)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
+          ] else ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => showEcoRouteProfileSheet(context),
+              icon: const Icon(Icons.edit, size: 16, color: Color(0xFF0D2618)),
+              label: const Text('Edit Profile & DP', style: TextStyle(color: Color(0xFF0D2618), fontWeight: FontWeight.bold)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF0D2618)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
           ],
+
           const SizedBox(height: 16),
+          // 3. ECO-CREDITS BALANCE CARD
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -2886,17 +3176,34 @@ class ResidentProfileTabScreen extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Municipal Eco-Credits Balance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                Text('${state.ecoCredits} Credits', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Municipal Eco-Credits Balance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 2),
+                    Text(
+                      state.isGuest ? 'Sign in to redeem for free collections' : 'Valid for free municipal sack collections',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                ),
+                Text(
+                  state.isGuest ? '0 Credits' : '${state.ecoCredits} Credits',
+                  style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 15),
+                ),
               ],
             ),
           ),
+
           const SizedBox(height: 16),
+          const Text('Customer Service & Live Dispatch', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0D2618))),
+          const SizedBox(height: 8),
           ListTile(
             tileColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             leading: const Icon(Icons.support_agent, color: Color(0xFF0D2618)),
             title: const Text('Operations Hotline (+256 394 880 352)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            subtitle: const Text('Municipal waste clearing & scheduling help', style: TextStyle(fontSize: 11)),
             onTap: () => launchEcoRouteCall(),
           ),
           const SizedBox(height: 8),
@@ -2905,23 +3212,35 @@ class ResidentProfileTabScreen extends StatelessWidget {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             leading: const Icon(Icons.chat, color: Colors.green),
             title: const Text('WhatsApp Operations Desk', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            subtitle: const Text('Chat live with Arua dispatch operators', style: TextStyle(fontSize: 11)),
             onTap: () => launchEcoRouteWhatsApp(),
           ),
-          const SizedBox(height: 16),
-          OutlinedButton(
-            onPressed: () {
-              state.switchRole('resident', context);
-              Navigator.pushReplacementNamed(context, '/login');
-            },
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Color(0xFF9C3D18)),
-              padding: const EdgeInsets.symmetric(vertical: 12),
+          const SizedBox(height: 20),
+          if (state.isGuest)
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pushNamed(context, '/login'),
+              icon: const Icon(Icons.login, color: Colors.white, size: 18),
+              label: const Text('Sign In to Existing Account', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0D2618),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            )
+          else
+            OutlinedButton.icon(
+              onPressed: () => state.logout(context),
+              icon: const Icon(Icons.logout, color: Color(0xFF9C3D18), size: 18),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF9C3D18)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              label: const Text(
+                'Sign Out',
+                style: TextStyle(color: Color(0xFF9C3D18), fontWeight: FontWeight.bold),
+              ),
             ),
-            child: Text(
-              state.isGuest ? 'Sign In to Existing Account' : 'Sign Out',
-              style: const TextStyle(color: Color(0xFF9C3D18), fontWeight: FontWeight.bold),
-            ),
-          ),
         ],
       ),
     );
@@ -3223,21 +3542,39 @@ class ResidentHomeScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Row(
-                    children: const [
-                      Icon(Icons.eco, color: Colors.white, size: 28),
-                      SizedBox(width: 8),
-                      Text(
-                        'EcoRoute',
-                        style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                    children: [
+                      buildSafeUserAvatar(
+                        context: context,
+                        photoBase64: state.userPhotoBase64,
+                        name: state.userName,
+                        isGuest: state.isGuest,
+                        radius: 22,
+                        onTap: () {
+                          Navigator.pop(context);
+                          if (state.isGuest) {
+                            Navigator.pushNamed(context, '/login');
+                          } else {
+                            showEcoRouteProfileSheet(context);
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'EcoRoute',
+                            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            state.isGuest ? 'Arua Guest Portal' : 'Arua Sustainable Waste',
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Arua City • Sustainable Solid Waste',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11),
-                  ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -3245,7 +3582,7 @@ class ResidentHomeScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      state.isGuest ? 'Guest Explorer' : '${state.userName} (${state.userRole.toUpperCase()})',
+                      state.isGuest ? 'Guest Explorer • Jumia Style' : '${state.userName} (${state.userRole.toUpperCase()})',
                       style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -3404,13 +3741,44 @@ class ResidentHomeScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Hello, Resident • Arua City', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
-                    const SizedBox(height: 2),
-                    Text(state.isGuest ? 'Guest Explorer • Arua Municipality' : '${state.userCell} Service Area', style: const TextStyle(fontSize: 12, color: Color(0xFF1A3A28))),
-                  ],
+                Expanded(
+                  child: Row(
+                    children: [
+                      buildSafeUserAvatar(
+                        context: context,
+                        photoBase64: state.userPhotoBase64,
+                        name: state.userName,
+                        isGuest: state.isGuest,
+                        radius: 20,
+                        onTap: () {
+                          if (state.isGuest) {
+                            Navigator.pushNamed(context, '/login');
+                          } else {
+                            showEcoRouteProfileSheet(context);
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              state.isGuest ? 'Hello, Guest Explorer' : 'Hello, ${state.userName}',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0D2618)),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              state.isGuest ? 'Arua Municipality • Tap to Sign In' : '${state.userCell} Service Area',
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF1A3A28)),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -3425,6 +3793,43 @@ class ResidentHomeScreen extends StatelessWidget {
                 ),
               ],
             ),
+            if (state.isGuest) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF0D2618).withValues(alpha: 0.12)),
+                  boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 4, offset: Offset(0, 2))],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.stars, color: Color(0xFF9C3D18), size: 24),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text('Browsing as Guest (Jumia Style)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0D2618))),
+                          Text('Browse waste rates & schedules freely. Sign in to earn 150 Eco-Credits!', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pushNamed(context, '/login'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0D2618),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text('Sign In', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Row(
               children: [
@@ -3923,19 +4328,57 @@ class ResidentRequestsScreen extends StatelessWidget {
       ),
       body: requests.isEmpty
           ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.receipt_long, size: 48, color: Colors.grey),
-                  const SizedBox(height: 12),
-                  const Text('No pickup requests yet', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D2618))),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: onBookPickup,
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
-                    child: const Text('Book First Pickup', style: TextStyle(color: Colors.white)),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE8ECE7),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.receipt_long, size: 40, color: Color(0xFF0D2618)),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      EcoRouteState.instance.isGuest
+                          ? "You're Exploring as Guest"
+                          : 'No pickup requests yet',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0D2618)),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      EcoRouteState.instance.isGuest
+                          ? 'Book a pickup to track your tricycle in real-time, or sign in to sync your collection history across devices.'
+                          : 'Schedule your first waste collection request in Arua City.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: onBookPickup,
+                          icon: const Icon(Icons.add, size: 16, color: Colors.white),
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
+                          label: const Text('Book a Pickup', style: TextStyle(color: Colors.white)),
+                        ),
+                        if (EcoRouteState.instance.isGuest) ...[
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: () => Navigator.pushNamed(context, '/login'),
+                            icon: const Icon(Icons.login, size: 16, color: Color(0xFF0D2618)),
+                            style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF0D2618))),
+                            label: const Text('Sign In', style: TextStyle(color: Color(0xFF0D2618))),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             )
           : ListView.builder(

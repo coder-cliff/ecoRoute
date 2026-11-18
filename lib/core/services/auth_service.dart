@@ -218,7 +218,9 @@ class AuthService {
                 '',
             role: resolvedRole,
             address: profile?['address'] as String?,
-            photoUrl: (profile?['photoUrl'] as String?) ?? firebaseUser.photoURL,
+            photoUrl: (profile?['photoUrl'] as String?) ??
+                firebaseUser.photoURL ??
+                getPhotoForUser(cleanEmail),
           );
           _failedAttempts.remove(cleanEmail);
           _lockoutUntil.remove(cleanEmail);
@@ -254,7 +256,7 @@ class AuthService {
             phone: (reg['phone'] as String?) ?? '',
             role: regRole,
             address: reg['address'] as String?,
-            photoUrl: reg['photoUrl'] as String?,
+            photoUrl: (reg['photoUrl'] as String?) ?? getPhotoForUser(cleanEmail),
           );
           _failedAttempts.remove(cleanEmail);
           _lockoutUntil.remove(cleanEmail);
@@ -365,6 +367,10 @@ class AuthService {
           await markInviteAccepted(cleanEmail);
         }
 
+        if (photoUrl != null) {
+          await savePhotoForUser(cleanEmail, photoUrl);
+        }
+
         _saveToLocalRegisteredUsers(user, password);
         await _saveSession(user);
         return user;
@@ -397,6 +403,9 @@ class AuthService {
     );
 
     _saveToLocalRegisteredUsers(user, password);
+    if (photoUrl != null) {
+      await savePhotoForUser(cleanEmail, photoUrl);
+    }
     if (resolvedRole == AppRole.rider) {
       await markInviteAccepted(cleanEmail);
     }
@@ -581,12 +590,84 @@ class AuthService {
     return updated;
   }
 
+  static String userPhotoPrefKey(String email) =>
+      'ecoroute_user_dp_${email.trim().toLowerCase()}';
+
+  /// Retrieves the dedicated DP for a specific user account so accounts never share photos
+  String? getPhotoForUser(String email) {
+    final cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail.isEmpty || cleanEmail == 'guest@ecoroute.ug') return null;
+
+    final prefPhoto = _preferences.getString(userPhotoPrefKey(cleanEmail));
+    if (prefPhoto != null && prefPhoto.isNotEmpty) return prefPhoto;
+
+    final registered = _getRegisteredUsers();
+    for (final reg in registered) {
+      if ((reg['email'] as String? ?? '').toLowerCase() == cleanEmail) {
+        final photo = reg['photoUrl'] as String?;
+        if (photo != null && photo.isNotEmpty) return photo;
+      }
+    }
+    final session = getCurrentUser();
+    if (session != null && session.email.toLowerCase() == cleanEmail) {
+      return session.photoUrl;
+    }
+    return null;
+  }
+
+  /// Persists a dedicated DP strictly for a specific user account
+  Future<void> savePhotoForUser(String email, String? photoUrl) async {
+    final cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail.isEmpty || cleanEmail == 'guest@ecoroute.ug') return;
+
+    final key = userPhotoPrefKey(cleanEmail);
+    if (photoUrl == null || photoUrl.isEmpty) {
+      await _preferences.remove(key);
+    } else {
+      await _preferences.setString(key, photoUrl);
+    }
+
+    final registered = _getRegisteredUsers();
+    final index = registered.indexWhere(
+      (u) => (u['email'] as String? ?? '').toLowerCase() == cleanEmail,
+    );
+    if (index != -1) {
+      registered[index]['photoUrl'] = photoUrl;
+      await _preferences.setString(_usersKey, jsonEncode(registered));
+    }
+
+    final session = getCurrentUser();
+    if (session != null && session.email.toLowerCase() == cleanEmail) {
+      final updatedSession = session.copyWith(photoUrl: photoUrl);
+      await _saveSession(updatedSession);
+    }
+
+    final firestore = _firestore;
+    if (firestore != null) {
+      try {
+        final query = await firestore
+            .collection('profiles')
+            .where('email', isEqualTo: cleanEmail)
+            .limit(1)
+            .get();
+        if (query.docs.isNotEmpty) {
+          await query.docs.first.reference.set({
+            'photoUrl': photoUrl,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+      } catch (_) {}
+    }
+  }
+
   /// Dedicated fast update for profile picture
   Future<AppUser> updateProfilePhoto(String? photoUrl) async {
     final current = getCurrentUser();
     if (current == null) {
       throw StateError('No user is currently signed in.');
     }
+    await savePhotoForUser(current.email, photoUrl);
+
     final updated = AppUser(
       id: current.id,
       fullName: current.fullName,
@@ -597,25 +678,6 @@ class AuthService {
       photoUrl: photoUrl,
     );
     await _saveSession(updated);
-
-    final registered = _getRegisteredUsers();
-    final index = registered.indexWhere(
-      (u) => (u['email'] as String).toLowerCase() == current.email.toLowerCase(),
-    );
-    if (index != -1) {
-      registered[index]['photoUrl'] = photoUrl;
-      await _preferences.setString(_usersKey, jsonEncode(registered));
-    }
-
-    final firestore = _firestore;
-    if (firestore != null) {
-      try {
-        await firestore.collection('profiles').doc(current.id).set({
-          'photoUrl': photoUrl,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      } catch (_) {}
-    }
 
     return updated;
   }
