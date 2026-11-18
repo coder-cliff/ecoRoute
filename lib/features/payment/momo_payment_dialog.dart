@@ -30,7 +30,7 @@ class MoMoPaymentDialog extends StatefulWidget {
   final String initialPhone;
   final Future<void> Function(PickupRequest updatedRequest) onPaymentSuccess;
 
-  static const String collectionAccount = '+256 394 880 352';
+  static const String collectionAccount = '+256 784 638 852';
 
   @override
   State<MoMoPaymentDialog> createState() => _MoMoPaymentDialogState();

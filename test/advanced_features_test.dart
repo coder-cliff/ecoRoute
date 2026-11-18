@@ -186,7 +186,7 @@ void main() {
         priceUgx: 4500,
         zone: Zone.west,
         address: 'River Oli, Arua',
-        residentPhone: '+256394880352',
+        residentPhone: '+256784638852',
       );
 
       PickupRequest? paidResult;
@@ -196,7 +196,7 @@ void main() {
           home: Scaffold(
             body: MoMoPaymentDialog(
               request: request,
-              initialPhone: '+256394880352',
+              initialPhone: '+256784638852',
               onPaymentSuccess: (updated) async {
                 paidResult = updated;
               },
@@ -207,7 +207,7 @@ void main() {
 
       // Check MTN MoMo is selected and phone is prefilled
       expect(find.text('Mobile Money Payment'), findsOneWidget);
-      expect(find.text('+256394880352'), findsOneWidget);
+      expect(find.text('+256784638852'), findsOneWidget);
       expect(find.text('Pay 4,500 UGX'), findsOneWidget);
 
       // Simulate tapping payment
@@ -227,7 +227,7 @@ void main() {
 
       expect(paidResult, isNotNull);
       expect(paidResult!.status, RequestStatus.paid);
-      expect(paidResult!.residentPhone, '+256394880352');
+      expect(paidResult!.residentPhone, '+256784638852');
     });
   });
 }

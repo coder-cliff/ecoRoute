@@ -36,7 +36,7 @@ void main() {
           home: Scaffold(
             body: MoMoPaymentDialog(
               request: sampleRequest,
-              initialPhone: '+256394880352',
+              initialPhone: '+256784638852',
               onPaymentSuccess: (updated) async {
                 result = updated;
               },
@@ -49,7 +49,7 @@ void main() {
       // Check default view has both channels
       expect(find.text('Mobile Money'), findsOneWidget);
       expect(find.text('Hard Cash to Rider'), findsOneWidget);
-      expect(find.text('Free Collection Account: +256 394 880 352'), findsOneWidget);
+      expect(find.text('Free Collection Account: +256 784 638 852'), findsOneWidget);
 
       // Switch to Hard Cash to Rider
       await tester.tap(find.text('Hard Cash to Rider'));
@@ -121,7 +121,7 @@ void main() {
       expect(find.text('EcoRoute Logistics'), findsOneWidget);
       expect(find.text('Commercial Waste Receipt • Arua Hub'), findsOneWidget);
       expect(find.text('VERIFIED PAYMENT • ECOROUTE PRIVATE LTD'), findsOneWidget);
-      expect(find.text('+256 394 880 352'), findsOneWidget);
+      expect(find.text('+256 784 638 852'), findsOneWidget);
     });
 
     testWidgets('DigitalReceiptDialog renders full commercial details and copies to clipboard', (

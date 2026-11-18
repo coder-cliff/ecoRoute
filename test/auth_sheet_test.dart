@@ -16,7 +16,7 @@ void main() {
     await authService.register(
       fullName: 'Savior Deo',
       email: 'ayikog@yahoo.com',
-      phone: '+256394880352',
+      phone: '+256784638852',
       password: 'OfficialAdmin@2026',
       role: AppRole.admin,
     );

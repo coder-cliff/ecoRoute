@@ -201,7 +201,7 @@ void main() {
       expect(find.text('Sign In to Existing Account'), findsOneWidget);
 
       // Hotline & WhatsApp
-      expect(find.text('Operations Hotline (+256 394 880 352)'), findsOneWidget);
+      expect(find.text('Operations Hotline (+256 784 638 852)'), findsOneWidget);
       expect(find.text('WhatsApp Operations Desk'), findsOneWidget);
     });
 

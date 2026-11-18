@@ -6,7 +6,7 @@ EcoRoute employs a comprehensive multi-tier testing strategy combining:
 2. **Repository & Storage Unit Testing:** Verification of CRUD persistence, asynchronous JSON serialization, and corrupt-state recovery.
 3. **REST API Service Mock Testing:** Verification of HTTP request handling, timeout triggers, weather status categorization, and offline fallback failover using `http/testing.dart`.
 4. **Widget & End-to-End Flow Testing:** Headless UI testing verifying screen rendering, viewport responsiveness ($412 \times 700$ and narrow screens), form validation errors, and cross-role state propagation.
-5. **Advanced Feature Testing:** Automated testing for the Waste Camera proximity scanner, Mobile Money simulation (+256394880352) with digital receipts, and multilingual string translation (Lugbara/Swahili).
+5. **Advanced Feature Testing:** Automated testing for the Waste Camera proximity scanner, Mobile Money simulation (+256784638852) with digital receipts, and multilingual string translation (Lugbara/Swahili).
 6. **Open Database & Smart Auto-Scan Testing:** Full-text stemming verification across English and Lugbara keywords, resale rate calculators, municipal facility queries, and auto-camera trigger workflows.
 
 ---
@@ -57,7 +57,7 @@ Execution Time: ~9.8 seconds
 | :--- | :--- | :--- | :--- | :--- |
 | **TC-09** | Switch language to `AppLanguage.lugbara` | Translates schedule pickup to `'Liru omba'` | Displayed translated string | **PASSED** |
 | **TC-10** | Manual shutter trigger in camera scanner | Acquires photo and auto-GPS location | Captures result with service area verified | **PASSED** |
-| **TC-11** | MoMo payment simulation with `+256394880352` | Emits USSD push, generates receipt | Status updated to `paid` with audit receipt | **PASSED** |
+| **TC-11** | MoMo payment simulation with `+256784638852` | Emits USSD push, generates receipt | Status updated to `paid` with audit receipt | **PASSED** |
 | **TC-12** | Camera proximity auto-capture triggers | Automatically locks GPS and auto-confirms return | Saves photo label and returns without tap | **PASSED** |
 | **TC-13** | Search waste database with "Battery" | Stemming matches "Dry-Cell Radio & Solar Batteries" | Matches item correctly | **PASSED** |
 | **TC-14** | Estimate recycling value for 10 kg PET bottles | Calculates 10 kg $\times$ 800 UGX = 8,000 UGX | Returns 8,000 UGX | **PASSED** |

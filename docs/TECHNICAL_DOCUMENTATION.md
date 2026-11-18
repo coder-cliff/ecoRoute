@@ -56,7 +56,7 @@ ecoRoute/
 | `isInstant` | `bool` | Instant on-demand collection flag (dispatched immediately upon request without zone delays) |
 | `address` | `String` | Physical landmark, street address, or division name |
 | `latitude` / `longitude` | `double?` | Real-time GPS coordinates acquired via Geolocator |
-| `residentName` / `residentPhone` | `String` | Contact details for pickup coordination (Default: `+256394880352`) |
+| `residentName` / `residentPhone` | `String` | Contact details for pickup coordination (Default: `+256784638852`) |
 | `status` | `RequestStatus` | `requested`, `collected`, `awaitingVerification`, `paid`, `cancelled` |
 | `zone` | `Zone` | Legacy geographic coordinate indicator (retained for backward compatibility) |
 

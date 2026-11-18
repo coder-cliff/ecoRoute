@@ -25,10 +25,10 @@ import 'features/rider/rider_setup_screen.dart';
 import 'firebase_options.dart';
 
 // =================================================================
-// SHARED CONSTANTS & HOTLINE (+256394880352)
+// SHARED CONSTANTS & HOTLINE (+256784638852)
 // =================================================================
-const String kEcoRouteSupportPhone = '+256394880352';
-const String kEcoRouteWhatsAppNumber = '256394880352';
+const String kEcoRouteSupportPhone = '+256784638852';
+const String kEcoRouteWhatsAppNumber = '256784638852';
 
 Future<void> launchEcoRouteCall([String phone = kEcoRouteSupportPhone]) async {
   final cleanPhone = phone.replaceAll(' ', '');
@@ -195,23 +195,20 @@ class EcoRouteState extends ChangeNotifier {
   PickupRequestRepository? pickupRepo;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _firestoreSubscription;
 
-  // Active Role and Profile
-  bool isGuest = false;
+  // Active Role and Profile (Dynamically loaded from Firestore Auth / Profile)
+  bool isGuest = true;
   String currentRole = 'resident'; // 'resident', 'rider', 'admin'
   String get userRole => currentRole;
-  String userName = 'Jane Agondua';
-  String userUsername = 'jane_arua';
-  String userEmail = 'resident.arua@ecoroute.ug';
-  String userPhone = '+256 394 880 352';
-  String userCell = 'Ediofe, Trading Center';
+  String userName = 'Guest Resident';
+  String userUsername = 'guest';
+  String userEmail = '';
+  String userPhone = '+256 784 638 852';
+  String userCell = 'Arua City';
   String? userPhotoBase64;
-  int ecoCredits = 150;
+  int ecoCredits = 0;
 
-  // Saved addresses
-  List<Map<String, String>> savedAddresses = [
-    {'label': 'Home', 'address': 'Ediofe, Trading Center'},
-    {'label': 'Store', 'address': 'Arua Central Market'},
-  ];
+  // Saved addresses (Pure dynamic list populated from Firestore/user)
+  List<Map<String, String>> savedAddresses = [];
 
   // Active Pickup State (Pure dynamic state - populated strictly when Resident books)
   Map<String, dynamic>? activePickup;
@@ -372,20 +369,45 @@ class EcoRouteState extends ChangeNotifier {
 
       if (fbUser != null) {
         isGuest = false;
-        userEmail = fbUser.email ?? userEmail;
-        userName = fbUser.displayName ?? userName;
+        userEmail = fbUser.email ?? '';
+        userName = fbUser.displayName ?? (userEmail.isNotEmpty ? userEmail.split('@').first : 'User');
         userPhotoBase64 = getDpForAccount(userEmail) ?? fbUser.photoURL ?? userPhotoBase64;
+        try {
+          final profileDoc = await FirebaseFirestore.instance.collection('profiles').doc(fbUser.uid).get();
+          if (profileDoc.exists) {
+            final data = profileDoc.data();
+            if (data != null) {
+              if (data['fullName'] != null && (data['fullName'] as String).isNotEmpty) {
+                userName = data['fullName'] as String;
+              }
+              if (data['phone'] != null && (data['phone'] as String).isNotEmpty) {
+                userPhone = data['phone'] as String;
+              }
+              if (data['address'] != null && (data['address'] as String).isNotEmpty) {
+                userCell = data['address'] as String;
+              }
+              if (data['role'] != null) {
+                currentRole = data['role'] as String;
+              }
+              if (data['photoUrl'] != null) {
+                userPhotoBase64 = data['photoUrl'] as String;
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('Firestore profile load notice: $e');
+        }
         if (isAdminEmail(userEmail)) {
           currentRole = 'admin';
         }
       } else if (saved == null || isGuest) {
         // Fresh installation unauthenticated launch defaults directly to Guest Mode
         isGuest = true;
-        userName = 'Guest User';
-        userUsername = 'guest_arua';
-        userEmail = 'guest@ecoroute.ug';
-        userPhone = '+256 394 880 352';
-        userCell = 'Ediofe, Trading Center';
+        userName = 'Guest Resident';
+        userUsername = 'guest';
+        userEmail = '';
+        userPhone = '+256 784 638 852';
+        userCell = 'Arua City';
         currentRole = 'resident';
         userPhotoBase64 = null;
       } else {
@@ -397,9 +419,6 @@ class EcoRouteState extends ChangeNotifier {
 
     // Subscribe to multi-device real-time Firestore synchronization
     _listenToPickupRequestsStream();
-
-    // Auto-bootstrap cloud demo data to Firestore if collection is empty
-    seedInitialCloudDataIfNeeded();
 
     // Fetch live weather from Open-Meteo Arua
     fetchLiveWeather();
@@ -444,41 +463,7 @@ class EcoRouteState extends ChangeNotifier {
   }
 
   Future<void> seedInitialCloudDataIfNeeded({bool force = false}) async {
-    if (Firebase.apps.isEmpty) return;
-    try {
-      final firestore = FirebaseFirestore.instance;
-      final snapshot = await firestore.collection('pickupRequests').limit(1).get();
-      if (snapshot.docs.isEmpty || force) {
-        debugPrint('Seeding initial Arua municipal demonstration data to Firestore...');
-        final initial = getInitialDemoRequests();
-        for (final req in initial) {
-          await firestore.collection('pickupRequests').doc(req.id).set({
-            'id': req.id,
-            'client': req.residentName,
-            'phone': req.residentPhone,
-            'sacks': req.sackCount,
-            'wasteType': req.wasteType.name,
-            'address': req.address,
-            'pickupNotes': req.description,
-            'price': '${req.priceUgx} UGX',
-            'status': req.status == RequestStatus.requested ? 'Requested' : 'Settled',
-            'step': req.status == RequestStatus.requested ? 0 : 3,
-            'verificationCode': '4321',
-            'assignedRiderId': 'TRIC-04',
-            'assignedRiderName': 'Kassim Anguyo (TRIC-04)',
-            'createdAt': 'Today, 08:30',
-            'submittedAt': req.submittedAt.toIso8601String(),
-            'isInstant': req.isInstant,
-            'paymentMethod': req.paymentMethod,
-            'receiptSerial': 'ECO-ARUA-${req.id}',
-            'residentId': req.residentId,
-            'zone': req.zone.name,
-          }, SetOptions(merge: true));
-        }
-      }
-    } catch (e) {
-      debugPrint('Cloud data seed notice: $e');
-    }
+    // Pure live Firestore mode: no hardcoded demo data is injected
   }
 
   void _syncFromFirestoreSnapshot(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
@@ -633,20 +618,6 @@ class EcoRouteState extends ChangeNotifier {
       }
     }
     currentRole = role;
-    if (role == 'resident') {
-      userName = 'Jane Agondua';
-      userUsername = 'jane_arua';
-      userEmail = 'resident.arua@ecoroute.ug';
-    } else if (role == 'rider') {
-      final activeRider = riderRoster.isNotEmpty ? riderRoster.first : null;
-      userName = activeRider != null ? '${activeRider['name']} (${activeRider['tricycleId']})' : 'EcoRoute Rider (Awaiting Invite)';
-      userUsername = activeRider != null ? (activeRider['name'] as String).toLowerCase().replaceAll(' ', '_') : 'rider_invite_required';
-      userEmail = activeRider != null ? (activeRider['email'] as String? ?? 'rider@ecoroute.ug') : 'rider.invite@ecoroute.ug';
-    } else {
-      userName = 'Arua Command HQ';
-      userUsername = 'admin_arua';
-      userEmail = 'admin@ecoroute.ug';
-    }
     userPhotoBase64 = getDpForAccount(userEmail);
     _saveState();
     notifyListeners();
@@ -699,11 +670,11 @@ class EcoRouteState extends ChangeNotifier {
     } catch (_) {}
     isGuest = true;
     currentRole = 'resident';
-    userName = 'Guest User';
-    userUsername = 'guest_arua';
-    userEmail = 'guest@ecoroute.ug';
-    userPhone = '+256 394 880 352';
-    userCell = 'Ediofe, Trading Center';
+    userName = 'Guest Resident';
+    userUsername = 'guest';
+    userEmail = '';
+    userPhone = '+256 784 638 852';
+    userCell = 'Arua City';
     userPhotoBase64 = null; // Strictly wiped so guest and subsequent accounts never see another user's DP!
     await _saveState();
     notifyListeners();
@@ -1642,7 +1613,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isSignUp = false;
   final _fullNameController = TextEditingController();
   final _usernameController = TextEditingController();
-  final _phoneController = TextEditingController(text: '+256 394 880 352');
+  final _phoneController = TextEditingController(text: '+256 784 638 852');
   final _identifierController = TextEditingController(); // email, username, or phone
   final _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -1829,7 +1800,7 @@ class _LoginScreenState extends State<LoginScreen> {
           String resolvedRole = 'resident';
           String resolvedName = targetEmail.split('@').first;
           String resolvedUsername = targetEmail.split('@').first;
-          String resolvedPhone = '+256 394 880 352';
+          String resolvedPhone = '+256 784 638 852';
           String? resolvedCell;
           String? resolvedPhoto;
 
@@ -1946,7 +1917,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: const TextStyle(color: Color(0xFF0D2618)),
                   decoration: InputDecoration(
                     labelText: 'Full Name',
-                    hintText: 'e.g. Jane Agondua',
+                    hintText: 'e.g. Your Full Name',
                     labelStyle: const TextStyle(color: Color(0xFF0D2618)),
                     filled: true,
                     fillColor: Colors.white,
@@ -1974,7 +1945,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: const TextStyle(color: Color(0xFF0D2618)),
                   decoration: InputDecoration(
                     labelText: 'Phone Number',
-                    hintText: '+256 394 880 352',
+                    hintText: '+256 784 638 852',
                     labelStyle: const TextStyle(color: Color(0xFF0D2618)),
                     filled: true,
                     fillColor: Colors.white,
@@ -2070,7 +2041,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   state.userName = 'Guest User';
                   state.userUsername = 'guest_arua';
                   state.userEmail = 'guest@ecoroute.ug';
-                  state.userPhone = '+256 394 880 352';
+                  state.userPhone = '+256 784 638 852';
                   state.currentRole = 'resident';
                   Navigator.pushReplacementNamed(context, '/resident');
                 },
@@ -2088,8 +2059,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     const Icon(Icons.support_agent, size: 16, color: Color(0xFF1A3A28)),
                     const SizedBox(width: 6),
                     TextButton(
-                      onPressed: () => launchEcoRouteWhatsApp(message: 'Hello EcoRoute Operations (+256394880352)'),
-                      child: const Text('Support Hotline: +256 394 880 352', style: TextStyle(color: Color(0xFF1A3A28), fontSize: 12)),
+                      onPressed: () => launchEcoRouteWhatsApp(message: 'Hello EcoRoute Operations (+256784638852)'),
+                      child: const Text('Support Hotline: +256 784 638 852', style: TextStyle(color: Color(0xFF1A3A28), fontSize: 12)),
                     ),
                   ],
                 ),
@@ -2528,7 +2499,7 @@ void showEcoRouteProfileSheet(BuildContext context) {
                   state.userName = 'Guest User';
                   state.userUsername = 'guest_arua';
                   state.userEmail = 'guest@ecoroute.ug';
-                  state.userPhone = '+256 394 880 352';
+                  state.userPhone = '+256 784 638 852';
                   state.currentRole = 'resident';
                   if (context.mounted) {
                     Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
@@ -2823,7 +2794,7 @@ class _GuestInterceptDialogState extends State<_GuestInterceptDialog> {
                 controller: _nameCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Full Name',
-                  hintText: 'e.g. Jane Agondua',
+                  hintText: 'e.g. Your Full Name',
                   border: OutlineInputBorder(),
                   isDense: true,
                 ),
@@ -3423,7 +3394,7 @@ class ResidentProfileTabScreen extends StatelessWidget {
             tileColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             leading: const Icon(Icons.support_agent, color: Color(0xFF0D2618)),
-            title: const Text('Operations Hotline (+256 394 880 352)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            title: const Text('Operations Hotline (+256 784 638 852)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
             subtitle: const Text('Municipal waste clearing & scheduling help', style: TextStyle(fontSize: 11)),
             onTap: () => launchEcoRouteCall(),
           ),
@@ -3720,7 +3691,7 @@ class ResidentHomeScreen extends StatelessWidget {
                     'Client: ${EcoRouteState.instance.userName}\n'
                     'Sacks: ${pickup!['sacks']} (${pickup!['wasteType']})\n'
                     'Paid: ${pickup!['price']}\n'
-                    'Verified by Arua City Fleet (+256394880352)';
+                    'Verified by Arua City Fleet (+256784638852)';
                 launchEcoRouteWhatsApp(message: message);
               },
               icon: const Icon(Icons.share, size: 16, color: Colors.white),
@@ -3855,7 +3826,7 @@ class ResidentHomeScreen extends StatelessWidget {
             const Divider(),
             ListTile(
               leading: const Icon(Icons.phone, color: Color(0xFF0D2618)),
-              title: const Text('Support Hotline (+256394880352)'),
+              title: const Text('Support Hotline (+256784638852)'),
               onTap: () {
                 Navigator.pop(context);
                 launchEcoRouteCall();
@@ -4783,11 +4754,11 @@ class _ResidentSupportScreenState extends State<ResidentSupportScreen> {
     },
     {
       'question': 'What if my scheduled pickup is delayed?',
-      'answer': 'You can track the tricycle live on the dispatch map or tap "Chat with Dispatch" or call our operations hotline directly at +256 394 880 352.',
+      'answer': 'You can track the tricycle live on the dispatch map or tap "Chat with Dispatch" or call our operations hotline directly at +256 784 638 852.',
     },
     {
       'question': 'Can I pay via MTN Mobile Money or Airtel Money?',
-      'answer': 'Yes. You can pay cash on collection or transfer directly via USSD (*165# / *185#) to our official hotline line +256 394 880 352.',
+      'answer': 'Yes. You can pay cash on collection or transfer directly via USSD (*165# / *185#) to our official hotline line +256 784 638 852.',
     },
   ];
 
@@ -4889,7 +4860,7 @@ class _ResidentSupportScreenState extends State<ResidentSupportScreen> {
                   child: ElevatedButton.icon(
                     onPressed: () => launchEcoRouteCall(),
                     icon: const Icon(Icons.phone, size: 16, color: Colors.white),
-                    label: const Text('Call (+256394880352)', style: TextStyle(fontSize: 11, color: Colors.white)),
+                    label: const Text('Call (+256784638852)', style: TextStyle(fontSize: 11, color: Colors.white)),
                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618), padding: const EdgeInsets.symmetric(vertical: 12)),
                   ),
                 ),
@@ -5484,7 +5455,7 @@ class RiderTasksScreen extends StatelessWidget {
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'COLLECT CASH ON COLLECTION (OR MOMO: +256 394 880 352)',
+                              'COLLECT CASH ON COLLECTION (OR MOMO: +256 784 638 852)',
                               style: TextStyle(color: Color(0xFF9C3D18), fontSize: 10.5, fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -5827,7 +5798,7 @@ class RiderEarningsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text('Settlement Method: Instant MTN / Airtel MoMo', style: TextStyle(fontSize: 11, color: Colors.grey)),
-            const Text('Target line: +256 394 880 352 (Direct Fleet USSD)', style: TextStyle(fontSize: 11, color: Colors.grey)),
+            const Text('Target line: +256 784 638 852 (Direct Fleet USSD)', style: TextStyle(fontSize: 11, color: Colors.grey)),
           ],
         ),
         actions: [
@@ -5836,7 +5807,7 @@ class RiderEarningsScreen extends StatelessWidget {
             onPressed: () {
               Navigator.pop(ctx);
               final amt = int.tryParse(amountCtrl.text.trim()) ?? 0;
-              state.riderRequestPayout(amt, '+256 394 880 352', context);
+              state.riderRequestPayout(amt, '+256 784 638 852', context);
             },
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D2618)),
             child: const Text('Confirm Instant Payout', style: TextStyle(color: Colors.white)),
@@ -6031,7 +6002,7 @@ class AdminDashboardScreen extends StatelessWidget {
 
   void _showInviteRiderDialog(BuildContext context) {
     final nameCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController(text: '+256 394 880 352');
+    final phoneCtrl = TextEditingController(text: '+256 784 638 852');
     final emailCtrl = TextEditingController();
     String selectedTric = 'TRIC-04';
 
@@ -6279,30 +6250,12 @@ class AdminDashboardScreen extends StatelessWidget {
         title: const Text('Admin Dashboard'),
         actions: [
           IconButton(
-            tooltip: 'Sync / Seed Cloud Firestore',
-            icon: const Icon(Icons.cloud_sync_outlined),
-            onPressed: () async {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Syncing municipal collection requests to Cloud Firestore...')),
-              );
-              await state.seedInitialCloudDataIfNeeded(force: true);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Cloud Firestore (africa-south1) updated with live Arua demo collections!'),
-                    backgroundColor: Color(0xFF0D2618),
-                  ),
-                );
-              }
-            },
-          ),
-          IconButton(
             tooltip: 'Export Municipal Audit CSV',
             icon: const Icon(Icons.table_chart_outlined),
             onPressed: () => state.exportCollectionAuditCsv(context),
           ),
           IconButton(
-            tooltip: 'Call Support (+256394880352)',
+            tooltip: 'Call Support (+256784638852)',
             icon: const Icon(Icons.phone_outlined),
             onPressed: () => launchEcoRouteCall(),
           ),
@@ -6505,7 +6458,7 @@ class AdminFleetMapScreen extends StatelessWidget {
         title: const Text('Fleet Command Map'),
         actions: [
           IconButton(
-            tooltip: 'Call Support (+256394880352)',
+            tooltip: 'Call Support (+256784638852)',
             icon: const Icon(Icons.phone_outlined),
             onPressed: () => launchEcoRouteCall(),
           ),
@@ -7134,14 +7087,14 @@ class _LiveMapTrackerSheet extends StatelessWidget {
                           ElevatedButton.icon(
                             onPressed: () => launchEcoRouteCall(),
                             icon: const Icon(Icons.phone, size: 16, color: Colors.white),
-                            label: const Text('Call (+256394880352)', style: TextStyle(color: Colors.white, fontSize: 11)),
+                            label: const Text('Call (+256784638852)', style: TextStyle(color: Colors.white, fontSize: 11)),
                             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF9C3D18)),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       OutlinedButton.icon(
-                        onPressed: () => launchEcoRouteWhatsApp(message: 'Hello Dispatch (+256394880352), tracking pickup #${pickup!['id']} in Arua.'),
+                        onPressed: () => launchEcoRouteWhatsApp(message: 'Hello Dispatch (+256784638852), tracking pickup #${pickup!['id']} in Arua.'),
                         icon: const Icon(Icons.chat, size: 16, color: Color(0xFF0D2618)),
                         label: const Text('WhatsApp Dispatch Hotline', style: TextStyle(color: Color(0xFF0D2618), fontSize: 12)),
                         style: OutlinedButton.styleFrom(

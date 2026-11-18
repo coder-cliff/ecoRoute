@@ -441,7 +441,7 @@ class _AuthSheetState extends State<AuthSheet> {
                         controller: _fullName,
                         decoration: const InputDecoration(
                           labelText: 'Full name',
-                          hintText: 'e.g. Amina Dranzoa',
+                          hintText: 'e.g. Your Full Name',
                           prefixIcon: Icon(Icons.person_outline, size: 20),
                           isDense: true,
                         ),

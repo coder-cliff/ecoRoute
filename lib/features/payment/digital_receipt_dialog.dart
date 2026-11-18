@@ -15,7 +15,7 @@ class DigitalReceiptDialog extends StatelessWidget {
   final PickupRequest request;
   final VoidCallback? onClose;
 
-  static const String collectionAccount = '+256 394 880 352';
+  static const String collectionAccount = '+256 784 638 852';
 
   String get _receiptNumber {
     if (request.receiptNumber != null && request.receiptNumber!.isNotEmpty) {

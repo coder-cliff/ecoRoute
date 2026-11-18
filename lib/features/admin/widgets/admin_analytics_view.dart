@@ -325,7 +325,7 @@ class AdminAnalyticsView extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Direct MoMo (+256394880352)', style: TextStyle(fontSize: 10.5, color: subtextColor)),
+                          Text('Direct MoMo (+256784638852)', style: TextStyle(fontSize: 10.5, color: subtextColor)),
                           const SizedBox(height: 2),
                           Text(
                             formatUgx(momoCollected),
@@ -351,7 +351,7 @@ class AdminAnalyticsView extends StatelessWidget {
                     Expanded(
                       child: Text(
                         netRiderRemittance > 0
-                            ? 'Riders hold excess cash: ${formatUgx(netRiderRemittance)} to remit to EcoRoute collection line (+256 394 880 352).'
+                            ? 'Riders hold excess cash: ${formatUgx(netRiderRemittance)} to remit to EcoRoute collection line (+256 784 638 852).'
                             : netRiderRemittance < 0
                                 ? 'EcoRoute payable to riders: ${formatUgx(netRiderRemittance.abs())} to disburse via MoMo.'
                                 : 'Cash and digital accounts are fully balanced.',

@@ -137,7 +137,7 @@ void main() {
       expect(find.text('Map'), findsOneWidget);
       expect(find.text('Notifications'), findsOneWidget);
       expect(find.text('Profile'), findsOneWidget);
-      expect(find.text('Support Hotline (+256394880352)'), findsOneWidget);
+      expect(find.text('Support Hotline (+256784638852)'), findsOneWidget);
       expect(find.text('WhatsApp Dispatch'), findsOneWidget);
 
       // Tap Map in drawer
@@ -151,7 +151,7 @@ void main() {
       state.riderTasks = [
         {
           'id': '9901',
-          'client': 'Jane Agondua',
+          'client': 'Resident Client',
           'address': 'Ediofe, Trading Center',
           'sacks': 2,
           'wasteType': 'Household',

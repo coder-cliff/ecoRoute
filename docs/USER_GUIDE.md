@@ -60,7 +60,7 @@ adb install -r "build\app\outputs\flutter-apk\app-arm64-v8a-release.apk"
 3. Alternatively, tap **REPORT AN ISSUE** to manually fill the form.
 4. Select your **Waste Type** and number of sacks (e.g. 3 sacks = 4,500 UGX).
 5. Enter your **Instant Pickup Address / Landmark** or tap the **GPS Autofill** icon to acquire exact satellite coordinates.
-6. Review the prefilled phone number (`+256394880352`) and tap **Submit collection order**. Direct dispatch is initiated immediately!
+6. Review the prefilled phone number (`+256784638852`) and tap **Submit collection order**. Direct dispatch is initiated immediately!
 
 ### C. Paying via Mobile Money (MTN MoMo & Airtel Money)
 1. Navigate to the **Requests** tab.

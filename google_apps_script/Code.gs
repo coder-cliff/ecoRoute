@@ -34,7 +34,7 @@ Your Authorization Details:
 - Driver Name: ${riderName}
 - Assigned Tricycle: ${tricycleId}
 - Authorization Token: ${inviteCode}
-- Operations Hotline: +256 394 880 352
+- Operations Hotline: +256 784 638 852
 
 1-Click Portal Activation (Option 1):
 ${inviteLink}
@@ -122,7 +122,7 @@ Official Dispatch: ecoroute.waste@gmail.com`;
                       </tr>
                       <tr>
                         <td style="color: #617366; font-weight: 600;">Dispatch Hotline:</td>
-                        <td style="color: #0d2618; font-weight: 700;">+256 394 880 352</td>
+                        <td style="color: #0d2618; font-weight: 700;">+256 784 638 852</td>
                       </tr>
                     </table>
                   </td>

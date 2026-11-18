@@ -23,7 +23,7 @@ void main() {
         fullName: 'Municipal Administrator',
         email: 'ayikog@yahoo.com',
         password: 'SecureAdminPassword@2026',
-        phone: '+256 394 880 352',
+        phone: '+256 784 638 852',
         role: AppRole.admin,
       );
 

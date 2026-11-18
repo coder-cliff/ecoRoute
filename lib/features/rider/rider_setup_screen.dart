@@ -107,7 +107,7 @@ class _RiderSetupScreenState extends State<RiderSetupScreen> {
           _verifiedInvite = invite;
           _nameController.text = (invite['fullName'] as String? ?? invite['name'] as String? ?? '').trim();
           _emailController.text = (invite['email'] as String? ?? queryEmail).trim();
-          _phoneController.text = (invite['phone'] as String? ?? '+256 394 880 352').trim();
+          _phoneController.text = (invite['phone'] as String? ?? '+256 784 638 852').trim();
           _codeController.text = (invite['inviteCode'] as String? ?? queryCode).trim();
           _assignedTricycle = (invite['tricycleId'] as String? ?? 'TRIC-04 (Ediofe Depot)').trim();
           _isVerifying = false;

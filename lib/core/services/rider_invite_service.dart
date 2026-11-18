@@ -147,7 +147,7 @@ Your Authorization Details:
 - Driver Name: $riderName
 - Assigned Tricycle: ${tricycleId ?? 'TRIC-04 (Ediofe Depot)'}
 - Authorization Token: ${inviteCode ?? 'Authorized'}
-- Operations Hotline: +256 394 880 352
+- Operations Hotline: +256 784 638 852
 
 1-Click Portal Activation (Option 1):
 $inviteLink
