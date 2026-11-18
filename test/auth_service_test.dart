@@ -45,6 +45,30 @@ void main() {
       expect(restored?.email, 'ayikog@yahoo.com');
     });
 
+    test('authorizes saviordeogratius@gmail.com and ayikog@yahoo.com as official municipal admins', () async {
+      expect(AuthService.isOfficialAdmin('saviordeogratius@gmail.com'), isTrue);
+      expect(AuthService.isOfficialAdmin('ayikog@yahoo.com'), isTrue);
+      expect(AuthService.isOfficialAdmin('admin@ecoroute.ug'), isTrue);
+      expect(AuthService.isOfficialAdmin('resident@gmail.com'), isFalse);
+
+      final adminUser = await authService.register(
+        fullName: 'Savior Deogratius',
+        email: 'saviordeogratius@gmail.com',
+        password: 'AdminPassword@2026',
+        phone: '+256 772 000 099',
+        role: AppRole.admin,
+      );
+
+      expect(adminUser.role, AppRole.admin);
+      expect(adminUser.email, 'saviordeogratius@gmail.com');
+
+      final loggedIn = await authService.login(
+        email: 'saviordeogratius@gmail.com',
+        password: 'AdminPassword@2026',
+      );
+      expect(loggedIn?.role, AppRole.admin);
+    });
+
     test('rejects incorrect credentials', () async {
       final user = await authService.login(
         email: 'saviordeogratius@gmail.com',

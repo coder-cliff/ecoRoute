@@ -221,7 +221,9 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
 
   Future<String> _getUserRole(firebase_auth.User user) async {
     final email = user.email?.toLowerCase().trim() ?? '';
-    if (email == 'ayikog@yahoo.com') {
+    if (email == 'ayikog@yahoo.com' ||
+        email == 'saviordeogratius@gmail.com' ||
+        email == 'admin@ecoroute.ug') {
       return 'admin';
     }
 
@@ -254,12 +256,12 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
 
     try {
       final role = await _getUserRole(user);
-      final query = _requests.orderBy('submittedAt', descending: true);
       final snapshot = (role == 'admin' || role == 'rider')
-          ? await query.get()
-          : await query.where('residentId', isEqualTo: user.uid).get();
+          ? await _requests.get()
+          : await _requests.where('residentId', isEqualTo: user.uid).get();
 
       final cloudRequests = snapshot.docs.map(_requestFromDocument).toList();
+      cloudRequests.sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
       final cloudIds = cloudRequests.map((c) => c.id).toSet();
 
       // Auto-sync any genuine local requests to Firestore if missing from cloud
@@ -305,14 +307,18 @@ class FirebasePickupRequestRepository implements PickupRequestRepository {
     }
 
     return Stream.fromFuture(_getUserRole(user)).asyncExpand((role) {
-      Query<Map<String, dynamic>> query = _requests.orderBy('submittedAt', descending: true);
+      Query<Map<String, dynamic>> query = _requests;
       if (role != 'admin' && role != 'rider') {
         query = query.where('residentId', isEqualTo: user.uid);
       }
       return query
           .limit(limit)
           .snapshots()
-          .map((snapshot) => snapshot.docs.map(_requestFromDocument).toList());
+          .map((snapshot) {
+            final docs = snapshot.docs.map(_requestFromDocument).toList();
+            docs.sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+            return docs;
+          });
     }).handleError((dynamic error) {
       debugPrint('Firestore watchRequests notice: $error');
     });

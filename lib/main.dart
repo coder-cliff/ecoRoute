@@ -54,6 +54,20 @@ Future<void> launchEcoRouteWhatsApp({String message = 'Hello EcoRoute Operations
   }
 }
 
+Future<void> launchWhatsAppToRecipient({required String phone, required String message}) async {
+  final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+  final targetNumber = cleanPhone.isNotEmpty ? cleanPhone : kEcoRouteWhatsAppNumber;
+  final encoded = Uri.encodeComponent(message);
+  final uri = Uri.parse('https://wa.me/$targetNumber?text=$encoded');
+  try {
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  } catch (e) {
+    debugPrint('Could not launch WhatsApp to recipient: $e');
+  }
+}
+
 // =================================================================
 // DEDICATED PER-ACCOUNT DP & JUMIA UG GUEST AVATAR BUILDER
 // =================================================================
@@ -295,6 +309,17 @@ class EcoRouteState extends ChangeNotifier {
   List<Map<String, dynamic>> invitedRiders = [];
   List<Map<String, dynamic>> offlineSyncQueue = [];
 
+  // Rider Tricycle Cargo Capacity Meter
+  int riderCurrentCargoSacks = 0;
+  static const int kMaxTricycleSackCapacity = 12;
+
+  static bool isAdminEmail(String email) {
+    final clean = email.trim().toLowerCase();
+    return clean == 'ayikog@yahoo.com' ||
+        clean == 'saviordeogratius@gmail.com' ||
+        clean == 'admin@ecoroute.ug';
+  }
+
   int get pendingPickupsCount {
     return riderTasks.where((t) => t['status'] != 'Settled').length;
   }
@@ -350,7 +375,7 @@ class EcoRouteState extends ChangeNotifier {
         userEmail = fbUser.email ?? userEmail;
         userName = fbUser.displayName ?? userName;
         userPhotoBase64 = getDpForAccount(userEmail) ?? fbUser.photoURL ?? userPhotoBase64;
-        if (userEmail.toLowerCase().trim() == 'ayikog@yahoo.com') {
+        if (isAdminEmail(userEmail)) {
           currentRole = 'admin';
         }
       } else if (saved == null || isGuest) {
@@ -373,6 +398,9 @@ class EcoRouteState extends ChangeNotifier {
     // Subscribe to multi-device real-time Firestore synchronization
     _listenToPickupRequestsStream();
 
+    // Auto-bootstrap cloud demo data to Firestore if collection is empty
+    seedInitialCloudDataIfNeeded();
+
     // Fetch live weather from Open-Meteo Arua
     fetchLiveWeather();
     notifyListeners();
@@ -384,17 +412,72 @@ class EcoRouteState extends ChangeNotifier {
         _firestoreSubscription?.cancel();
         _firestoreSubscription = FirebaseFirestore.instance
             .collection('pickupRequests')
-            .orderBy('submittedAt', descending: true)
-            .limit(50)
+            .limit(100)
             .snapshots()
             .listen((snapshot) {
-          _syncFromFirestoreSnapshot(snapshot.docs);
+          final sortedDocs = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(snapshot.docs);
+          sortedDocs.sort((a, b) {
+            final aData = a.data();
+            final bData = b.data();
+            final aTime = _parseDateForSort(aData['submittedAt'] ?? aData['createdAt'] ?? aData['serverSubmittedAt']);
+            final bTime = _parseDateForSort(bData['submittedAt'] ?? bData['createdAt'] ?? bData['serverSubmittedAt']);
+            return bTime.compareTo(aTime);
+          });
+          _syncFromFirestoreSnapshot(sortedDocs);
         }, onError: (err) {
           debugPrint('Firestore real-time sync stream error: $err');
         });
       } catch (e) {
         debugPrint('Firestore sync stream init notice: $e');
       }
+    }
+  }
+
+  DateTime _parseDateForSort(dynamic val) {
+    if (val is Timestamp) return val.toDate();
+    if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+    if (val is String) {
+      final dt = DateTime.tryParse(val);
+      if (dt != null) return dt;
+    }
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  Future<void> seedInitialCloudDataIfNeeded({bool force = false}) async {
+    if (Firebase.apps.isEmpty) return;
+    try {
+      final firestore = FirebaseFirestore.instance;
+      final snapshot = await firestore.collection('pickupRequests').limit(1).get();
+      if (snapshot.docs.isEmpty || force) {
+        debugPrint('Seeding initial Arua municipal demonstration data to Firestore...');
+        final initial = getInitialDemoRequests();
+        for (final req in initial) {
+          await firestore.collection('pickupRequests').doc(req.id).set({
+            'id': req.id,
+            'client': req.residentName,
+            'phone': req.residentPhone,
+            'sacks': req.sackCount,
+            'wasteType': req.wasteType.name,
+            'address': req.address,
+            'pickupNotes': req.description,
+            'price': '${req.priceUgx} UGX',
+            'status': req.status == RequestStatus.requested ? 'Requested' : 'Settled',
+            'step': req.status == RequestStatus.requested ? 0 : 3,
+            'verificationCode': '4321',
+            'assignedRiderId': 'TRIC-04',
+            'assignedRiderName': 'Kassim Anguyo (TRIC-04)',
+            'createdAt': 'Today, 08:30',
+            'submittedAt': req.submittedAt.toIso8601String(),
+            'isInstant': req.isInstant,
+            'paymentMethod': req.paymentMethod,
+            'receiptSerial': 'ECO-ARUA-${req.id}',
+            'residentId': req.residentId,
+            'zone': req.zone.name,
+          }, SetOptions(merge: true));
+        }
+      }
+    } catch (e) {
+      debugPrint('Cloud data seed notice: $e');
     }
   }
 
@@ -521,7 +604,34 @@ class EcoRouteState extends ChangeNotifier {
     }
   }
 
+  void riderOffloadToTransferHub(BuildContext context) {
+    final offloadedSacks = riderCurrentCargoSacks > 0 ? riderCurrentCargoSacks : 8;
+    riderCurrentCargoSacks = 0;
+    _saveState();
+    notifyListeners();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Offloaded $offloadedSacks sacks at Arua Transfer Hub (Ewuata). Tricycle capacity reset to 0/$kMaxTricycleSackCapacity.',
+        ),
+        backgroundColor: const Color(0xFF0D2618),
+      ),
+    );
+  }
+
   void switchRole(String role, BuildContext context) {
+    if (role == 'admin') {
+      final currentEmail = (FirebaseAuth.instance.currentUser?.email ?? userEmail).toLowerCase().trim();
+      if (!isAdminEmail(currentEmail) && !isAdminEmail(userEmail)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Access Denied: Admin role requires an authorized municipal admin account.'),
+            backgroundColor: Color(0xFF9C3D18),
+          ),
+        );
+        return;
+      }
+    }
     currentRole = role;
     if (role == 'resident') {
       userName = 'Jane Agondua';
@@ -761,6 +871,12 @@ class EcoRouteState extends ChangeNotifier {
       residentRequests[reqIndex]['status'] = 'Cancelled';
       residentRequests[reqIndex]['color'] = 0xFF757575;
     }
+    if (Firebase.apps.isNotEmpty) {
+      FirebaseFirestore.instance.collection('pickupRequests').doc(pickupId).set({
+        'status': 'Cancelled',
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true)).catchError((e) => debugPrint('Cancel sync notice: $e'));
+    }
     _saveState();
     notifyListeners();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -810,13 +926,16 @@ class EcoRouteState extends ChangeNotifier {
     // Admin Waste Tonnage update (+0.05 Tonnes / sack)
     totalTonnes += (sacks * 0.05);
 
+    // Tricycle cargo increment
+    riderCurrentCargoSacks = (riderCurrentCargoSacks + sacks).clamp(0, kMaxTricycleSackCapacity);
+
     _syncPickupRequestToFirestore(activeTask);
 
     _saveState();
     notifyListeners();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Handshake Verified! Pickup #${activeTask['id']} settled. +$earn UGX added to Ledger.')),
+      SnackBar(content: Text('Handshake Verified! Pickup #${activeTask['id']} settled. +$earn UGX added to Ledger (Cargo: $riderCurrentCargoSacks/$kMaxTricycleSackCapacity Sacks).')),
     );
   }
 
@@ -1019,11 +1138,13 @@ class EcoRouteState extends ChangeNotifier {
 
   void adminReassignPickup(String pickupId, String tricycleId, BuildContext context) {
     final tri = tricycles.firstWhere((t) => t['id'] == tricycleId, orElse: () => tricycles.first);
+    Map<String, dynamic>? targetTask;
     if (activePickup != null && activePickup!['id'] == pickupId) {
       activePickup!['assignedRiderId'] = tri['id'];
       activePickup!['assignedRiderName'] = tri['riderName'];
       activePickup!['status'] = 'Dispatched';
       activePickup!['step'] = 1;
+      targetTask = activePickup;
     }
     for (final task in riderTasks) {
       if (task['id'] == pickupId) {
@@ -1031,6 +1152,7 @@ class EcoRouteState extends ChangeNotifier {
         task['assignedRiderName'] = tri['riderName'];
         task['status'] = 'Dispatched';
         task['eta'] = '8 mins';
+        targetTask = task;
         _syncPickupRequestToFirestore(task);
       }
     }
@@ -1044,8 +1166,27 @@ class EcoRouteState extends ChangeNotifier {
     _saveState();
     notifyListeners();
 
+    final clientName = targetTask?['client'] ?? 'Resident';
+    final clientPhone = (targetTask?['phone'] as String?) ?? '';
+    final code = targetTask?['verificationCode'] ?? '';
+    final sacks = targetTask?['sacks'] ?? 1;
+    final address = targetTask?['address'] ?? 'Arua';
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Task #$pickupId successfully assigned to ${tri['id']} (${tri['riderName']}).')),
+      SnackBar(
+        content: Text('Task #$pickupId assigned to ${tri['id']} (${tri['riderName']}).'),
+        action: SnackBarAction(
+          label: 'WhatsApp',
+          textColor: Colors.greenAccent,
+          onPressed: () {
+            final msg = 'Hello $clientName, EcoRoute Tricycle ${tri['id']} (${tri['riderName']}) '
+                'has been dispatched for your $sacks sack(s) at $address. '
+                'ETA: ~8-15 mins. Verification Code: $code. '
+                'Thank you for keeping Arua clean!';
+            launchWhatsAppToRecipient(phone: clientPhone, message: msg);
+          },
+        ),
+      ),
     );
   }
 
@@ -1167,17 +1308,26 @@ class EcoRouteState extends ChangeNotifier {
   }
 
   Future<void> exportCollectionAuditCsv(BuildContext context) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Exporting Arua Municipal Collection Audit CSV ledger...'),
+        backgroundColor: Color(0xFF0D2618),
+      ),
+    );
     final buffer = StringBuffer();
     buffer.writeln('Receipt Serial,Pickup ID,Date,Client,Address,Sacks,Waste Type,Price,Payment Method,Rider ID,Status');
-    for (final task in riderTasks) {
+    final tasks = riderTasks.isNotEmpty ? riderTasks : residentRequests;
+    int totalSacks = 0;
+    for (final task in tasks) {
       final sacks = (task['sacks'] as num?)?.toInt() ?? 1;
+      totalSacks += sacks;
       final price = task['price']?.toString() ?? '${sacks * 2500} UGX';
       final payment = task['paymentMethod'] ?? task['payment'] ?? 'Cash on Collection';
       buffer.writeln(
-        '${task['receiptSerial'] ?? 'ECO-ARUA-${task['id']}'},'
-        '${task['id']},'
-        'Today,'
-        '"${task['client'] ?? 'Resident'}",'
+        '${task['receiptSerial'] ?? 'ECO-ARUA-${task['id'] ?? task['pickupId']}'},'
+        '${task['id'] ?? task['pickupId']},'
+        '${task['date'] ?? 'Today'},'
+        '"${task['client'] ?? userName}",'
         '"${task['address'] ?? 'Arua Municipality'}",'
         '$sacks,'
         '"${task['wasteType'] ?? 'General'}",'
@@ -1187,6 +1337,8 @@ class EcoRouteState extends ChangeNotifier {
         '${task['status'] ?? 'Requested'}'
       );
     }
+    buffer.writeln('');
+    buffer.writeln('SUMMARY,Total Sacks,$totalSacks,Total Tonnes,${totalTonnes.toStringAsFixed(2)},Generated,${DateTime.now().toIso8601String()}');
     final bytes = utf8.encode(buffer.toString());
     try {
       await Printing.sharePdf(
@@ -1404,7 +1556,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       if (fbUser != null || authUser != null) {
         final email = (fbUser?.email ?? authUser?.email ?? state.userEmail).toLowerCase().trim();
         final role = authUser?.role.name ?? state.currentRole;
-        if (email == 'ayikog@yahoo.com' || role == 'admin') {
+        if (EcoRouteState.isAdminEmail(email) || role == 'admin') {
           Navigator.pushReplacementNamed(context, '/admin');
         } else if (role == 'rider' || email.contains('rider')) {
           Navigator.pushReplacementNamed(context, '/rider');
@@ -2427,6 +2579,49 @@ class _SystemBroadcastBanner extends StatelessWidget {
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
             onPressed: () => state.clearSystemBroadcast(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Live Cloud Sync Status Badge Indicator
+class CloudSyncStatusBadge extends StatelessWidget {
+  const CloudSyncStatusBadge({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasFirebase = Firebase.apps.isNotEmpty;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: hasFirebase ? const Color(0xFF0D2618).withValues(alpha: 0.08) : Colors.orange.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: hasFirebase ? const Color(0xFF0D2618).withValues(alpha: 0.2) : Colors.orange.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: hasFirebase ? Colors.green : Colors.orange,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            hasFirebase ? 'Cloud Database Active (Firestore africa-south1)' : 'Offline Local Store (Syncs upon connection)',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: hasFirebase ? const Color(0xFF0D2618) : Colors.brown[800],
+            ),
           ),
         ],
       ),
@@ -3764,6 +3959,7 @@ class ResidentHomeScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const _SystemBroadcastBanner(),
+            const CloudSyncStatusBadge(),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -5042,6 +5238,7 @@ class RiderTasksScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const _SystemBroadcastBanner(),
+            const CloudSyncStatusBadge(),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -5068,6 +5265,101 @@ class RiderTasksScreen extends StatelessWidget {
                   ],
                 ),
               ],
+            ),
+            const SizedBox(height: 14),
+
+            // Tricycle Cargo Capacity Meter Card
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: state.riderCurrentCargoSacks >= 10
+                      ? Colors.red.withValues(alpha: 0.5)
+                      : const Color(0xFF0D2618).withValues(alpha: 0.15),
+                ),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2)),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: const [
+                          Icon(Icons.inventory_2_outlined, size: 18, color: Color(0xFF0D2618)),
+                          SizedBox(width: 8),
+                          Text(
+                            'Tricycle Cargo Capacity (TRIC-04)',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D2618)),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: state.riderCurrentCargoSacks >= 10
+                              ? Colors.red.withValues(alpha: 0.12)
+                              : const Color(0xFF0D2618).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${state.riderCurrentCargoSacks} / ${EcoRouteState.kMaxTricycleSackCapacity} Sacks (${((state.riderCurrentCargoSacks / EcoRouteState.kMaxTricycleSackCapacity) * 100).toInt()}%)',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            color: state.riderCurrentCargoSacks >= 10 ? Colors.red[800] : const Color(0xFF0D2618),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: (state.riderCurrentCargoSacks / EcoRouteState.kMaxTricycleSackCapacity).clamp(0.0, 1.0),
+                      minHeight: 8,
+                      backgroundColor: const Color(0xFFE8ECE7),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        state.riderCurrentCargoSacks >= 10
+                            ? Colors.red
+                            : (state.riderCurrentCargoSacks >= 7 ? Colors.orange : const Color(0xFF0D2618)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          state.riderCurrentCargoSacks >= 10
+                              ? 'Warning: Tricycle near payload limit!'
+                              : 'Offload at Ewuata Transfer Hub when full.',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: state.riderCurrentCargoSacks >= 10 ? Colors.red[800] : Colors.grey,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => state.riderOffloadToTransferHub(context),
+                        icon: const Icon(Icons.local_shipping_outlined, size: 14, color: Color(0xFF9C3D18)),
+                        label: const Text(
+                          'Offload at Hub',
+                          style: TextStyle(color: Color(0xFF9C3D18), fontWeight: FontWeight.bold, fontSize: 11),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -5228,6 +5520,22 @@ class RiderTasksScreen extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        final phone = activeTask['phone'] as String? ?? '';
+                        final client = activeTask['client'] ?? 'Resident';
+                        final msg = 'Hello $client, your EcoRoute Rider (TRIC-04) is en route and will arrive in approx 5 minutes for collection. Please have your verification code ready.';
+                        launchWhatsAppToRecipient(phone: phone, message: msg);
+                      },
+                      icon: const Icon(Icons.chat, size: 16, color: Colors.green),
+                      label: const Text('WhatsApp Client (Arriving in 5m)', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.green),
+                        minimumSize: const Size(double.infinity, 42),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     ElevatedButton.icon(
@@ -5971,6 +6279,29 @@ class AdminDashboardScreen extends StatelessWidget {
         title: const Text('Admin Dashboard'),
         actions: [
           IconButton(
+            tooltip: 'Sync / Seed Cloud Firestore',
+            icon: const Icon(Icons.cloud_sync_outlined),
+            onPressed: () async {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Syncing municipal collection requests to Cloud Firestore...')),
+              );
+              await state.seedInitialCloudDataIfNeeded(force: true);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Cloud Firestore (africa-south1) updated with live Arua demo collections!'),
+                    backgroundColor: Color(0xFF0D2618),
+                  ),
+                );
+              }
+            },
+          ),
+          IconButton(
+            tooltip: 'Export Municipal Audit CSV',
+            icon: const Icon(Icons.table_chart_outlined),
+            onPressed: () => state.exportCollectionAuditCsv(context),
+          ),
+          IconButton(
             tooltip: 'Call Support (+256394880352)',
             icon: const Icon(Icons.phone_outlined),
             onPressed: () => launchEcoRouteCall(),
@@ -5988,6 +6319,7 @@ class AdminDashboardScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const _SystemBroadcastBanner(),
+            const CloudSyncStatusBadge(),
             Container(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               decoration: BoxDecoration(color: const Color(0xFF1A3A28), borderRadius: BorderRadius.circular(12)),

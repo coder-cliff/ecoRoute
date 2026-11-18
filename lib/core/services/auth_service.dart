@@ -18,6 +18,14 @@ class AuthService {
   static const String _remindersKey = 'ecoroute_reminders_enabled_v1';
   static const String supportEmail = 'ecoroute.waste@gmail.com';
   static const String officialAdminEmail = 'ayikog@yahoo.com';
+  static const List<String> authorizedAdminEmails = [
+    'ayikog@yahoo.com',
+    'saviordeogratius@gmail.com',
+    'admin@ecoroute.ug',
+  ];
+
+  static bool isOfficialAdmin(String email) =>
+      authorizedAdminEmails.contains(email.trim().toLowerCase());
 
   SharedPreferences get preferences => _preferences;
 
@@ -176,11 +184,11 @@ class AuthService {
             debugPrint('Firestore profile fetch notice: $e');
           }
 
-          // Role is strictly ayikog@yahoo.com for Admin; all others are Rider or Resident
-          var resolvedRole = cleanEmail == officialAdminEmail
+          // Role is strictly authorized municipal admin accounts; all others are Rider or Resident
+          var resolvedRole = isOfficialAdmin(cleanEmail)
               ? AppRole.admin
               : parseRole(profile?['role'] as String?);
-          if (cleanEmail != officialAdminEmail && resolvedRole == AppRole.admin) {
+          if (!isOfficialAdmin(cleanEmail) && resolvedRole == AppRole.admin) {
             resolvedRole = AppRole.resident;
           }
 
@@ -188,7 +196,7 @@ class AuthService {
           // check if they match municipal admin email or invited rider records
           if (profile == null) {
             final riderInvite = getRiderInvite(cleanEmail);
-            resolvedRole = cleanEmail == officialAdminEmail
+            resolvedRole = isOfficialAdmin(cleanEmail)
                 ? AppRole.admin
                 : (riderInvite != null ? AppRole.rider : AppRole.resident);
 
@@ -243,10 +251,10 @@ class AuthService {
         final matches = (storedHash != null && storedHash == inputHash) ||
             (rawStoredPassword != null && rawStoredPassword == password);
         if (matches) {
-          var regRole = cleanEmail == officialAdminEmail
+          var regRole = isOfficialAdmin(cleanEmail)
               ? AppRole.admin
               : parseRole(reg['role'] as String?);
-          if (cleanEmail != officialAdminEmail && regRole == AppRole.admin) {
+          if (!isOfficialAdmin(cleanEmail) && regRole == AppRole.admin) {
             regRole = AppRole.resident;
           }
           final user = AppUser(
@@ -306,7 +314,7 @@ class AuthService {
 
     // Auto-detect if user is the official Admin or was invited as a Rider
     var resolvedRole = role;
-    if (cleanEmail == officialAdminEmail) {
+    if (isOfficialAdmin(cleanEmail)) {
       resolvedRole = AppRole.admin;
     } else if (role == AppRole.admin) {
       resolvedRole = AppRole.resident;
