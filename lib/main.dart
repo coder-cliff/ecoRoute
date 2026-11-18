@@ -712,6 +712,12 @@ class EcoRouteState extends ChangeNotifier {
       'residentId': Firebase.apps.isNotEmpty ? FirebaseAuth.instance.currentUser?.uid : null,
     };
 
+    if (paymentMethod.toLowerCase().contains('eco-credit')) {
+      if (ecoCredits >= 100) {
+        ecoCredits -= 100;
+      }
+    }
+
     activePickup = Map<String, dynamic>.from(order);
 
     residentRequests.insert(0, {
@@ -740,6 +746,26 @@ class EcoRouteState extends ChangeNotifier {
 
     _saveState();
     notifyListeners();
+  }
+
+  void cancelPickup(String pickupId, BuildContext context) {
+    if (activePickup != null && activePickup!['id'] == pickupId) {
+      if ((activePickup!['paymentMethod'] as String? ?? '').toLowerCase().contains('eco-credit')) {
+        ecoCredits += 100;
+      }
+      activePickup = null;
+    }
+    riderTasks.removeWhere((t) => t['id'] == pickupId);
+    final reqIndex = residentRequests.indexWhere((r) => r['pickupId'] == pickupId);
+    if (reqIndex != -1) {
+      residentRequests[reqIndex]['status'] = 'Cancelled';
+      residentRequests[reqIndex]['color'] = 0xFF757575;
+    }
+    _saveState();
+    notifyListeners();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Pickup #$pickupId cancelled successfully.')),
+    );
   }
 
   void riderVerifyAndSettle({required String inputCode, required BuildContext context}) {
@@ -4453,6 +4479,24 @@ class ResidentRequestsScreen extends StatelessWidget {
                         Text(
                           'Notes: "${req['description']}"',
                           style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Color(0xFF1A3A28)),
+                        ),
+                      ],
+                      if (req['status'] == 'Requested') ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Verification PIN: ${req['verificationCode'] ?? '----'}',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF9C3D18)),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => EcoRouteState.instance.cancelPickup(req['pickupId'] as String, context),
+                              icon: const Icon(Icons.cancel_outlined, size: 14, color: Colors.redAccent),
+                              label: const Text('Cancel Request', style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                              style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                            ),
+                          ],
                         ),
                       ],
                       if (hasPhotos) ...[
