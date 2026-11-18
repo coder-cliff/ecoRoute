@@ -200,3 +200,33 @@ Official Dispatch: ecoroute.waste@gmail.com`;
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
+
+/**
+ * Health check & diagnostic endpoint for Web App testing in browser
+ */
+function doGet(e) {
+  return ContentService
+    .createTextOutput(JSON.stringify({
+      status: 'active',
+      service: 'EcoRoute Arua Official Rider Invitation Mail Gateway',
+      emailGateway: 'ecoroute.waste@gmail.com',
+      timestamp: new Date().toISOString()
+    }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Authorization & Verification Trigger
+ * Run this function ONCE inside the Apps Script editor (Select testSend -> Click Run)
+ * to trigger the Google OAuth permission dialog ("Review Permissions" -> "Allow")
+ * so that GmailApp.sendEmail is authorized to transmit official dispatch emails.
+ */
+function testSend() {
+  const activeUser = Session.getActiveUser().getEmail() || 'ecoroute.waste@gmail.com';
+  GmailApp.sendEmail(
+    activeUser,
+    'EcoRoute Authorization Verification',
+    'Google Apps Script GmailApp gateway permissions successfully authorized.'
+  );
+  Logger.log('Success: Authorized GmailApp for ' + activeUser);
+}

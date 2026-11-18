@@ -53,6 +53,27 @@ void main() {
       expect(success, isTrue);
     });
 
+    test('returns false when Google Apps Script responds with error status JSON', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'status': 'error',
+            'message': 'Exception: The script does not have permission to perform that action.'
+          }),
+          200,
+        );
+      });
+
+      final success = await RiderInviteService.sendRiderInviteEmail(
+        riderEmail: 'unauthorized@ecorute.ug',
+        riderName: 'Unauthorized Rider',
+        customScriptUrl: 'https://script.google.com/macros/s/TEST_DEPLOYED_MACRO_ID/exec',
+        httpClient: mockClient,
+      );
+
+      expect(success, isFalse);
+    });
+
     test('returns false gracefully when HTTP request fails', () async {
       final mockClient = MockClient((request) async {
         return http.Response('Server Error', 500);

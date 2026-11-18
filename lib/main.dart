@@ -268,6 +268,7 @@ class EcoRouteState extends ChangeNotifier {
         _firestoreSubscription = FirebaseFirestore.instance
             .collection('pickupRequests')
             .orderBy('submittedAt', descending: true)
+            .limit(50)
             .snapshots()
             .listen((snapshot) {
           _syncFromFirestoreSnapshot(snapshot.docs);
@@ -1024,6 +1025,12 @@ void main() async {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+      try {
+        FirebaseFirestore.instance.settings = const Settings(
+          persistenceEnabled: true,
+          cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+        );
+      } catch (_) {}
     }
   } catch (e) {
     debugPrint('Firebase initialization notice: $e');

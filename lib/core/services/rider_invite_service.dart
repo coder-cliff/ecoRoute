@@ -49,8 +49,8 @@ class RiderInviteService {
     final cleanEmail = Uri.encodeComponent(email.trim().toLowerCase());
     final cleanCode = Uri.encodeComponent(inviteCode.trim());
     final tricParam = tricycleId != null ? '&tric=${Uri.encodeComponent(tricycleId.trim())}' : '';
-    // Format hash routing with fallback query params for seamless 1-click magic link routing
-    return '$defaultAppUrl#/rider-setup?invite=$cleanCode&email=$cleanEmail$tricParam';
+    // Format hash routing with dual query params for 100% router compatibility
+    return '$defaultAppUrl#/rider-setup?code=$cleanCode&invite=$cleanCode&email=$cleanEmail$tricParam';
   }
 
   /// Direct Android APK download URL
@@ -101,6 +101,15 @@ class RiderInviteService {
 
       // Google Apps Script redirects with HTTP 302 on success or returns HTTP 200
       if (response.statusCode == 200 || response.statusCode == 302) {
+        if (response.body.isNotEmpty) {
+          try {
+            final decoded = jsonDecode(response.body);
+            if (decoded is Map<String, dynamic> && decoded['status'] == 'error') {
+              debugPrint('Google Apps Script execution error: ${decoded['message']}');
+              return false;
+            }
+          } catch (_) {}
+        }
         debugPrint('Rider invitation dispatched successfully to $riderEmail');
         return true;
       }
