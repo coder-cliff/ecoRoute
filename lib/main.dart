@@ -103,7 +103,7 @@ Widget buildSafeUserAvatar({
           width: radius * 2,
           height: radius * 2,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildInitialAvatar(name, radius),
+          errorBuilder: (_, _, _) => _buildInitialAvatar(name, radius),
         );
       } else {
         final rawBase64 = cleanPhoto.contains(',') ? cleanPhoto.split(',').last.trim() : cleanPhoto;
@@ -113,7 +113,7 @@ Widget buildSafeUserAvatar({
           width: radius * 2,
           height: radius * 2,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildInitialAvatar(name, radius),
+          errorBuilder: (_, _, _) => _buildInitialAvatar(name, radius),
         );
       }
       avatarContent = CircleAvatar(
@@ -199,7 +199,7 @@ class EcoRouteState extends ChangeNotifier {
   bool isGuest = true;
   String currentRole = 'resident'; // 'resident', 'rider', 'admin'
   String get userRole => currentRole;
-  String userName = 'Guest Resident';
+  String userName = 'Guest User';
   String userUsername = 'guest';
   String userEmail = '';
   String userPhone = '+256 784 638 852';
@@ -403,7 +403,7 @@ class EcoRouteState extends ChangeNotifier {
       } else if (saved == null || isGuest) {
         // Fresh installation unauthenticated launch defaults directly to Guest Mode
         isGuest = true;
-        userName = 'Guest Resident';
+        userName = 'Guest User';
         userUsername = 'guest';
         userEmail = '';
         userPhone = '+256 784 638 852';
@@ -530,6 +530,8 @@ class EcoRouteState extends ChangeNotifier {
     notifyListeners();
   }
 
+  final Map<String, String> _accountDps = {};
+
   static String userPhotoPrefKey(String email) =>
       'ecoroute_user_dp_${email.trim().toLowerCase()}';
 
@@ -537,6 +539,8 @@ class EcoRouteState extends ChangeNotifier {
   String? getDpForAccount(String email) {
     final clean = email.trim().toLowerCase();
     if (clean.isEmpty || clean == 'guest@ecoroute.ug') return null;
+    final inMemory = _accountDps[clean];
+    if (inMemory != null && inMemory.isNotEmpty) return inMemory;
     final saved = _prefs?.getString(userPhotoPrefKey(clean));
     if (saved != null && saved.isNotEmpty) return saved;
     return authService?.getPhotoForUser(clean);
@@ -546,6 +550,11 @@ class EcoRouteState extends ChangeNotifier {
   Future<void> setDpForAccount(String email, String? photoBase64) async {
     final clean = email.trim().toLowerCase();
     if (clean.isEmpty || clean == 'guest@ecoroute.ug') return;
+    if (photoBase64 == null || photoBase64.isEmpty) {
+      _accountDps.remove(clean);
+    } else {
+      _accountDps[clean] = photoBase64;
+    }
     final key = userPhotoPrefKey(clean);
     if (photoBase64 == null || photoBase64.isEmpty) {
       await _prefs?.remove(key);
@@ -606,7 +615,15 @@ class EcoRouteState extends ChangeNotifier {
 
   void switchRole(String role, BuildContext context) {
     if (role == 'admin') {
-      final currentEmail = (FirebaseAuth.instance.currentUser?.email ?? userEmail).toLowerCase().trim();
+      String currentEmail = userEmail.toLowerCase().trim();
+      try {
+        if (Firebase.apps.isNotEmpty) {
+          final authEmail = FirebaseAuth.instance.currentUser?.email;
+          if (authEmail != null && authEmail.isNotEmpty) {
+            currentEmail = authEmail.toLowerCase().trim();
+          }
+        }
+      } catch (_) {}
       if (!isAdminEmail(currentEmail) && !isAdminEmail(userEmail)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -670,7 +687,7 @@ class EcoRouteState extends ChangeNotifier {
     } catch (_) {}
     isGuest = true;
     currentRole = 'resident';
-    userName = 'Guest Resident';
+    userName = 'Guest User';
     userUsername = 'guest';
     userEmail = '';
     userPhone = '+256 784 638 852';
@@ -1537,7 +1554,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         return;
       }
 
-      final guestLaunch = widget.allowGuestLaunch ?? state.isGuest;
+      final guestLaunch = widget.allowGuestLaunch ?? false;
       if (guestLaunch) {
         state.isGuest = true;
         Navigator.pushReplacementNamed(context, '/resident');
@@ -1868,11 +1885,16 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     final clean = identifier.toLowerCase();
+    EcoRouteState.instance.isGuest = false;
+    EcoRouteState.instance.userEmail = identifier.trim();
     if (clean.contains('admin')) {
+      EcoRouteState.instance.userName = 'Admin HQ';
       EcoRouteState.instance.switchRole('admin', context);
     } else if (clean.contains('rider')) {
+      EcoRouteState.instance.userName = 'Rider Juma';
       EcoRouteState.instance.switchRole('rider', context);
     } else {
+      EcoRouteState.instance.userName = 'Resident • Arua City';
       EcoRouteState.instance.switchRole('resident', context);
     }
   }
@@ -3206,9 +3228,11 @@ class ResidentProfileTabScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('My Profile', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
-      body: ListView(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        children: [
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           // 1. TOP HEADER / ACCOUNT CARD
           Container(
             padding: const EdgeInsets.all(16),
@@ -3433,7 +3457,8 @@ class ResidentProfileTabScreen extends StatelessWidget {
                 style: TextStyle(color: Color(0xFF9C3D18), fontWeight: FontWeight.bold),
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }

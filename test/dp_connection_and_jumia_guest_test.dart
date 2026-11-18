@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ecoroute/core/services/auth_service.dart';
-import 'package:ecoroute/domain/enums/role.dart';
 import 'package:ecoroute/main.dart';
 
 void main() {
