@@ -17,6 +17,7 @@ class OrderPage extends StatefulWidget {
     this.initialPhone = '',
     this.initialAddress = '',
     this.autoTriggerCamera = false,
+    this.isOnline,
     super.key,
   });
 
@@ -24,6 +25,7 @@ class OrderPage extends StatefulWidget {
   final String initialPhone;
   final String initialAddress;
   final bool autoTriggerCamera;
+  final bool? isOnline;
 
   @override
   State<OrderPage> createState() => _OrderPageState();
@@ -32,6 +34,8 @@ class OrderPage extends StatefulWidget {
 class _OrderPageState extends State<OrderPage> {
   final _formKey = GlobalKey<FormState>();
   final _locationService = const LocationService();
+
+  bool get _isOnline => widget.isOnline ?? true;
 
   WasteType? _wasteType;
   bool _submitting = false;
@@ -248,6 +252,17 @@ class _OrderPageState extends State<OrderPage> {
       );
 
       await widget.onSubmitted(request);
+      if (mounted && !_isOnline) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Offline Mode Active: Your pickup request has been saved securely to your device. It will automatically synchronize with Arua Dispatch as soon as your connection is restored.',
+            ),
+            backgroundColor: Color(0xFF1B3828),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -328,6 +343,42 @@ class _OrderPageState extends State<OrderPage> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               children: [
+                if (!_isOnline) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF8E1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFFD54F)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.cloud_off_rounded, color: Color(0xFFE65100), size: 22),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Offline Mode Active',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                  color: Color(0xFFB71C1C),
+                                ),
+                              ),
+                              Text(
+                                'You can complete and submit your request now. It is stored securely on your device and will synchronize with dispatch when reconnected.',
+                                style: TextStyle(fontSize: 11, color: Color(0xFF5D4037)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 // Instant On-Demand Dispatch Notice
                 Container(
                   margin: const EdgeInsets.only(bottom: 12),

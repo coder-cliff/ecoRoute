@@ -11,6 +11,10 @@ import 'package:ecoroute/features/admin/admin_dashboard.dart';
 import 'package:ecoroute/main.dart';
 
 void main() {
+  setUp(() async {
+    await EcoRouteState.instance.logout();
+  });
+
   testWidgets('launch sequence starts with splash and transitions to Sign-In portal', (
     WidgetTester tester,
   ) async {

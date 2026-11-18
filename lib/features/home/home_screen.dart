@@ -588,6 +588,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           onSubmitted: _addOrder,
           initialPhone: _currentUser?.phone ?? '',
           initialAddress: _currentUser?.address ?? '',
+          isOnline: _weatherReport?.isOnline ?? true,
         ),
       ),
     );
@@ -609,6 +610,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
           initialPhone: _currentUser?.phone ?? '',
           initialAddress: _currentUser?.address ?? '',
           autoTriggerCamera: true,
+          isOnline: _weatherReport?.isOnline ?? true,
         ),
       ),
     );
@@ -673,11 +675,24 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
     if (!mounted) return;
     setState(() => _orders.insert(0, requestWithUser));
     Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Your collection order has been submitted.'),
-      ),
-    );
+    final isOnline = _weatherReport?.isOnline ?? true;
+    if (isOnline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your collection order has been submitted.'),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Offline Mode Active: Your pickup request has been saved securely to your device. It will automatically synchronize with Arua Dispatch as soon as your connection is restored.',
+          ),
+          backgroundColor: Color(0xFF1B3828),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   Future<void> _cancelOrder(PickupRequest request) async {

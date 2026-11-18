@@ -12,6 +12,8 @@ import 'package:ecoroute/features/admin/widgets/admin_session_ended_view.dart';
 import 'package:ecoroute/features/admin/widgets/live_dispatch_map.dart';
 import 'package:ecoroute/features/auth/admin_sign_in_screen.dart';
 import 'package:ecoroute/features/auth/login_screen.dart';
+import 'package:ecoroute/features/request/order_page.dart';
+import 'package:ecoroute/features/rider/rider_task_hub.dart';
 
 class _MockRepo implements PickupRequestRepository {
   _MockRepo([List<PickupRequest>? initial]) : _list = initial ?? [];
@@ -177,6 +179,41 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(AdminDashboard), findsOneWidget);
+    });
+
+    testWidgets('allows rider to enable 2FA via email and reset password using OTP', (
+      WidgetTester tester,
+    ) async {
+      const riderEmail = 'rider@ecoroute.ug';
+      // Enable 2FA for rider
+      await authService.set2faEnabledForEmail(riderEmail, true);
+      expect(authService.is2faEnabledForEmail(riderEmail), isTrue);
+
+      // Send 2FA email OTP
+      final otp = await authService.send2faEmailOtp(email: riderEmail);
+      expect(otp.length, 6);
+
+      // Verify invalid code fails
+      expect(authService.verify2faEmailOtp(email: riderEmail, otp: '000000'), isFalse);
+
+      // Verify generated OTP succeeds
+      expect(authService.verify2faEmailOtp(email: riderEmail, otp: otp), isTrue);
+
+      // Rider resets their password using OTP
+      final resetSuccess = await authService.resetPassword(
+        email: riderEmail,
+        newPassword: 'NewRiderPassword2026!',
+        otpCode: otp,
+      );
+      expect(resetSuccess, isTrue);
+
+      // Verify rider can log in with new password
+      final loggedIn = await authService.login(
+        email: riderEmail,
+        password: 'NewRiderPassword2026!',
+      );
+      expect(loggedIn, isNotNull);
+      expect(loggedIn!.email, riderEmail);
     });
   });
 
@@ -469,6 +506,155 @@ void main() {
 
       // Reset surface size
       await tester.binding.setSurfaceSize(null);
+    });
+
+    testWidgets('Rider 2FA Email Sign-In flow authorizes rider using email OTP', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LoginScreen(
+            repository: repo,
+            authService: authService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('login_rider_2fa_button')), findsOneWidget);
+      await tester.ensureVisible(find.byKey(const ValueKey('login_rider_2fa_button')));
+      await tester.tap(find.byKey(const ValueKey('login_rider_2fa_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('2FA Email Verification'), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const ValueKey('rider_2fa_email_input')),
+        'peter.rider@ecoroute.ug',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('rider_2fa_otp_input')),
+        '123456',
+      );
+      await tester.tap(find.byKey(const ValueKey('rider_2fa_verify_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RiderTaskHub), findsOneWidget);
+    });
+
+    testWidgets('Offline working capabilities: User fills all details in OrderPage and receives clear offline notice', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: OrderPage(
+              isOnline: false,
+              onSubmitted: (req) async => repo.save(req),
+              initialPhone: '+256772001122',
+              initialAddress: 'Pakwach Road, Arua',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify offline banner is shown
+      expect(find.text('Offline Mode Active'), findsOneWidget);
+
+      // Select household waste chip
+      await tester.ensureVisible(find.text('Household (1.5k)'));
+      await tester.tap(find.text('Household (1.5k)'));
+      await tester.pumpAndSettle();
+
+      // Enter collection details
+      await tester.ensureVisible(find.widgetWithText(TextFormField, 'Collection details'));
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Collection details'),
+        'Plastic sacks outside residence in Arua',
+      );
+      await tester.pumpAndSettle();
+
+      // Submit while offline
+      await tester.ensureVisible(find.text('Submit collection order'));
+      await tester.tap(find.text('Submit collection order'));
+      await tester.pumpAndSettle();
+
+      // Verify polite offline notification is shown
+      expect(
+        find.text(
+          'Offline Mode Active: Your pickup request has been saved securely to your device. It will automatically synchronize with Arua Dispatch as soon as your connection is restored.',
+        ),
+        findsOneWidget,
+      );
+
+      // Verify request is saved in repo
+      final all = await repo.loadAll();
+      expect(all.any((r) => r.description == 'Plastic sacks outside residence in Arua'), isTrue);
+    });
+
+    testWidgets('Redesigned Admin Accounts switcher toggles between municipal administrators', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdminDashboard(
+            repository: repo,
+            authService: authService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Open admin account dialog
+      await tester.tap(find.byKey(const ValueKey('admin_topbar_profile_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Administrator Account'), findsOneWidget);
+      expect(find.text('Switch Municipal Administrator:'), findsOneWidget);
+      expect(find.textContaining('Geoffrey Ayiko (#A-9014)'), findsOneWidget);
+      expect(find.textContaining('Savior Deo Gratius (#A-4019)'), findsOneWidget);
+
+      // Switch to Savior Deo Gratius
+      await tester.tap(find.textContaining('Savior Deo Gratius (#A-4019)'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Admin ID: #A-4019'), findsOneWidget);
+      expect(find.text('saviordeogratius@gmail.com'), findsOneWidget);
+
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('Top Bar Connection Status indicator toggles Online/Offline on tap', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AdminDashboard(
+            repository: repo,
+            authService: authService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Command HQ • Online'), findsOneWidget);
+
+      // Tap status badge
+      await tester.tap(find.byKey(const ValueKey('admin_connection_status_badge')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Command HQ • Offline'), findsOneWidget);
+
+      // Tap again to restore
+      await tester.tap(find.byKey(const ValueKey('admin_connection_status_badge')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Command HQ • Online'), findsOneWidget);
     });
   });
 }

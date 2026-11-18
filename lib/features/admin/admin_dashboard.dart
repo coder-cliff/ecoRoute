@@ -32,8 +32,54 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   int _currentTab = 0; // 0: Dashboard, 1: Dispatches, 2: Audits, 3: Fleet/Controls
-  final bool _isOnline = true;
+  bool _isOnline = true;
   String _selectedAuditFilter = 'Today';
+  String _currentAdminId = '#A-9014';
+  String _currentAdminEmail = AuthService.officialAdminEmail;
+  String _currentAdminName = 'Geoffrey Ayiko';
+  String _currentAdminClearance = 'Level 4 • Executive Command';
+
+  late final List<LiveVehicleMarker> _liveMapVehicles = [
+    const LiveVehicleMarker(
+      id: 'v-1',
+      label: 'T1',
+      name: 'UG-0480T',
+      driver: 'Peter (#R-4809)',
+      status: 'En Route to Shop 14',
+      destination: 'Shop 14 • Pakwach Road',
+      speedKmH: 26,
+      batteryPct: 88,
+      offsetFactor: Offset(0.32, 0.44),
+      color: Color(0xFFD48B38),
+      routeId: 'Route 4 (Arua Market)',
+    ),
+    const LiveVehicleMarker(
+      id: 'v-2',
+      label: 'T2',
+      name: 'UG-0912K',
+      driver: 'Kassim (#R-3102)',
+      status: 'At Arua Market',
+      destination: 'Arua Central Market Stall 24',
+      speedKmH: 0,
+      batteryPct: 76,
+      offsetFactor: Offset(0.48, 0.46),
+      color: Color(0xFF2C7D6B),
+      routeId: 'Route 1 (Vurra)',
+    ),
+    const LiveVehicleMarker(
+      id: 'v-3',
+      label: 'T3',
+      name: 'UG-0480T (Backup)',
+      driver: 'Juma (#R-2041)',
+      status: 'Resolving Route 4 delay',
+      destination: 'Dispatch Target • Pakwach Rd',
+      speedKmH: 31,
+      batteryPct: 92,
+      offsetFactor: Offset(0.58, 0.48),
+      color: Color(0xFF386884),
+      routeId: 'Route 4 (Arua Market)',
+    ),
+  ];
 
   // Active Routes State
   final List<Map<String, dynamic>> _activeRoutes = [
@@ -256,6 +302,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         'stops': 1,
                         'completed': 0,
                       });
+                      _liveMapVehicles.insert(0, LiveVehicleMarker(
+                        id: 'v-emg-${DateTime.now().millisecondsSinceEpoch}',
+                        label: 'EMG',
+                        name: '$selectedVehicle (Emergency)',
+                        driver: 'Duty Team ($selectedVehicle)',
+                        status: 'En-route to $selectedSector',
+                        destination: '$selectedSector • Priority Bypass',
+                        speedKmH: 42,
+                        batteryPct: 96,
+                        offsetFactor: const Offset(0.44, 0.50),
+                        color: const Color(0xFFBA4738),
+                        routeId: 'Emergency ($selectedSector)',
+                      ));
                     });
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -282,7 +341,34 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   void _showAdminProfileDialog() {
     final pinCtrl = TextEditingController(text: widget.authService?.getSupervisorPin() ?? '4019');
-    bool is2fa = widget.authService?.is2faEnabledForEmail(AuthService.officialAdminEmail) ?? true;
+    bool is2fa = widget.authService?.is2faEnabledForEmail(_currentAdminEmail) ?? true;
+
+    final authorizedAccounts = [
+      {
+        'id': '#A-9014',
+        'name': 'Geoffrey Ayiko',
+        'email': 'ayikog@yahoo.com',
+        'role': 'Municipal Operations Director',
+        'clearance': 'Level 4 • Executive Command',
+        'status': 'Active • On Duty',
+      },
+      {
+        'id': '#A-4019',
+        'name': 'Savior Deo Gratius',
+        'email': 'saviordeogratius@gmail.com',
+        'role': 'Lead Field Supervisor',
+        'clearance': 'Level 3 • Fleet Lead',
+        'status': 'Standby • Arua Base',
+      },
+      {
+        'id': '#A-1001',
+        'name': 'Systems Command Desk',
+        'email': 'admin@ecoroute.ug',
+        'role': 'Central Dispatcher & Audit',
+        'clearance': 'Level 2 • Operations',
+        'status': 'Online Dispatch Bot',
+      },
+    ];
 
     showDialog<void>(
       context: context,
@@ -310,33 +396,53 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Active Operating Admin Card
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE5DFC9),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFD4CCB4)),
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const CircleAvatar(
-                          backgroundColor: Color(0xFF1B2A32),
-                          child: Icon(Icons.person_rounded, color: Colors.white),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
-                              'Admin ID: #A-9014',
-                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                        Row(
+                          children: [
+                            const CircleAvatar(
+                              backgroundColor: Color(0xFF1B2A32),
+                              child: Icon(Icons.person_rounded, color: Colors.white),
                             ),
-                            Text(
-                              AuthService.officialAdminEmail,
-                              style: TextStyle(fontSize: 11.5, color: Color(0xFF384D55)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Admin ID: $_currentAdminId',
+                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                                  ),
+                                  Text(
+                                    _currentAdminEmail,
+                                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF384D55)),
+                                  ),
+                                  Text(
+                                    '$_currentAdminName • $_currentAdminClearance',
+                                    style: const TextStyle(fontSize: 11, color: Color(0xFF2E6B4A), fontWeight: FontWeight.w700),
+                                  ),
+                                ],
+                              ),
                             ),
-                            Text(
-                              'Role: Municipal Ops HQ',
-                              style: TextStyle(fontSize: 11, color: Color(0xFF2E6B4A), fontWeight: FontWeight.w700),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2E6B4A),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'ACTIVE',
+                                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                              ),
                             ),
                           ],
                         ),
@@ -344,6 +450,58 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                   ),
                   const SizedBox(height: 14),
+
+                  // Municipal Admin Directory Switcher
+                  const Text('Switch Municipal Administrator:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  Column(
+                    children: authorizedAccounts.map((acc) {
+                      final isSelected = acc['email'] == _currentAdminEmail;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Material(
+                          color: isSelected ? const Color(0xFFD6E3D8) : Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(
+                              color: isSelected ? const Color(0xFF2E6B4A) : const Color(0xFFCFD8D2),
+                              width: isSelected ? 1.5 : 1.0,
+                            ),
+                          ),
+                          child: ListTile(
+                            dense: true,
+                            visualDensity: VisualDensity.compact,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                            leading: Icon(
+                              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                              size: 18,
+                              color: isSelected ? const Color(0xFF2E6B4A) : Colors.black45,
+                            ),
+                            title: Text(
+                              '${acc['name']} (${acc['id']})',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                            ),
+                            subtitle: Text(
+                              '${acc['email']} • ${acc['clearance']}',
+                              style: const TextStyle(fontSize: 10.5, color: Color(0xFF5A6E63)),
+                            ),
+                            onTap: () {
+                              setDialogState(() {
+                                _currentAdminId = acc['id']!;
+                                _currentAdminEmail = acc['email']!;
+                                _currentAdminName = acc['name']!;
+                                _currentAdminClearance = acc['clearance']!;
+                                is2fa = widget.authService?.is2faEnabledForEmail(_currentAdminEmail) ?? true;
+                              });
+                              setState(() {});
+                            },
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 10),
+
                   const Text('Supervisor Authorization PIN:', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
                   const SizedBox(height: 6),
                   TextField(
@@ -365,10 +523,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     subtitle: const Text('Enforce 6-digit OTP code on sign-in', style: TextStyle(fontSize: 11)),
                     onChanged: (val) {
                       setDialogState(() => is2fa = val);
-                      widget.authService?.set2faEnabledForEmail(AuthService.officialAdminEmail, val);
+                      widget.authService?.set2faEnabledForEmail(_currentAdminEmail, val);
                     },
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   TextButton.icon(
                     onPressed: () {
                       Navigator.pop(dialogCtx);
@@ -377,22 +535,45 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     icon: const Icon(Icons.lock_reset_rounded, size: 16),
                     label: const Text('Reset Master Password'),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   OutlinedButton.icon(
-                    onPressed: () async {
+                    onPressed: () {
                       Navigator.pop(dialogCtx);
-                      await widget.authService?.logout();
-                      if (mounted) {
-                        AppRouter.routeToLogin(
-                          context,
-                          repository: widget.repository,
-                          authService: widget.authService,
-                          wasteApiService: widget.wasteApiService,
-                        );
-                      }
+                      _openSessionEndedView();
                     },
                     icon: const Icon(Icons.logout_rounded, size: 16, color: Color(0xFFBA4738)),
-                    label: const Text('Sign out', style: TextStyle(color: Color(0xFFBA4738), fontWeight: FontWeight.w700)),
+                    label: const Text('End Shift & Session Summary', style: TextStyle(color: Color(0xFFBA4738), fontWeight: FontWeight.w700)),
+                  ),
+                  const SizedBox(height: 4),
+                  Center(
+                    child: TextButton.icon(
+                      key: const ValueKey('admin_dialog_direct_sign_out_button'),
+                      onPressed: () async {
+                        Navigator.pop(dialogCtx);
+                        final auth = widget.authService;
+                        if (auth != null) {
+                          await auth.logout();
+                        }
+                        if (mounted) {
+                          AppRouter.routeToLogin(
+                            context,
+                            repository: widget.repository,
+                            authService: widget.authService,
+                            wasteApiService: widget.wasteApiService,
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.logout, size: 16, color: Color(0xFFBA4738)),
+                      label: const Text(
+                        'Sign out',
+                        style: TextStyle(
+                          fontFamily: 'Satoshi',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFBA4738),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -647,37 +828,54 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                   const SizedBox(width: 8),
                   Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF243640),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFF354B57)),
-                      ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                color: _isOnline ? const Color(0xFF4ADE80) : const Color(0xFFBA4738),
-                                shape: BoxShape.circle,
-                              ),
+                    child: GestureDetector(
+                      key: const ValueKey('admin_connection_status_badge'),
+                      onTap: () {
+                        setState(() => _isOnline = !_isOnline);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              _isOnline
+                                  ? 'Command HQ Network: Online (Real-time telemetry active)'
+                                  : 'Command HQ Network: Switched to Offline Cache Mode',
                             ),
-                            const SizedBox(width: 5),
-                            Text(
-                              _isOnline ? 'Command HQ • Online' : 'Command HQ • Offline',
-                              style: const TextStyle(
-                                fontFamily: 'Satoshi',
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                            backgroundColor: const Color(0xFF1B2A32),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF243640),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF354B57)),
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: BoxDecoration(
+                                  color: _isOnline ? const Color(0xFF4ADE80) : const Color(0xFFBA4738),
+                                  shape: BoxShape.circle,
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 5),
+                              Text(
+                                _isOnline ? 'Command HQ • Online' : 'Command HQ • Offline',
+                                style: const TextStyle(
+                                  fontFamily: 'Satoshi',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -1040,6 +1238,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 10),
           LiveDispatchMap(
             height: isWide ? 380 : 260,
+            vehicles: _liveMapVehicles,
             onViewActiveDispatches: () => setState(() => _currentTab = 1),
           ),
           const SizedBox(height: 20),
@@ -1251,30 +1450,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
         children: [
           Row(
             children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Live Dispatches',
-                    style: TextStyle(
-                      fontFamily: 'Satoshi',
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1B2A32),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Live Dispatches',
+                      style: TextStyle(
+                        fontFamily: 'Satoshi',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1B2A32),
+                      ),
                     ),
-                  ),
-                  Text(
-                    'Command HQ (Arua)',
-                    style: TextStyle(
-                      fontFamily: 'Satoshi',
-                      fontSize: 13,
-                      color: Color(0xFF5B6F77),
-                      fontWeight: FontWeight.w600,
+                    Text(
+                      'Command HQ (Arua)',
+                      style: TextStyle(
+                        fontFamily: 'Satoshi',
+                        fontSize: 13,
+                        color: Color(0xFF5B6F77),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -1291,7 +1492,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 12),
 
           // Map
-          LiveDispatchMap(height: isWide ? 220 : 200),
+          LiveDispatchMap(
+            height: isWide ? 220 : 200,
+            vehicles: _liveMapVehicles,
+          ),
           const SizedBox(height: 14),
 
           // Active Routes
@@ -1357,30 +1561,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
           // Queue & Assignments: Assigned Collection Riders
           Row(
             children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Queue & Assignments',
-                    style: TextStyle(
-                      fontFamily: 'Satoshi',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1B2A32),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Queue & Assignments',
+                      style: TextStyle(
+                        fontFamily: 'Satoshi',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1B2A32),
+                      ),
                     ),
-                  ),
-                  Text(
-                    'Assigned Collection Riders',
-                    style: TextStyle(
-                      fontFamily: 'Satoshi',
-                      fontSize: 13,
-                      color: Color(0xFF5B6F77),
-                      fontWeight: FontWeight.w600,
+                    Text(
+                      'Assigned Collection Riders',
+                      style: TextStyle(
+                        fontFamily: 'Satoshi',
+                        fontSize: 13,
+                        color: Color(0xFF5B6F77),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               FilledButton.icon(
                 onPressed: _showRiderInviteDialog,
                 icon: const Icon(Icons.person_add_rounded, size: 16),
@@ -1477,7 +1683,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     children: [
                       const Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF2E6B4A)),
                       const SizedBox(width: 4),
-                      Text(t, style: const TextStyle(fontSize: 11.5, color: Color(0xFF384D55))),
+                      Expanded(
+                        child: Text(t, style: const TextStyle(fontSize: 11.5, color: Color(0xFF384D55))),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -1506,30 +1714,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
         children: [
           Row(
             children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Audit Ledger',
-                    style: TextStyle(
-                      fontFamily: 'Satoshi',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1B2A32),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Audit Ledger',
+                      style: TextStyle(
+                        fontFamily: 'Satoshi',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1B2A32),
+                      ),
                     ),
-                  ),
-                  Text(
-                    'Financial & Field Logs',
-                    style: TextStyle(
-                      fontFamily: 'Satoshi',
-                      fontSize: 12,
-                      color: Color(0xFF5B6F77),
-                      fontWeight: FontWeight.w600,
+                    Text(
+                      'Financial & Field Logs',
+                      style: TextStyle(
+                        fontFamily: 'Satoshi',
+                        fontSize: 12,
+                        color: Color(0xFF5B6F77),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -1893,30 +2103,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
         children: [
           Row(
             children: const [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'System Controls',
-                    style: TextStyle(
-                      fontFamily: 'Satoshi',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1B2A32),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'System Controls',
+                      style: TextStyle(
+                        fontFamily: 'Satoshi',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1B2A32),
+                      ),
                     ),
-                  ),
-                  Text(
-                    'Fleet & Personnel',
-                    style: TextStyle(
-                      fontFamily: 'Satoshi',
-                      fontSize: 12,
-                      color: Color(0xFF5B6F77),
-                      fontWeight: FontWeight.w600,
+                    Text(
+                      'Fleet & Personnel',
+                      style: TextStyle(
+                        fontFamily: 'Satoshi',
+                        fontSize: 12,
+                        color: Color(0xFF5B6F77),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              Spacer(),
+              SizedBox(width: 8),
               CircleAvatar(
                 radius: 16,
                 backgroundColor: Color(0xFF243640),

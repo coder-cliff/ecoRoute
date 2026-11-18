@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 class LiveVehicleMarker {
@@ -16,7 +17,7 @@ class LiveVehicleMarker {
   });
 
   final String id;
-  final String label; // "T1", "T2", "T3"
+  final String label; // "T1", "T2", "T3", "EMG"
   final String name; // "UG-0480T"
   final String driver;
   final String status;
@@ -26,6 +27,34 @@ class LiveVehicleMarker {
   final Offset offsetFactor; // 0.0 to 1.0 normalized
   final Color color;
   final String routeId;
+
+  LiveVehicleMarker copyWith({
+    String? id,
+    String? label,
+    String? name,
+    String? driver,
+    String? status,
+    String? destination,
+    int? speedKmH,
+    int? batteryPct,
+    Offset? offsetFactor,
+    Color? color,
+    String? routeId,
+  }) {
+    return LiveVehicleMarker(
+      id: id ?? this.id,
+      label: label ?? this.label,
+      name: name ?? this.name,
+      driver: driver ?? this.driver,
+      status: status ?? this.status,
+      destination: destination ?? this.destination,
+      speedKmH: speedKmH ?? this.speedKmH,
+      batteryPct: batteryPct ?? this.batteryPct,
+      offsetFactor: offsetFactor ?? this.offsetFactor,
+      color: color ?? this.color,
+      routeId: routeId ?? this.routeId,
+    );
+  }
 }
 
 class LiveDispatchMap extends StatefulWidget {
@@ -36,6 +65,8 @@ class LiveDispatchMap extends StatefulWidget {
     this.onViewActiveDispatches,
     this.onSelectVehicle,
     this.initialSelectedId,
+    this.vehicles,
+    this.isLiveSimulation = true,
   });
 
   final double height;
@@ -43,6 +74,8 @@ class LiveDispatchMap extends StatefulWidget {
   final VoidCallback? onViewActiveDispatches;
   final ValueChanged<LiveVehicleMarker>? onSelectVehicle;
   final String? initialSelectedId;
+  final List<LiveVehicleMarker>? vehicles;
+  final bool isLiveSimulation;
 
   @override
   State<LiveDispatchMap> createState() => _LiveDispatchMapState();
@@ -53,6 +86,8 @@ class _LiveDispatchMapState extends State<LiveDispatchMap> with SingleTickerProv
   late final Animation<double> _pulseAnimation;
   double _zoomScale = 1.0;
   LiveVehicleMarker? _selectedVehicle;
+  late List<LiveVehicleMarker> _currentVehicles;
+  Timer? _simTimer;
 
   static const List<LiveVehicleMarker> vehicles = [
     LiveVehicleMarker(
@@ -99,6 +134,7 @@ class _LiveDispatchMapState extends State<LiveDispatchMap> with SingleTickerProv
   @override
   void initState() {
     super.initState();
+    _currentVehicles = List.of(widget.vehicles ?? vehicles);
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -107,6 +143,9 @@ class _LiveDispatchMapState extends State<LiveDispatchMap> with SingleTickerProv
     final isTest = WidgetsBinding.instance.runtimeType.toString().contains('Test');
     if (!isTest) {
       _pulseController.repeat(reverse: true);
+      if (widget.isLiveSimulation) {
+        _simTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) => tickLiveSimulation());
+      }
     } else {
       _pulseController.value = 1.0;
     }
@@ -116,17 +155,57 @@ class _LiveDispatchMapState extends State<LiveDispatchMap> with SingleTickerProv
     );
 
     if (widget.initialSelectedId != null) {
-      _selectedVehicle = vehicles.firstWhere(
+      _selectedVehicle = _currentVehicles.firstWhere(
         (v) => v.id == widget.initialSelectedId,
-        orElse: () => vehicles.first,
+        orElse: () => _currentVehicles.first,
       );
     }
   }
 
   @override
+  void didUpdateWidget(LiveDispatchMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.vehicles != null && widget.vehicles != oldWidget.vehicles) {
+      setState(() {
+        _currentVehicles = List.of(widget.vehicles!);
+      });
+    }
+  }
+
+  @override
   void dispose() {
+    _simTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
+  }
+
+  void tickLiveSimulation() {
+    if (!mounted) return;
+    setState(() {
+      _currentVehicles = _currentVehicles.map((v) {
+        double nextDx = v.offsetFactor.dx;
+        double nextDy = v.offsetFactor.dy;
+        if (v.id == 'v-1') {
+          nextDx = (nextDx + 0.008 > 0.42) ? 0.30 : nextDx + 0.004;
+          nextDy = (nextDy + 0.005 > 0.48) ? 0.42 : nextDy + 0.002;
+        } else if (v.id == 'v-3') {
+          nextDx = (nextDx - 0.006 < 0.50) ? 0.62 : nextDx - 0.003;
+        } else if (v.id == 'v-emg') {
+          nextDx = (nextDx + 0.005 > 0.55) ? 0.40 : nextDx + 0.005;
+        }
+        final speedJitter = (v.speedKmH > 0) ? (v.speedKmH + (v.speedKmH % 3 == 0 ? 1 : -1)).clamp(18, 45) : 0;
+        return v.copyWith(
+          offsetFactor: Offset(nextDx, nextDy),
+          speedKmH: speedJitter,
+        );
+      }).toList();
+      if (_selectedVehicle != null) {
+        _selectedVehicle = _currentVehicles.firstWhere(
+          (v) => v.id == _selectedVehicle!.id,
+          orElse: () => _currentVehicles.first,
+        );
+      }
+    });
   }
 
   void _handleVehicleTap(LiveVehicleMarker v) {
@@ -241,7 +320,7 @@ class _LiveDispatchMapState extends State<LiveDispatchMap> with SingleTickerProv
                       final h = constraints.maxHeight;
 
                       return Stack(
-                        children: vehicles.map((v) {
+                        children: _currentVehicles.map((v) {
                           final left = w * v.offsetFactor.dx - 16;
                           final top = h * v.offsetFactor.dy - 16;
                           final isSelected = _selectedVehicle?.id == v.id;
@@ -395,48 +474,46 @@ class _LiveDispatchMapState extends State<LiveDispatchMap> with SingleTickerProv
               color: Color(0xFFD9E2DA),
               borderRadius: BorderRadius.vertical(bottom: Radius.circular(18)),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Text(
-                        'T1: En Route to Shop 14',
-                        style: TextStyle(
-                          fontFamily: 'Satoshi',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1B2A32),
-                        ),
+            child: LayoutBuilder(
+              builder: (context, mapConstraints) {
+                final isNarrow = mapConstraints.maxWidth < 360;
+                final telemetryInfo = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Text(
+                      'T1: En Route to Shop 14',
+                      style: TextStyle(
+                        fontFamily: 'Satoshi',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1B2A32),
                       ),
-                      SizedBox(height: 2),
-                      Text(
-                        'T2: At Arua Market',
-                        style: TextStyle(
-                          fontFamily: 'Satoshi',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1B2A32),
-                        ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'T2: At Arua Market',
+                      style: TextStyle(
+                        fontFamily: 'Satoshi',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1B2A32),
                       ),
-                      SizedBox(height: 2),
-                      Text(
-                        'T3: Resolving Route 4 delay',
-                        style: TextStyle(
-                          fontFamily: 'Satoshi',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1B2A32),
-                        ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'T3: Resolving Route 4 delay',
+                      style: TextStyle(
+                        fontFamily: 'Satoshi',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1B2A32),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                FilledButton(
+                    ),
+                  ],
+                );
+
+                final dispatchButton = FilledButton(
                   key: const ValueKey('view_active_dispatches_button'),
                   onPressed: widget.onViewActiveDispatches,
                   style: FilledButton.styleFrom(
@@ -447,16 +524,40 @@ class _LiveDispatchMapState extends State<LiveDispatchMap> with SingleTickerProv
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    'View Active Dispatches',
-                    style: TextStyle(
-                      fontFamily: 'Satoshi',
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
+                  child: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'View Active Dispatches',
+                      style: TextStyle(
+                        fontFamily: 'Satoshi',
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                );
+
+                if (isNarrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      telemetryInfo,
+                      const SizedBox(height: 8),
+                      dispatchButton,
+                    ],
+                  );
+                }
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(child: telemetryInfo),
+                    const SizedBox(width: 8),
+                    dispatchButton,
+                  ],
+                );
+              },
             ),
           ),
         ],

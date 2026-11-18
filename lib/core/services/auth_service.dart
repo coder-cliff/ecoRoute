@@ -200,10 +200,15 @@ class AuthService {
     await _preferences.setString(_supervisorPinKey, pin.trim());
   }
 
-  /// Checks if 2FA is enabled for a given account (default: true for admin)
+  /// Checks if 2FA is enabled for a given account (default: true for admins and riders)
   bool is2faEnabledForEmail(String email) {
     final clean = email.trim().toLowerCase();
-    if (clean == officialAdminEmail || clean == '#a-9014' || clean == 'a-9014') {
+    if (clean == officialAdminEmail ||
+        clean == '#a-9014' ||
+        clean == 'a-9014' ||
+        clean.contains('admin') ||
+        clean.contains('rider') ||
+        getRiderInvite(clean) != null) {
       return _preferences.getBool('$_twoFactorEnabledPrefix$clean') ?? true;
     }
     return _preferences.getBool('$_twoFactorEnabledPrefix$clean') ?? false;
@@ -291,6 +296,20 @@ class AuthService {
           email: officialAdminEmail,
           phone: '+256394880352',
           role: AppRole.admin,
+        ),
+        newPassword,
+      );
+    } else {
+      final isRider = cleanTarget.contains('rider') || getRiderInvite(cleanTarget) != null;
+      final role = isRider ? AppRole.rider : AppRole.resident;
+      final name = cleanTarget.split('@').first;
+      _saveToLocalRegisteredUsers(
+        AppUser(
+          id: 'user-${DateTime.now().millisecondsSinceEpoch}',
+          fullName: name,
+          email: cleanTarget,
+          phone: '+256784638852',
+          role: role,
         ),
         newPassword,
       );
