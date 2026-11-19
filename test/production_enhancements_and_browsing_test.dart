@@ -131,6 +131,74 @@ void main() {
       expect(find.byKey(const ValueKey('login_password_input')), findsOneWidget);
       expect(find.byKey(const ValueKey('login_submit_button')), findsOneWidget);
     });
+
+    testWidgets('LoginScreen authenticates ayikog@yahoo.com with #Cliff0784 and routes to Admin', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: const LoginScreen(),
+          routes: {
+            '/admin': (_) => const Scaffold(body: Text('Command HQ Admin Panel')),
+            '/resident': (_) => const Scaffold(body: Text('Resident Portal')),
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const ValueKey('login_email_input')),
+        'ayikog@yahoo.com',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('login_password_input')),
+        '#Cliff0784',
+      );
+      await tester.tap(find.byKey(const ValueKey('login_submit_button')));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Command HQ Admin Panel'), findsOneWidget);
+      expect(EcoRouteState.instance.currentRole, 'admin');
+      expect(EcoRouteState.instance.userEmail, 'ayikog@yahoo.com');
+    });
+
+    testWidgets('LoginScreen allows new resident account creation and routes to Resident Portal', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: const LoginScreen(),
+          routes: {
+            '/admin': (_) => const Scaffold(body: Text('Command HQ Admin Panel')),
+            '/resident': (_) => const Scaffold(body: Text('Resident Portal')),
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Toggle to Create Resident Account mode
+      await tester.tap(find.text("Don't have an account? Create Resident Account"));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Create Account'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('login_email_input')),
+        'new_client@ecoroute.ug',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('login_password_input')),
+        'securePass2026',
+      );
+      await tester.tap(find.byKey(const ValueKey('login_submit_button')));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Resident Portal'), findsOneWidget);
+      expect(EcoRouteState.instance.currentRole, 'resident');
+      expect(EcoRouteState.instance.userEmail, 'new_client@ecoroute.ug');
+    });
   });
 
   group('High-Accuracy Arua Maps & Navigation', () {
