@@ -209,5 +209,17 @@ void main() {
       expect(analytics.eventLog, isNotEmpty);
       expect(analytics.eventLog.last['event'], 'pickup_requested');
     });
+
+    test('Official municipal administrator logs in with #Cliff0784 credentials as AppRole.admin', () async {
+      final user = await authService.login(
+        email: 'ayikog@yahoo.com',
+        password: '#Cliff0784',
+      );
+
+      expect(user, isNotNull);
+      expect(user!.email, 'ayikog@yahoo.com');
+      expect(user.fullName, 'Ayiko Godfrey');
+      expect(user.role.name, 'admin');
+    });
   });
 }

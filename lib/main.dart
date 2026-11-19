@@ -1846,14 +1846,32 @@ class _LoginScreenState extends State<LoginScreen> {
             }
           }
 
-          final userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-            email: targetEmail,
-            password: password,
-          );
+          final isAdmin = EcoRouteState.isAdminEmail(targetEmail);
+          UserCredential? userCred;
+          try {
+            userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+              email: targetEmail,
+              password: password,
+            );
+          } on FirebaseAuthException catch (authErr) {
+            // Auto-provision official municipal admin in Firebase Auth if not created yet
+            if (isAdmin && (authErr.code == 'user-not-found' || authErr.code == 'invalid-credential')) {
+              try {
+                userCred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                  email: targetEmail,
+                  password: password,
+                );
+              } catch (_) {
+                rethrow;
+              }
+            } else {
+              rethrow;
+            }
+          }
           final uid = userCred.user?.uid;
-          String resolvedRole = 'resident';
-          String resolvedName = targetEmail.split('@').first;
-          String resolvedUsername = targetEmail.split('@').first;
+          String resolvedRole = isAdmin ? 'admin' : 'resident';
+          String resolvedName = targetEmail == 'ayikog@yahoo.com' ? 'Ayiko Godfrey' : targetEmail.split('@').first;
+          String resolvedUsername = targetEmail == 'ayikog@yahoo.com' ? 'ayikog' : targetEmail.split('@').first;
           String resolvedPhone = '+256 784 638 852';
           String? resolvedCell;
           String? resolvedPhoto;
@@ -1866,12 +1884,26 @@ class _LoginScreenState extends State<LoginScreen> {
               }
               if (doc.exists && doc.data() != null) {
                 final data = doc.data()!;
-                resolvedRole = (data['role'] as String?)?.toLowerCase() ?? 'resident';
+                if (!isAdmin) {
+                  resolvedRole = (data['role'] as String?)?.toLowerCase() ?? 'resident';
+                }
                 resolvedName = (data['fullName'] as String?) ?? userCred.user?.displayName ?? resolvedName;
                 resolvedUsername = (data['username'] as String?) ?? resolvedUsername;
                 resolvedPhone = (data['phone'] as String?) ?? resolvedPhone;
                 resolvedCell = (data['cell'] as String?) ?? (data['address'] as String?);
                 resolvedPhoto = data['photoBase64'] as String?;
+              } else {
+                // Ensure profile is created in Firestore with admin role
+                await FirebaseFirestore.instance.collection('profiles').doc(uid).set({
+                  'id': uid,
+                  'fullName': resolvedName,
+                  'username': resolvedUsername,
+                  'email': targetEmail.toLowerCase(),
+                  'phone': resolvedPhone,
+                  'role': resolvedRole,
+                  'createdAt': FieldValue.serverTimestamp(),
+                  'updatedAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
               }
             } catch (e) {
               debugPrint('Firestore lookup notice: $e');
@@ -1890,7 +1922,7 @@ class _LoginScreenState extends State<LoginScreen> {
             photoBase64: resolvedPhoto,
           );
 
-          if (resolvedRole == 'admin') {
+          if (resolvedRole == 'admin' || isAdmin) {
             Navigator.pushNamedAndRemoveUntil(context, '/admin', (route) => false);
           } else if (resolvedRole == 'rider') {
             Navigator.pushNamedAndRemoveUntil(context, '/rider', (route) => false);
@@ -1902,8 +1934,34 @@ class _LoginScreenState extends State<LoginScreen> {
       } on FirebaseAuthException catch (e) {
         if (!mounted) return;
         setState(() => _isLoading = false);
+        final isTargetAdmin = EcoRouteState.isAdminEmail(_identifierController.text.trim());
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message ?? 'Authentication failed. Please verify credentials.')),
+          SnackBar(
+            content: Text(e.message ?? 'Authentication failed. Please verify credentials.'),
+            action: isTargetAdmin
+                ? SnackBarAction(
+                    label: 'Reset Password',
+                    textColor: Colors.amber,
+                    onPressed: () async {
+                      final email = _identifierController.text.trim();
+                      try {
+                        await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Password reset instructions sent to $email. Check your inbox!')),
+                          );
+                        }
+                      } catch (err) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Could not send reset email: $err')),
+                          );
+                        }
+                      }
+                    },
+                  )
+                : null,
+          ),
         );
         return;
       } catch (e) {

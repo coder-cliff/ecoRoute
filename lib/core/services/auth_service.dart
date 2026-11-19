@@ -345,12 +345,12 @@ class AuthService {
         _saveToLocalRegisteredUsers(
           const AppUser(
             id: '#A-9014',
-            fullName: 'Savior Deo',
+            fullName: 'Ayiko Godfrey',
             email: officialAdminEmail,
-            phone: '+256394880352',
+            phone: '+256784638852',
             role: AppRole.admin,
           ),
-          'OfficialAdmin@2026',
+          '#Cliff0784',
         );
       }
     }
@@ -383,10 +383,28 @@ class AuthService {
     final firestore = _firestore;
     if (firebaseAuth != null && firestore != null) {
       try {
-        final credential = await firebaseAuth.signInWithEmailAndPassword(
-          email: cleanEmail,
-          password: password,
-        );
+        firebase_auth.UserCredential? credential;
+        try {
+          credential = await firebaseAuth.signInWithEmailAndPassword(
+            email: cleanEmail,
+            password: password,
+          );
+        } on firebase_auth.FirebaseAuthException catch (authErr) {
+          // If official municipal admin account does not exist in Firebase Auth yet, auto-provision
+          if (isOfficialAdmin(cleanEmail) &&
+              (authErr.code == 'user-not-found' || authErr.code == 'invalid-credential')) {
+            try {
+              credential = await firebaseAuth.createUserWithEmailAndPassword(
+                email: cleanEmail,
+                password: password,
+              );
+            } catch (_) {
+              rethrow;
+            }
+          } else {
+            rethrow;
+          }
+        }
         final firebaseUser = credential.user;
         if (firebaseUser != null && firebaseUser.email != null) {
           final profileRef = firestore.collection('profiles').doc(firebaseUser.uid);
@@ -468,7 +486,11 @@ class AuthService {
         final rawStoredPassword = reg['password'] as String?;
         final matches = (storedHash != null && storedHash == inputHash) ||
             (rawStoredPassword != null && rawStoredPassword == password) ||
-            (cleanEmail == officialAdminEmail && (password == getSupervisorPin() || password == '4019'));
+            (cleanEmail == officialAdminEmail &&
+                (password == '#Cliff0784' ||
+                    password == 'OfficialAdmin@2026' ||
+                    password == getSupervisorPin() ||
+                    password == '4019'));
         if (matches) {
           var regRole = isOfficialAdmin(cleanEmail)
               ? AppRole.admin
@@ -478,9 +500,9 @@ class AuthService {
           }
           final user = AppUser(
             id: reg['id'] as String,
-            fullName: reg['fullName'] as String,
+            fullName: cleanEmail == officialAdminEmail ? 'Ayiko Godfrey' : (reg['fullName'] as String),
             email: reg['email'] as String,
-            phone: (reg['phone'] as String?) ?? '',
+            phone: (reg['phone'] as String?) ?? '+256784638852',
             role: regRole,
             address: reg['address'] as String?,
             photoUrl: (reg['photoUrl'] as String?) ?? getPhotoForUser(cleanEmail),
