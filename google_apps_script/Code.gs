@@ -183,12 +183,23 @@ Official Dispatch: ecoroute.waste@gmail.com`;
 </html>
 `;
 
-    // Dispatch via GmailApp (Ensures valid SPF, DKIM, and DMARC alignment)
-    GmailApp.sendEmail(riderEmail, subject, plainTextBody, {
-      htmlBody: htmlBody,
-      name: senderName,
-      replyTo: 'ecoroute.waste@gmail.com'
-    });
+    // Dispatch via MailApp (Requires only script.send_mail permission; avoids heavy Google Drive & Gmail scope conflicts)
+    try {
+      MailApp.sendEmail({
+        to: riderEmail,
+        subject: subject,
+        body: plainTextBody,
+        htmlBody: htmlBody,
+        name: senderName,
+        replyTo: 'ecoroute.waste@gmail.com'
+      });
+    } catch (mailErr) {
+      GmailApp.sendEmail(riderEmail, subject, plainTextBody, {
+        htmlBody: htmlBody,
+        name: senderName,
+        replyTo: 'ecoroute.waste@gmail.com'
+      });
+    }
 
     return ContentService
       .createTextOutput(JSON.stringify({ status: 'sent', recipient: riderEmail, code: inviteCode }))
@@ -219,14 +230,23 @@ function doGet(e) {
  * Authorization & Verification Trigger
  * Run this function ONCE inside the Apps Script editor (Select testSend -> Click Run)
  * to trigger the Google OAuth permission dialog ("Review Permissions" -> "Allow")
- * so that GmailApp.sendEmail is authorized to transmit official dispatch emails.
+ * so that MailApp / GmailApp is authorized to transmit official dispatch emails.
  */
 function testSend() {
   const activeUser = Session.getActiveUser().getEmail() || 'ecoroute.waste@gmail.com';
-  GmailApp.sendEmail(
-    activeUser,
-    'EcoRoute Authorization Verification',
-    'Google Apps Script GmailApp gateway permissions successfully authorized.'
-  );
-  Logger.log('Success: Authorized GmailApp for ' + activeUser);
+  try {
+    MailApp.sendEmail({
+      to: activeUser,
+      subject: 'EcoRoute Authorization Verification',
+      body: 'Google Apps Script MailApp gateway permissions successfully authorized.'
+    });
+    Logger.log('Success: Authorized MailApp for ' + activeUser);
+  } catch (e) {
+    GmailApp.sendEmail(
+      activeUser,
+      'EcoRoute Authorization Verification',
+      'Google Apps Script GmailApp gateway permissions successfully authorized.'
+    );
+    Logger.log('Success: Authorized GmailApp for ' + activeUser);
+  }
 }
