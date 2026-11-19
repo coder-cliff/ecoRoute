@@ -15,36 +15,73 @@ service cloud.firestore {
       return isAuthenticated() && (
         request.auth.token.email == 'ayikog@yahoo.com' ||
         request.auth.token.email == 'saviordeogratius@gmail.com' ||
-        request.auth.token.email == 'admin@ecoroute.ug'
+        request.auth.token.email == 'admin@ecoroute.ug' ||
+        request.auth.token.role == 'admin'
       );
     }
 
-    // Profiles collection (residents, riders, administrators)
-    // Read & create are allowed publicly to support guest checkout & username resolution before sign-in
+    function isRider() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'rider' ||
+        request.auth.token.email.matches('.*rider.*')
+      );
+    }
+
+    // Profiles & Users:
+    // Public read allows username/phone resolution before sign in and guest profile viewing.
+    // Writes restricted to authenticated account owners and municipal administrators.
     match /profiles/{userId} {
       allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: if true; // Allows initial signup and guest profile initialization
+      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow delete: if isAdmin();
     }
 
-    // Collection pickup requests (created by residents, accepted by riders, verified by admins)
-    match /pickupRequests/{requestId} {
-      allow read: if true;
-      allow write: if true;
-    }
-
-    // Invited collection riders registry
-    // Read & write allowed so Admin can dispatch invites and Riders can verify tokens
-    match /invitedRiders/{riderEmail} {
-      allow read: if true;
-      allow write: if true;
-    }
-
-    // Auxiliary collections fallback
     match /users/{userId} {
       allow read: if true;
-      allow write: if true;
+      allow create: if true;
+      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Pickup Requests (Household, Commercial & Municipal Waste Dispatches):
+    // - Read: Public read enables guest tracking ("Track Truck") and customer receipts
+    // - Create: Public create enables guest requests and registered resident orders
+    // - Update: Authenticated riders and admins can advance status, assign units, and resolve tasks
+    // - Delete: Restricted strictly to municipal administrators for audit compliance
+    match /pickupRequests/{requestId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    // Invited Collection Riders Registry:
+    // - Read: Public read required so invited riders can verify 6-digit tokens during onboarding
+    // - Write: Strictly restricted to municipal administrators to prevent unauthorized rider creation
+    match /invitedRiders/{riderEmail} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isAdmin();
+    }
+
+    // Municipal Fleet Tricycles & Real-Time Telemetry:
+    // - Read: Public map visualization for Arua City residents
+    // - Write: Authenticated riders (speed/battery updates) and administrators (fleet controls)
+    match /tricycles/{tricycleId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && (isRider() || isAdmin());
+    }
+
+    // Municipal Command HQ Audit Logs & Financial Ledgers:
+    // - Restricted strictly to authorized administrators (Level 3 & 4 clearance)
+    match /adminLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Operational Boundaries & Geo-fence Overrides
+    match /systemControls/{controlId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

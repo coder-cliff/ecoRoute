@@ -1007,6 +1007,7 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                 systemNavigationBarIconBrightness: Brightness.dark,
                 systemNavigationBarDividerColor: Colors.transparent,
               ),
+              titleSpacing: 0,
               title: const FittedBox(
                 fit: BoxFit.scaleDown,
                 child: BrandLockup(compact: true),
@@ -1015,6 +1016,8 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                 ListenableBuilder(
                   listenable: ThemeService.instance,
                   builder: (context, _) => IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
                     icon: Icon(
                       ThemeService.instance.isDarkMode
                           ? Icons.light_mode_outlined
@@ -1028,12 +1031,15 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                   ),
                 ),
                 IconButton(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
                   icon: const Icon(Icons.grid_view_outlined, color: Color(0xFF0D2618)),
                   tooltip: _langService.translate('waste_database'),
                   onPressed: _showWasteDatabase,
                 ),
                 // Language Selector Menu
                 PopupMenuButton<AppLanguage>(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
                   icon: const Icon(Icons.public_outlined, color: Color(0xFF0D2618)),
                   tooltip: _langService.translate('select_language'),
                   onSelected: (lang) => _langService.setLanguage(lang),
@@ -1054,19 +1060,36 @@ class _EcoRouteHomeScreenState extends State<EcoRouteHomeScreen> {
                       )
                       .toList(),
                 ),
-                IconButton(
-                  tooltip: _signedIn
-                      ? '${_langService.translate('my_account')} (${_currentUser?.fullName ?? 'User'})'
-                      : _langService.translate('sign_in'),
-                  onPressed: _showAuth,
-                  icon: Icon(
-                    _signedIn
-                        ? Icons.account_circle_rounded
-                        : Icons.account_circle_outlined,
-                    color: const Color(0xFF0D2618),
+                if (!_signedIn)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 2.0),
+                    child: ElevatedButton.icon(
+                      key: const ValueKey('home_top_right_login_button'),
+                      onPressed: _showAuth,
+                      icon: const Icon(Icons.login_rounded, size: 13, color: Colors.white),
+                      label: Text(
+                        _langService.translate('sign_in'),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0D2618),
+                        elevation: 1.5,
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                    ),
+                  )
+                else
+                  IconButton(
+                    tooltip: '${_langService.translate('my_account')} (${_currentUser?.fullName ?? 'User'})',
+                    onPressed: _showAuth,
+                    icon: const Icon(
+                      Icons.account_circle_rounded,
+                      color: Color(0xFF0D2618),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
               ],
             ),
             body: Column(

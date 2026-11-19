@@ -355,8 +355,20 @@ class AuthService {
       }
     }
 
-    // Check rate-limiting / lockout
-    final lockout = _lockoutUntil[cleanEmail];
+    // Check rate-limiting / lockout (in-memory + persistent across app restarts)
+    DateTime? lockout = _lockoutUntil[cleanEmail];
+    if (lockout == null) {
+      final prefMs = _preferences.getInt('ecoroute_lockout_$cleanEmail');
+      if (prefMs != null) {
+        final prefDate = DateTime.fromMillisecondsSinceEpoch(prefMs);
+        if (DateTime.now().isBefore(prefDate)) {
+          lockout = prefDate;
+          _lockoutUntil[cleanEmail] = prefDate;
+        } else {
+          _preferences.remove('ecoroute_lockout_$cleanEmail');
+        }
+      }
+    }
     if (lockout != null && DateTime.now().isBefore(lockout)) {
       final secondsLeft = lockout.difference(DateTime.now()).inSeconds;
       throw StateError(
@@ -434,6 +446,7 @@ class AuthService {
           );
           _failedAttempts.remove(cleanEmail);
           _lockoutUntil.remove(cleanEmail);
+          await _preferences.remove('ecoroute_lockout_$cleanEmail');
           await _saveSession(user);
           if (user.role == AppRole.admin) {
             await recordAdminShiftStart();
@@ -474,6 +487,7 @@ class AuthService {
           );
           _failedAttempts.remove(cleanEmail);
           _lockoutUntil.remove(cleanEmail);
+          await _preferences.remove('ecoroute_lockout_$cleanEmail');
           await _saveSession(user);
           if (user.role == AppRole.admin) {
             await recordAdminShiftStart();
@@ -497,7 +511,9 @@ class AuthService {
           : attempts == 4
               ? const Duration(seconds: 30)
               : const Duration(seconds: 60);
-      _lockoutUntil[email] = DateTime.now().add(lockoutDuration);
+      final until = DateTime.now().add(lockoutDuration);
+      _lockoutUntil[email] = until;
+      _preferences.setInt('ecoroute_lockout_$email', until.millisecondsSinceEpoch);
     }
   }
 
@@ -544,6 +560,13 @@ class AuthService {
         final firebaseUser = credential.user;
         if (firebaseUser == null) {
           throw StateError('Firebase did not return the created user.');
+        }
+
+        // Send official email verification link to prevent spam registrations
+        try {
+          await firebaseUser.sendEmailVerification();
+        } catch (e) {
+          debugPrint('Email verification dispatch notice: $e');
         }
 
         final user = AppUser(

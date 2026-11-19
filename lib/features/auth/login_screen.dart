@@ -493,71 +493,69 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Scaffold(
         backgroundColor: surfaceColor,
         body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final maxWidth = constraints.maxWidth < 600
-                      ? 420.0
-                      : (constraints.maxWidth <= 1024 ? 460.0 : 500.0);
-                  return ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxWidth),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth >= 900;
+              final formContent = Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 460),
                     child: Form(
                       key: _formKey,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                      const SizedBox(height: 20),
-                      // Header: "Sign In"
-                      const Text(
-                        'Sign In',
-                        style: TextStyle(
-                          fontFamily: 'Satoshi',
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800,
-                          color: primaryDark,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 28),
+                          const SizedBox(height: 12),
+                          // Header: "Sign In"
+                          const Text(
+                            'Sign In',
+                            style: TextStyle(
+                              fontFamily: 'Satoshi',
+                              fontSize: 32,
+                              fontWeight: FontWeight.w800,
+                              color: primaryDark,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 28),
 
-                      // Error message if any
-                      if (_errorMessage != null) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFEBEE),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFFFCDD2)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.error_outline_rounded,
-                                size: 18,
-                                color: Color(0xFFC62828),
+                          // Error message if any
+                          if (_errorMessage != null) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _errorMessage!,
-                                  style: const TextStyle(
-                                    fontFamily: 'Satoshi',
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFEBEE),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFFFFCDD2)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.error_outline_rounded,
+                                    size: 18,
                                     color: Color(0xFFC62828),
                                   ),
-                                ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _errorMessage!,
+                                      style: const TextStyle(
+                                        fontFamily: 'Satoshi',
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFFC62828),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                      ],
+                            ),
+                            const SizedBox(height: 18),
+                          ],
 
                       // Email / Phone field
                       TextFormField(
@@ -880,13 +878,177 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                 ),
-              );
+              ),
+            ),
+          );
+
+          if (isDesktop) {
+                return Row(
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: _buildDesktopIllustrationPanel(),
+                    ),
+                    Expanded(
+                      flex: 5,
+                      child: formContent,
+                    ),
+                  ],
+                );
+              }
+
+              return formContent;
             },
           ),
         ),
       ),
-    ),
-  ),
-);
-}
+    );
+  }
+
+  Widget _buildDesktopIllustrationPanel() {
+    return Container(
+      color: const Color(0xFFDED8C7),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background Illustration
+          Image.asset(
+            'assets/EcoRoute_launch.png',
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              color: const Color(0xFFE8ECE7),
+              child: const Center(
+                child: Icon(Icons.local_shipping, size: 80, color: Color(0xFF0D2618)),
+              ),
+            ),
+          ),
+          // Subtle gradient overlay for readability
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  const Color(0xFFE8ECE7).withValues(alpha: 0.85),
+                  Colors.transparent,
+                  const Color(0xFF0D2618).withValues(alpha: 0.75),
+                ],
+                stops: const [0.0, 0.45, 1.0],
+              ),
+            ),
+          ),
+          // Content Overlay
+          Padding(
+            padding: const EdgeInsets.all(28.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Headline + Floating Badge
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Optimizing Commercial Waste\nDriving Efficiency in Arua City',
+                        style: TextStyle(
+                          fontFamily: 'Satoshi',
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF9C3D18),
+                          height: 1.2,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Container(
+                      width: 92,
+                      height: 92,
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF1B2E25),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3)),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'Organic\n& waste\ncollections',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Satoshi',
+                          color: Colors.white,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          height: 1.15,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                // Three Feature Highlight Chips
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  children: [
+                    _buildFeatureChip('Cardboard bale\npickups'),
+                    _buildFeatureChip('Organic food waste\ncollections'),
+                    _buildFeatureChip('Riders into coordinating\ndispatches'),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                // Bottom Brand Header Bar
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F1F2C).withValues(alpha: 0.95),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.eco_rounded, color: Color(0xFF7CB69D), size: 20),
+                      SizedBox(width: 10),
+                      Text(
+                        'ecoRoute • Command HQ & Client Hub',
+                        style: TextStyle(
+                          fontFamily: 'Satoshi',
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureChip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF162736).withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontFamily: 'Satoshi',
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          height: 1.2,
+        ),
+      ),
+    );
+  }
 }
